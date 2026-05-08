@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PaginationSelector } from '@/components/ui/pagination-selector';
 import {
   FileText,
@@ -17,12 +18,14 @@ import {
 import Link from 'next/link';
 
 type FilterStatus = 'all' | 'submitted' | 'approved' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
+type ViewMode = 'date' | 'booth' | 'time' | 'buyer' | 'seller';
 
 interface ConsultationItem {
   id: string;
   buyer_name: string;
   seller_name: string;
   interpreter_name: string;
+  booth_number: string;
   date: string;
   start_time: string;
   end_time: string;
@@ -43,7 +46,7 @@ interface ReportsFilterProps {
   };
 }
 
-const TABS: { key: FilterStatus; label: string; icon: typeof FileText; color: string; activeColor: string }[] = [
+const STATUS_TABS: { key: FilterStatus; label: string; icon: typeof FileText; color: string; activeColor: string }[] = [
   { key: 'all', label: '전체', icon: FileText, color: 'text-slate-400', activeColor: 'bg-card text-foreground shadow-sm' },
   { key: 'submitted', label: '검토중', icon: Clock, color: 'text-blue-600', activeColor: 'bg-card text-blue-700 shadow-sm' },
   { key: 'approved', label: '승인됨', icon: CheckCircle2, color: 'text-emerald-600', activeColor: 'bg-card text-emerald-700 shadow-sm' },
@@ -64,7 +67,7 @@ function getStatusBadge(status: ConsultationItem['status']) {
     case 'rejected':
       return <Badge variant="destructive" className="text-xs gap-1"><XCircle className="w-3 h-3" />반려</Badge>;
     case 'in_progress':
-      return <Badge className="text-xs bg-amber-100 text-amber-700 border-0 gap-1"><FileText className="w-3 h-3" />작성중</Badge>;
+      return <Badge className="text-xs bg-orange-100 text-orange-700 border-0 gap-1"><FileText className="w-3 h-3" />작성중</Badge>;
     case 'not_started':
       return <Badge variant="secondary" className="text-xs gap-1"><AlertCircle className="w-3 h-3" />미작성</Badge>;
   }
@@ -72,30 +75,41 @@ function getStatusBadge(status: ConsultationItem['status']) {
 
 export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
   const [filter, setFilter] = useState<FilterStatus>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('date');
   const [pageSize, setPageSize] = useState<number | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // 상태 필터
   const filtered = useMemo(() => {
     if (filter === 'all') return items;
     return items.filter((i) => i.status === filter);
   }, [items, filter]);
 
-  // 페이지네이션 적용
+  // 페이지네이션
   const paginatedFiltered = useMemo(() => {
     if (pageSize === 'all') return filtered;
     const start = (currentPage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, pageSize, currentPage]);
 
-  // 날짜별 그룹핑 (페이지네이션 적용된 데이터)
+  // 뷰 모드별 그룹핑
   const grouped = useMemo(() => {
     const map = new Map<string, ConsultationItem[]>();
     paginatedFiltered.forEach((item) => {
-      if (!map.has(item.date)) map.set(item.date, []);
-      map.get(item.date)!.push(item);
+      let key: string;
+      switch (viewMode) {
+        case 'date': key = item.date; break;
+        case 'booth': key = item.booth_number || '부스 미지정'; break;
+        case 'time': key = `${item.start_time} - ${item.end_time}`; break;
+        case 'buyer': key = item.buyer_name || '바이어 미지정'; break;
+        case 'seller': key = item.seller_name || '셀러 미지정'; break;
+        default: key = item.date;
+      }
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
     });
     return map;
-  }, [paginatedFiltered]);
+  }, [paginatedFiltered, viewMode]);
 
   function getCount(key: FilterStatus) {
     if (key === 'all') return counts.total;
@@ -107,28 +121,48 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
     return counts.notStarted;
   }
 
+  function getGroupIcon(mode: ViewMode) {
+    switch (mode) {
+      case 'date': return <CalendarDays className="w-4 h-4 text-blue-500" />;
+      case 'booth': return <span className="text-xs font-bold text-purple-500">B</span>;
+      case 'time': return <Clock className="w-4 h-4 text-amber-500" />;
+      case 'buyer': return <span className="text-xs font-bold text-blue-500">Buy</span>;
+      case 'seller': return <span className="text-xs font-bold text-emerald-500">Sell</span>;
+    }
+  }
+
   return (
     <div>
+      {/* 뷰 모드 탭 */}
+      <div className="mb-4">
+        <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v as ViewMode); setCurrentPage(1); }}>
+          <TabsList>
+            <TabsTrigger value="date">일자별</TabsTrigger>
+            <TabsTrigger value="booth">부스별</TabsTrigger>
+            <TabsTrigger value="time">시간별</TabsTrigger>
+            <TabsTrigger value="buyer">바이어별</TabsTrigger>
+            <TabsTrigger value="seller">셀러별</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
       {/* 상태 필터 탭 */}
-      <div className="flex gap-1 bg-card rounded-lg p-1 mb-6 flex-wrap">
-        {TABS.map((tab) => {
+      <div className="flex gap-1 bg-card rounded-lg p-1 mb-4 flex-wrap">
+        {STATUS_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = filter === tab.key;
           const count = getCount(tab.key);
-
           return (
             <button
               key={tab.key}
-              onClick={() => setFilter(tab.key)}
+              onClick={() => { setFilter(tab.key); setCurrentPage(1); }}
               className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-all justify-center ${
                 isActive ? tab.activeColor : `${tab.color} hover:bg-card`
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               {tab.label}
-              <span className={`text-xs ${isActive ? 'opacity-100' : 'opacity-60'}`}>
-                {count}
-              </span>
+              <span className={`text-xs ${isActive ? 'opacity-100' : 'opacity-60'}`}>{count}</span>
             </button>
           );
         })}
@@ -157,67 +191,55 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
         </Card>
       ) : (
         <div className="space-y-6">
-          {Array.from(grouped.entries()).map(([date, dateItems]) => {
-            const dateApproved = dateItems.filter((i) => i.status === 'approved').length;
+          {Array.from(grouped.entries()).map(([groupKey, groupItems]) => {
+            const groupApproved = groupItems.filter((i) => i.status === 'approved').length;
             return (
-              <div key={date}>
+              <div key={groupKey}>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-                    <CalendarDays className="w-4 h-4 text-blue-500" />
-                    {date}
+                    {getGroupIcon(viewMode)}
+                    {groupKey}
                   </div>
                   <span className="text-xs text-slate-400">
                     {filter === 'all'
-                      ? `${dateApproved}/${dateItems.length}건 승인`
-                      : `${dateItems.length}건`}
+                      ? `${groupApproved}/${groupItems.length}건 승인`
+                      : `${groupItems.length}건`}
                   </span>
                   <div className="flex-1 h-px bg-card" />
                 </div>
 
                 <div className="space-y-2">
-                  {dateItems.map((item) => {
+                  {groupItems.map((item) => {
                     const isClickable = item.status !== 'not_started';
-
                     const content = (
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-medium text-foreground truncate">
-                                {item.buyer_name}
-                              </span>
+                              <span className="text-sm font-medium text-foreground truncate">{item.buyer_name}</span>
                               <span className="text-xs text-slate-400">x</span>
-                              <span className="text-sm text-muted-foreground truncate">
-                                {item.seller_name}
-                              </span>
+                              <span className="text-sm text-muted-foreground truncate">{item.seller_name}</span>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-slate-400">
-                              <span>{item.start_time} - {item.end_time}</span>
+                              {viewMode !== 'date' && <span>{item.date}</span>}
+                              {viewMode !== 'time' && <span>{item.start_time} - {item.end_time}</span>}
+                              {viewMode !== 'booth' && item.booth_number && <span>부스 {item.booth_number}</span>}
                               <span>통역: {item.interpreter_name}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {getStatusBadge(item.status)}
-                            {isClickable && (
-                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                            )}
+                            {isClickable && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                           </div>
                         </div>
                       </CardContent>
                     );
 
                     return (
-                      <Card
-                        key={item.id}
-                        className={`border-0 shadow-sm ${isClickable ? 'hover:shadow-md transition-shadow' : ''}`}
-                      >
+                      <Card key={item.id} className={`border-0 shadow-sm ${isClickable ? 'hover:shadow-md transition-shadow' : ''}`}>
                         {isClickable ? (
-                          <Link href={`/admin/events/${eventId}/reports/${item.id}`}>
-                            {content}
-                          </Link>
-                        ) : (
-                          content
-                        )}
+                          <Link href={`/admin/events/${eventId}/reports/${item.id}`}>{content}</Link>
+                        ) : content}
                       </Card>
                     );
                   })}

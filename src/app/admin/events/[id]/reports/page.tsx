@@ -87,6 +87,7 @@ export default async function ReportsPage({
       buyer_name: c.buyer?.company_name ?? '',
       seller_name: c.seller?.company_name_kr || c.seller?.company_name || '',
       interpreter_name: c.interpreter?.name ?? '',
+      booth_number: c.buyer?.booth_number ?? '',
       date: c.time_slot?.date || '날짜 미정',
       start_time: c.time_slot?.start_time ?? '',
       end_time: c.time_slot?.end_time ?? '',
