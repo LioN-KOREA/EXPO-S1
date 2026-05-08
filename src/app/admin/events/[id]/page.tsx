@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Upload, Clock, Users, FileText, Download, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Upload, Clock, Users, FileText, Download, ClipboardList, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { DeleteEventButton } from '@/components/admin/DeleteEventButton';
 
@@ -42,6 +42,15 @@ export default async function EventDetailPage({
   ]);
 
   const managementItems = [
+    {
+      title: '대시보드',
+      description: '상담 통계, 실적 순위, 성과 지표',
+      href: `/admin/events/${id}/dashboard`,
+      icon: BarChart3,
+      count: 0,
+      countLabel: '',
+      color: 'from-indigo-500 to-indigo-600',
+    },
     {
       title: '관리 / 등록',
       description: '타임테이블, 바이어·셀러, 통역사, 양식 등록',

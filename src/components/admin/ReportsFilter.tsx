@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PaginationSelector } from '@/components/ui/pagination-selector';
 import {
   FileText,
   CalendarDays,
@@ -66,21 +67,30 @@ function getStatusBadge(status: ConsultationItem['status']) {
 
 export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
   const [filter, setFilter] = useState<FilterStatus>('all');
+  const [pageSize, setPageSize] = useState<number | 'all'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filtered = useMemo(() => {
     if (filter === 'all') return items;
     return items.filter((i) => i.status === filter);
   }, [items, filter]);
 
-  // 날짜별 그룹핑
+  // 페이지네이션 적용
+  const paginatedFiltered = useMemo(() => {
+    if (pageSize === 'all') return filtered;
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, pageSize, currentPage]);
+
+  // 날짜별 그룹핑 (페이지네이션 적용된 데이터)
   const grouped = useMemo(() => {
     const map = new Map<string, ConsultationItem[]>();
-    filtered.forEach((item) => {
+    paginatedFiltered.forEach((item) => {
       if (!map.has(item.date)) map.set(item.date, []);
       map.get(item.date)!.push(item);
     });
     return map;
-  }, [filtered]);
+  }, [paginatedFiltered]);
 
   function getCount(key: FilterStatus) {
     if (key === 'all') return counts.total;
@@ -116,6 +126,17 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
             </button>
           );
         })}
+      </div>
+
+      {/* 페이지네이션 */}
+      <div className="mb-4">
+        <PaginationSelector
+          totalItems={filtered.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* 목록 */}
