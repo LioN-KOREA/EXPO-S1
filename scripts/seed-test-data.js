@@ -35,9 +35,11 @@ const admin = createClient('http://127.0.0.1:54321', 'eyJhbGciOiJIUzI1NiIsInR5cC
 
   // 바이어 30명
   const countries = ['미국','중국','일본','독일','프랑스','영국','호주','캐나다','인도','브라질','베트남','태국','인도네시아','멕시코','스페인'];
+  const buyerNames = ['글로벌파마','메디텍코리아','바이오솔루션','헬스케어그룹','뉴웰니스','테라퓨틱스','케미팜','드래곤바이오','골든헬스','이노메드','파시픽팜','선라이즈헬스','에버그린바이오','알파메딕','베타사이언스','감마텍','델타파마','엡실론헬스','제타바이오','에타메드','시타팜','이오타사이언스','카파헬스','람다바이오','뮤메딕','뉴팜','크사이헬스','오미크론바이오','파이메드','로텍'];
+  const buyerPersons = ['김철수','이영희','박민수','최지영','정대현','강수진','윤태호','임미연','한상우','오정민','서지훈','장미경','조영철','배수현','송태민','신혜진','권도윤','류지선','남기환','문서연','양승호','백지은','홍성준','유미래','전영수','천지원','고태양','황보람','안시우','마현정'];
   const bRows = [];
   for (let i = 0; i < 30; i++) {
-    bRows.push({ event_id: eventId, company_name: 'Buyer Corp ' + String.fromCharCode(65 + (i % 26)) + (i >= 26 ? (i - 25) : ''), buyer_name: 'Buyer ' + (i + 1), country: countries[i % 15], booth_number: 'B' + String(i + 1).padStart(3, '0'), email: 'buyer' + (i + 1) + '@example.com' });
+    bRows.push({ event_id: eventId, company_name: buyerNames[i], buyer_name: buyerPersons[i], country: countries[i % 15], booth_number: 'B' + String(i + 1).padStart(3, '0'), email: 'buyer' + (i + 1) + '@example.com' });
   }
   const { data: buyers } = await admin.from('buyers').insert(bRows).select('id');
 

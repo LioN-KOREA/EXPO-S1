@@ -56,6 +56,7 @@ export function ConsultationEditDialog({
     setSaving(true);
 
     const body: Record<string, unknown> = {};
+    if (buyerId !== consultation.buyer_id) body.buyer_id = buyerId;
     if (sellerId !== (consultation.seller_id || '')) body.seller_id = sellerId || null;
     if (interpreterId !== (consultation.interpreter_id || '')) body.interpreter_id = interpreterId || null;
     if (memo !== (consultation.memo || '')) body.memo = memo || null;
@@ -82,6 +83,7 @@ export function ConsultationEditDialog({
 
       // 로컬 상태 업데이트를 위해 변경 내용 전달
       const updated: Partial<ConsultationData> & { id: string } = { id: consultation.id };
+      if ('buyer_id' in body) updated.buyer_id = body.buyer_id as string;
       if ('seller_id' in body) {
         updated.seller_id = body.seller_id as string;
         const seller = sellers.find(s => s.id === body.seller_id);
@@ -120,24 +122,33 @@ export function ConsultationEditDialog({
             </div>
           </div>
 
-          {/* 부스번호 (읽기전용, 바이어에 종속) */}
+          {/* 바이어 */}
+          <div>
+            <Label className="text-xs text-muted-foreground">바이어</Label>
+            <Select value={buyerId || null} onValueChange={(v) => setBuyerId(v ?? '')}>
+              <SelectTrigger className="mt-1 h-9 text-sm">
+                <SelectValue placeholder="바이어 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {buyers.map(b => (
+                  <SelectItem key={b.id} value={b.id} className="text-sm">
+                    {b.company_name} ({b.country}) {b.booth_number ? `[${b.booth_number}]` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* 부스번호 */}
           <div>
             <Label className="text-xs text-muted-foreground">부스번호</Label>
             <Input
-              value={currentBuyer?.booth_number || '-'}
+              value={currentBuyer?.booth_number || ''}
               disabled
+              placeholder="바이어에 연동됨"
               className="mt-1 h-9 text-sm bg-muted"
             />
-          </div>
-
-          {/* 바이어 (읽기전용) */}
-          <div>
-            <Label className="text-xs text-muted-foreground">바이어</Label>
-            <Input
-              value={`${currentBuyer?.company_name || '-'} (${currentBuyer?.country || ''})`}
-              disabled
-              className="mt-1 h-9 text-sm bg-muted"
-            />
+            <p className="text-[10px] text-muted-foreground mt-1">부스번호는 바이어에 연동됩니다</p>
           </div>
 
           {/* 셀러 */}
