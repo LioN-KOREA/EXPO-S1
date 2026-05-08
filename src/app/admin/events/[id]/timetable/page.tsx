@@ -7,11 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExcelUploader } from '@/components/admin/ExcelUploader';
+import { PaginationSelector } from '@/components/ui/pagination-selector';
+import { ConsultationEditDialog } from '@/components/admin/timetable/ConsultationEditDialog';
 import { ArrowLeft, Upload, RefreshCw, UserPlus, Search, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import type { TimeSlot, BuyerData, SellerData, ConsultationData, Interpreter } from '@/components/admin/timetable/types';
 
 interface PreviewData {
   time_slots: { date: string; start_time: string; end_time: string; slot_order: number }[];
@@ -26,10 +30,7 @@ interface PreviewError {
   message: string;
 }
 
-interface TimeSlot { id: string; start_time: string; end_time: string; slot_order: number; date: string; }
-interface Buyer { id: string; company_name: string; country: string; booth_number: string; }
-interface ConsultationData { id: string; time_slot_id: string; buyer_id: string; interpreter_id: string | null; seller: { company_name: string; company_name_kr: string; contact_name: string } | null; }
-interface Interpreter { id: string; name: string; email: string; }
+type ViewMode = 'buyer' | 'booth' | 'interpreter' | 'seller';
 
 // 통역사 검색 드롭다운 컴포넌트
 function InterpreterPicker({
@@ -130,6 +131,14 @@ export default function TimetablePage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
   const [assignMode, setAssignMode] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('buyer');
+  const [pageSize, setPageSize] = useState<number | 'all'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // 셀 편집 팝업
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingConsultation, setEditingConsultation] = useState<ConsultationData | null>(null);
+  const [editingSlot, setEditingSlot] = useState<TimeSlot | null>(null);
 
   // 프리뷰 관련
   const [preview, setPreview] = useState<PreviewData | null>(null);
@@ -140,7 +149,8 @@ export default function TimetablePage() {
   const [existingReports, setExistingReports] = useState<{ total: number; submitted: number; inProgress: number }>({ total: 0, submitted: 0, inProgress: 0 });
 
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
-  const [buyers, setBuyers] = useState<Buyer[]>([]);
+  const [buyers, setBuyers] = useState<BuyerData[]>([]);
+  const [sellers, setSellers] = useState<SellerData[]>([]);
   const [consultations, setConsultations] = useState<ConsultationData[]>([]);
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
 
@@ -148,16 +158,17 @@ export default function TimetablePage() {
     setDataLoading(true);
     const supabase = createClient();
 
-    // 이 상담회에 배정된 통역사만 조회
-    const [slotsRes, buyersRes, consRes, eventInterpRes] = await Promise.all([
+    const [slotsRes, buyersRes, sellersRes, consRes, eventInterpRes] = await Promise.all([
       supabase.from('time_slots').select('*').eq('event_id', eventId).order('slot_order'),
       supabase.from('buyers').select('id, company_name, country, booth_number').eq('event_id', eventId),
-      supabase.from('consultations').select('id, time_slot_id, buyer_id, interpreter_id, seller:sellers(company_name, company_name_kr, contact_name)').eq('event_id', eventId),
+      supabase.from('sellers').select('id, company_name, company_name_kr, contact_name').eq('event_id', eventId),
+      supabase.from('consultations').select('id, time_slot_id, buyer_id, seller_id, interpreter_id, memo, seller:sellers(company_name, company_name_kr, contact_name)').eq('event_id', eventId),
       supabase.from('event_interpreters').select('interpreter_id, interpreter:profiles!event_interpreters_interpreter_id_fkey(id, name, email)').eq('event_id', eventId),
     ]);
 
     setTimeSlots(slotsRes.data || []);
     setBuyers(buyersRes.data || []);
+    setSellers(sellersRes.data || []);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setConsultations((consRes.data || []).map((c: any) => ({ ...c, seller: c.seller })));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -168,7 +179,7 @@ export default function TimetablePage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // 1단계: 프리뷰 (파싱만)
+  // 업로드 핸들러
   async function handleUpload(file: File) {
     setLoading(true);
     setPreview(null);
@@ -189,11 +200,8 @@ export default function TimetablePage() {
     finally { setLoading(false); }
   }
 
-  // 2단계: 확인 후 실제 저장
   async function handleConfirmUpload() {
     if (!previewFile) return;
-
-    // 기존 일지가 있으면 최종 확인
     if (existingReports.total > 0) {
       const confirmed = confirm(
         `주의: 기존 상담일지 ${existingReports.total}건이 삭제됩니다.\n` +
@@ -202,7 +210,6 @@ export default function TimetablePage() {
       );
       if (!confirmed) return;
     }
-
     setConfirming(true);
     const fd = new FormData();
     fd.append('file', previewFile);
@@ -229,14 +236,12 @@ export default function TimetablePage() {
     setPreviewSummary(null);
   }
 
-  // 개별 셀 통역사 배정
+  // 통역사 배정
   async function ensureEventInterpreter(supabase: ReturnType<typeof createClient>, interpreterId: string) {
-    // event_interpreters에 없으면 자동 추가 (통역사 대시보드에서 보이도록)
     await supabase.from('event_interpreters').upsert(
       { event_id: eventId, interpreter_id: interpreterId },
       { onConflict: 'event_id,interpreter_id' }
     );
-    // interpreters 목록에 없으면 프로필 조회 후 추가
     if (!interpreters.find(i => i.id === interpreterId)) {
       const { data: profile } = await supabase.from('profiles').select('id, name, email').eq('id', interpreterId).single();
       if (profile) setInterpreters(prev => [...prev, profile]);
@@ -247,18 +252,14 @@ export default function TimetablePage() {
     const supabase = createClient();
     const { error } = await supabase.from('consultations').update({ interpreter_id: interpreterId }).eq('id', consultationId);
     if (error) {
-      if (error.code === '23505') {
-        toast.error('이 통역사는 같은 시간에 다른 상담이 배정되어 있습니다');
-      } else {
-        toast.error('배정에 실패했습니다');
-      }
+      if (error.code === '23505') toast.error('이 통역사는 같은 시간에 다른 상담이 배정되어 있습니다');
+      else toast.error('배정에 실패했습니다');
       return;
     }
     if (interpreterId) await ensureEventInterpreter(supabase, interpreterId);
     setConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, interpreter_id: interpreterId } : c));
   }
 
-  // 바이어별 일괄 배정: 해당 바이어의 모든 타임슬롯에 같은 통역사 배정
   async function assignBuyer(buyerId: string, interpreterId: string | null) {
     const targets = consultations.filter(c => c.buyer_id === buyerId);
     const supabase = createClient();
@@ -277,7 +278,6 @@ export default function TimetablePage() {
     return consultations.find(c => c.buyer_id === buyerId && c.time_slot_id === slotId);
   }
 
-  // 바이어의 대표 통역사 (가장 많이 배정된 통역사)
   function getBuyerInterpreter(buyerId: string): string | null {
     const buyerCons = consultations.filter(c => c.buyer_id === buyerId && c.interpreter_id);
     if (buyerCons.length === 0) return null;
@@ -289,7 +289,113 @@ export default function TimetablePage() {
     return maxId;
   }
 
+  // 셀 클릭 → 편집 팝업
+  function handleCellClick(cons: ConsultationData) {
+    if (assignMode) return; // 배정모드에서는 팝업 안 열림
+    const slot = timeSlots.find(s => s.id === cons.time_slot_id) || null;
+    setEditingConsultation(cons);
+    setEditingSlot(slot);
+    setEditDialogOpen(true);
+  }
+
+  function handleConsultationSaved(updated: Partial<ConsultationData> & { id: string }) {
+    setConsultations(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
+  }
+
+  // 부스 뷰: 부스번호로 정렬된 바이어 배열 (그룹 헤더 표시용)
+  const boothSortedBuyers = useMemo(() => {
+    const sorted = [...buyers].sort((a, b) => (a.booth_number || '').localeCompare(b.booth_number || ''));
+    return sorted;
+  }, [buyers]);
+
+  // 뷰 모드에 따른 행(row) 데이터 — 모든 뷰를 flat 배열로 반환
+  const viewRows = useMemo(() => {
+    if (viewMode === 'buyer') return buyers;
+    if (viewMode === 'booth') return boothSortedBuyers;
+    if (viewMode === 'interpreter') {
+      const interpMap = new Map<string, ConsultationData[]>();
+      const unassigned: ConsultationData[] = [];
+      consultations.forEach(c => {
+        if (c.interpreter_id) {
+          if (!interpMap.has(c.interpreter_id)) interpMap.set(c.interpreter_id, []);
+          interpMap.get(c.interpreter_id)!.push(c);
+        } else {
+          unassigned.push(c);
+        }
+      });
+      const rows = interpreters.map(i => ({ interpreter: i, cons: interpMap.get(i.id) || [] }));
+      if (unassigned.length > 0) rows.push({ interpreter: { id: '_none', name: '미배정', email: '' }, cons: unassigned });
+      return rows;
+    }
+    return sellers;
+  }, [viewMode, buyers, boothSortedBuyers, sellers, interpreters, consultations]);
+
+  // 페이지네이션
+  const totalItems = viewRows.length;
+  // 페이지 범위 보정
+  const effectivePageSize = pageSize === 'all' ? totalItems : pageSize;
+  const maxPage = effectivePageSize > 0 ? Math.max(1, Math.ceil(totalItems / effectivePageSize)) : 1;
+  const safePage = Math.min(currentPage, maxPage);
+  if (safePage !== currentPage) setCurrentPage(safePage);
+
+  const paginatedData = useMemo(() => {
+    if (pageSize === 'all') return viewRows;
+    const start = (safePage - 1) * (pageSize as number);
+    return viewRows.slice(start, start + (pageSize as number));
+  }, [viewRows, pageSize, safePage]);
+
   const hasData = timeSlots.length > 0;
+
+  // 셀 렌더링 함수
+  function renderCell(cons: ConsultationData | undefined, slot: TimeSlot) {
+    if (!cons) return <span className="text-muted-foreground text-xs">-</span>;
+
+    const interpName = cons.interpreter_id ? interpreters.find(i => i.id === cons.interpreter_id)?.name : null;
+    const buyerInfo = buyers.find(b => b.id === cons.buyer_id);
+
+    return (
+      <div
+        className={`text-xs space-y-0.5 ${!assignMode ? 'cursor-pointer hover:bg-blue-50/50 rounded p-1 -m-1 transition-colors' : ''}`}
+        onClick={() => !assignMode && handleCellClick(cons)}
+      >
+        {viewMode === 'buyer' || viewMode === 'booth' ? (
+          <>
+            <div className="font-medium text-foreground/80 truncate max-w-[140px]">
+              {cons.seller?.company_name_kr || cons.seller?.company_name}
+            </div>
+            <div className="text-slate-500 truncate max-w-[140px]">{cons.seller?.contact_name}</div>
+          </>
+        ) : viewMode === 'interpreter' ? (
+          <>
+            <div className="font-medium text-foreground/80 truncate max-w-[140px]">
+              {buyerInfo?.company_name}
+            </div>
+            <div className="text-slate-500 truncate max-w-[140px]">
+              {cons.seller?.company_name_kr || cons.seller?.company_name}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="font-medium text-foreground/80 truncate max-w-[140px]">
+              {buyerInfo?.company_name}
+            </div>
+            <div className="text-slate-500 truncate max-w-[140px]">{buyerInfo?.country}</div>
+          </>
+        )}
+        {assignMode ? (
+          <InterpreterPicker
+            interpreters={interpreters}
+            value={cons.interpreter_id}
+            onChange={(id) => assignOne(cons.id, id)}
+            compact
+          />
+        ) : interpName ? (
+          <Badge className="text-[10px] bg-violet-100 text-violet-700 border-0">{interpName}</Badge>
+        ) : null}
+        {cons.memo && <div className="text-[10px] text-slate-400 truncate">📝 {cons.memo}</div>}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -303,7 +409,7 @@ export default function TimetablePage() {
           <h2 className="text-2xl font-bold text-foreground">타임테이블</h2>
           {hasData && (
             <p className="text-slate-500 text-sm mt-1">
-              {timeSlots.length}개 타임슬롯 · {buyers.length}명 바이어 · {consultations.length}건 매칭
+              {timeSlots.length}개 타임슬롯 · {buyers.length}명 바이어 · {sellers.length}명 셀러 · {consultations.length}건 매칭
               {interpreters.length > 0 && ` · ${interpreters.length}명 통역사`}
             </p>
           )}
@@ -342,19 +448,13 @@ export default function TimetablePage() {
               <CardTitle className="text-lg">업로드 미리보기</CardTitle>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={cancelPreview}>취소</Button>
-                <Button
-                  size="sm"
-                  onClick={handleConfirmUpload}
-                  disabled={confirming}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
+                <Button size="sm" onClick={handleConfirmUpload} disabled={confirming} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
                   {confirming ? '저장 중...' : '확인 후 저장'}
                 </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {/* 요약 */}
             <div className="grid grid-cols-4 gap-3 mb-4">
               <div className="bg-blue-50 rounded-lg p-3 text-center">
                 <p className="text-xl font-bold text-blue-700">{previewSummary?.slots ?? 0}</p>
@@ -374,7 +474,6 @@ export default function TimetablePage() {
               </div>
             </div>
 
-            {/* 기존 일지 경고 */}
             {existingReports.total > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                 <div className="flex items-center gap-2 mb-1">
@@ -390,7 +489,6 @@ export default function TimetablePage() {
               </div>
             )}
 
-            {/* 오류 표시 */}
             {previewErrors.length > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -399,9 +497,7 @@ export default function TimetablePage() {
                 </div>
                 <ul className="space-y-1">
                   {previewErrors.map((err, i) => (
-                    <li key={i} className="text-xs text-red-600">
-                      행 {err.row + 1}: {err.message}
-                    </li>
+                    <li key={i} className="text-xs text-red-600">행 {err.row + 1}: {err.message}</li>
                   ))}
                 </ul>
               </div>
@@ -416,7 +512,6 @@ export default function TimetablePage() {
               </div>
             )}
 
-            {/* 바이어 테이블 미리보기 */}
             <div className="mb-4">
               <h4 className="text-sm font-semibold text-muted-foreground mb-2">바이어 목록</h4>
               <div className="border rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
@@ -437,13 +532,9 @@ export default function TimetablePage() {
                       return (
                         <tr key={i} className={hasError ? 'bg-red-50' : i % 2 === 0 ? 'bg-card' : 'bg-muted'}>
                           <td className="px-3 py-1.5 text-slate-500">{i + 1}</td>
-                          <td className={`px-3 py-1.5 font-medium ${!b.company_name ? 'text-red-500' : 'text-foreground'}`}>
-                            {b.company_name || '(비어있음)'}
-                          </td>
+                          <td className={`px-3 py-1.5 font-medium ${!b.company_name ? 'text-red-500' : 'text-foreground'}`}>{b.company_name || '(비어있음)'}</td>
                           <td className="px-3 py-1.5 text-slate-500">{b.buyer_name}</td>
-                          <td className={`px-3 py-1.5 ${!b.country ? 'text-red-500' : 'text-slate-500'}`}>
-                            {b.country || '(비어있음)'}
-                          </td>
+                          <td className={`px-3 py-1.5 ${!b.country ? 'text-red-500' : 'text-slate-500'}`}>{b.country || '(비어있음)'}</td>
                           <td className="px-3 py-1.5 text-slate-500">{b.email}</td>
                           <td className="px-3 py-1.5 text-slate-500">{b.phone}</td>
                         </tr>
@@ -454,14 +545,11 @@ export default function TimetablePage() {
               </div>
             </div>
 
-            {/* 타임슬롯 미리보기 */}
             <div>
               <h4 className="text-sm font-semibold text-muted-foreground mb-2">타임슬롯</h4>
               <div className="flex flex-wrap gap-2">
                 {preview.time_slots.map((slot, i) => (
-                  <Badge key={i} variant="secondary" className="text-xs">
-                    {slot.date} {slot.start_time}~{slot.end_time}
-                  </Badge>
+                  <Badge key={i} variant="secondary" className="text-xs">{slot.date} {slot.start_time}~{slot.end_time}</Badge>
                 ))}
               </div>
             </div>
@@ -486,89 +574,162 @@ export default function TimetablePage() {
           <span className="text-slate-500">로딩 중...</span>
         </div>
       ) : hasData && (
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-0">
-            <ScrollArea className="w-full">
-              <div className="min-w-[900px]">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-800 text-white">
-                      <th className="px-3 py-3 text-left font-medium sticky left-0 bg-slate-800 z-10 min-w-[160px]">바이어</th>
-                      {assignMode && (
-                        <th className="px-2 py-3 text-center font-medium w-[130px] bg-violet-900">
-                          <div className="text-xs">담당 통역사</div>
-                          <div className="text-[10px] text-violet-300">(바이어별 일괄)</div>
+        <>
+          {/* 뷰 모드 탭 + 페이지네이션 */}
+          <div className="flex items-center justify-between mb-4 gap-4">
+            <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v as ViewMode); setCurrentPage(1); }}>
+              <TabsList>
+                <TabsTrigger value="buyer">바이어</TabsTrigger>
+                <TabsTrigger value="booth">부스</TabsTrigger>
+                <TabsTrigger value="interpreter">통역사</TabsTrigger>
+                <TabsTrigger value="seller">셀러</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            <PaginationSelector
+              totalItems={totalItems}
+              pageSize={pageSize}
+              currentPage={currentPage}
+              onPageSizeChange={setPageSize}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+
+          <Card className="border-0 shadow-sm">
+            <CardContent className="p-0">
+              <ScrollArea className="w-full">
+                <div className="min-w-[900px]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-800 text-white">
+                        <th className="px-3 py-3 text-left font-medium sticky left-0 bg-slate-800 z-10 min-w-[160px]">
+                          {viewMode === 'buyer' ? '바이어' : viewMode === 'booth' ? '부스' : viewMode === 'interpreter' ? '통역사' : '셀러'}
                         </th>
-                      )}
-                      <th className="px-2 py-3 text-center font-medium w-14">부스</th>
-                      {timeSlots.map(slot => (
-                        <th key={slot.id} className="px-2 py-3 text-center font-medium min-w-[160px]">
-                          <div>{slot.start_time}</div>
-                          <div className="text-xs text-blue-200">~{slot.end_time}</div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {buyers.map((buyer, idx) => {
-                      const bgColor = idx % 2 === 0 ? 'var(--card)' : 'var(--muted)';
-                      const buyerInterp = getBuyerInterpreter(buyer.id);
-                      return (
-                        <tr key={buyer.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
-                          <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
-                            <div className="truncate max-w-[150px]" title={buyer.company_name}>{buyer.company_name}</div>
-                            <div className="text-[10px] text-slate-500">{buyer.country}</div>
-                          </td>
-                          {assignMode && (
-                            <td className="px-2 py-2 border-r bg-violet-50/50">
-                              <InterpreterPicker
-                                interpreters={interpreters}
-                                value={buyerInterp}
-                                onChange={(id) => assignBuyer(buyer.id, id)}
-                              />
+                        {assignMode && viewMode === 'buyer' && (
+                          <th className="px-2 py-3 text-center font-medium w-[130px] bg-violet-900">
+                            <div className="text-xs">담당 통역사</div>
+                            <div className="text-[10px] text-violet-300">(바이어별 일괄)</div>
+                          </th>
+                        )}
+                        {(viewMode === 'buyer' || viewMode === 'booth') && (
+                          <th className="px-2 py-3 text-center font-medium w-14">부스</th>
+                        )}
+                        {timeSlots.map(slot => (
+                          <th key={slot.id} className="px-2 py-3 text-center font-medium min-w-[160px]">
+                            <div>{slot.start_time}</div>
+                            <div className="text-xs text-blue-200">~{slot.end_time}</div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {viewMode === 'buyer' && (paginatedData as BuyerData[]).map((buyer, idx) => {
+                        const bgColor = idx % 2 === 0 ? 'var(--card)' : 'var(--muted)';
+                        const buyerInterp = getBuyerInterpreter(buyer.id);
+                        return (
+                          <tr key={buyer.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
+                            <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
+                              <div className="truncate max-w-[150px]" title={buyer.company_name}>{buyer.company_name}</div>
+                              <div className="text-[10px] text-slate-500">{buyer.country}</div>
                             </td>
-                          )}
-                          <td className="px-2 py-2 text-center">
-                            {buyer.booth_number && <Badge variant="secondary" className="text-xs">{buyer.booth_number}</Badge>}
-                          </td>
-                          {timeSlots.map(slot => {
-                            const cons = findConsultation(buyer.id, slot.id);
-                            const interpName = cons?.interpreter_id ? interpreters.find(i => i.id === cons.interpreter_id)?.name : null;
-                            return (
-                              <td key={slot.id} className="px-2 py-1.5 border-l">
-                                {cons ? (
-                                  <div className="text-xs space-y-0.5">
-                                    <div className="font-medium text-foreground/80 truncate max-w-[140px]">
-                                      {cons.seller?.company_name_kr || cons.seller?.company_name}
-                                    </div>
-                                    <div className="text-slate-500 truncate max-w-[140px]">{cons.seller?.contact_name}</div>
-                                    {assignMode ? (
-                                      <InterpreterPicker
-                                        interpreters={interpreters}
-                                        value={cons.interpreter_id}
-                                        onChange={(id) => assignOne(cons.id, id)}
-                                        compact
-                                      />
-                                    ) : interpName ? (
-                                      <Badge className="text-[10px] bg-violet-100 text-violet-700 border-0">{interpName}</Badge>
-                                    ) : null}
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">-</span>
-                                )}
+                            {assignMode && (
+                              <td className="px-2 py-2 border-r bg-violet-50/50">
+                                <InterpreterPicker interpreters={interpreters} value={buyerInterp} onChange={(id) => assignBuyer(buyer.id, id)} />
                               </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                            )}
+                            <td className="px-2 py-2 text-center">
+                              {buyer.booth_number && <Badge variant="secondary" className="text-xs">{buyer.booth_number}</Badge>}
+                            </td>
+                            {timeSlots.map(slot => (
+                              <td key={slot.id} className="px-2 py-1.5 border-l">
+                                {renderCell(findConsultation(buyer.id, slot.id), slot)}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+
+                      {viewMode === 'booth' && (paginatedData as BuyerData[]).map((buyer, idx) => {
+                        const bgColor = idx % 2 === 0 ? 'var(--card)' : 'var(--muted)';
+                        return (
+                          <tr key={buyer.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
+                            <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
+                              <div className="truncate max-w-[150px]" title={buyer.company_name}>{buyer.company_name}</div>
+                              <div className="text-[10px] text-slate-500">{buyer.country}</div>
+                            </td>
+                            <td className="px-2 py-2 text-center">
+                              <Badge variant="secondary" className="text-xs">{buyer.booth_number || '-'}</Badge>
+                            </td>
+                            {timeSlots.map(slot => (
+                              <td key={slot.id} className="px-2 py-1.5 border-l">
+                                {renderCell(findConsultation(buyer.id, slot.id), slot)}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+
+                      {viewMode === 'interpreter' && (paginatedData as { interpreter: Interpreter; cons: ConsultationData[] }[]).map((row, idx) => {
+                        const bgColor = idx % 2 === 0 ? 'var(--card)' : 'var(--muted)';
+                        return (
+                          <tr key={row.interpreter.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
+                            <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
+                              <div className="truncate max-w-[150px]">{row.interpreter.name}</div>
+                              <div className="text-[10px] text-slate-500">{row.interpreter.email}</div>
+                            </td>
+                            {timeSlots.map(slot => {
+                              const cons = row.cons.find(c => c.time_slot_id === slot.id);
+                              return (
+                                <td key={slot.id} className="px-2 py-1.5 border-l">
+                                  {renderCell(cons, slot)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+
+                      {viewMode === 'seller' && (paginatedData as SellerData[]).map((seller, idx) => {
+                        const bgColor = idx % 2 === 0 ? 'var(--card)' : 'var(--muted)';
+                        const sellerCons = consultations.filter(c => c.seller_id === seller.id);
+                        return (
+                          <tr key={seller.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
+                            <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
+                              <div className="truncate max-w-[150px]" title={seller.company_name_kr || seller.company_name}>
+                                {seller.company_name_kr || seller.company_name}
+                              </div>
+                              <div className="text-[10px] text-slate-500">{seller.contact_name}</div>
+                            </td>
+                            {timeSlots.map(slot => {
+                              const cons = sellerCons.find(c => c.time_slot_id === slot.id);
+                              return (
+                                <td key={slot.id} className="px-2 py-1.5 border-l">
+                                  {renderCell(cons, slot)}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </>
       )}
+
+      {/* 상담 편집 팝업 */}
+      <ConsultationEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        consultation={editingConsultation}
+        timeSlot={editingSlot}
+        buyers={buyers}
+        sellers={sellers}
+        interpreters={interpreters}
+        onSaved={handleConsultationSaved}
+      />
     </div>
   );
 }
