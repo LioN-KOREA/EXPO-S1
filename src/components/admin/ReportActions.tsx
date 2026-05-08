@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, RotateCcw, MessageSquare, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, RotateCcw, XCircle, MessageSquare, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ReportStatus } from '@/types';
 
@@ -20,37 +19,12 @@ interface ReportActionsProps {
 export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt }: ReportActionsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [showCommentForm, setShowCommentForm] = useState(false);
+  const [actionType, setActionType] = useState<'revision' | 'reject' | null>(null);
   const [comment, setComment] = useState('');
 
-  async function handleApprove() {
-    setLoading(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    const { error } = await supabase
-      .from('consultation_reports')
-      .update({
-        report_status: 'approved',
-        submitted: true,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: user?.id,
-      })
-      .eq('id', reportId)
-      .in('report_status', ['submitted', 'under_review']);
-
-    if (error) {
-      toast.error('승인에 실패했습니다');
-    } else {
-      toast.success('상담일지를 승인했습니다');
-      router.refresh();
-    }
-    setLoading(false);
-  }
-
-  async function handleRequestRevision() {
-    if (!comment.trim()) {
-      toast.error('수정요청 사유를 입력해주세요');
+  async function handleAction(status: ReportStatus, requireComment = false) {
+    if (requireComment && !comment.trim()) {
+      toast.error('사유를 입력해주세요');
       return;
     }
 
@@ -61,9 +35,9 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
     const { error } = await supabase
       .from('consultation_reports')
       .update({
-        report_status: 'revision_requested',
-        submitted: false,
-        admin_comment: comment.trim(),
+        report_status: status,
+        submitted: status === 'approved',
+        admin_comment: requireComment ? comment.trim() : null,
         reviewed_at: new Date().toISOString(),
         reviewed_by: user?.id,
       })
@@ -71,22 +45,22 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
       .in('report_status', ['submitted', 'under_review']);
 
     if (error) {
-      toast.error('수정요청에 실패했습니다');
+      toast.error('처리에 실패했습니다');
     } else {
-      toast.success('수정요청을 보냈습니다');
-      setShowCommentForm(false);
+      const labels: Record<string, string> = { approved: '승인', revision_requested: '수정요청', rejected: '반려' };
+      toast.success(`${labels[status] || status} 처리되었습니다`);
+      setActionType(null);
       setComment('');
       router.refresh();
     }
     setLoading(false);
   }
 
-  // 승인/반려 버튼: submitted 상태에서만 표시
   const canReview = reportStatus === 'submitted' || reportStatus === 'under_review';
 
   return (
     <div className="space-y-4">
-      {/* 현재 상태에 따른 안내 메시지 */}
+      {/* 상태별 안내 메시지 */}
       {reportStatus === 'draft' && (
         <Card className="border-0 shadow-sm bg-amber-50/50">
           <CardContent className="p-4">
@@ -110,16 +84,16 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
       )}
 
       {reportStatus === 'revision_requested' && (
-        <Card className="border-0 shadow-sm bg-red-50/50">
+        <Card className="border-0 shadow-sm bg-amber-50/50">
           <CardContent className="p-4">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <RotateCcw className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-red-700">수정요청</p>
+                <p className="text-sm font-medium text-amber-700">수정요청</p>
                 {adminComment && (
                   <div className="flex items-start gap-1.5 mt-1">
-                    <MessageSquare className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-                    <p className="text-sm text-red-600">{adminComment}</p>
+                    <MessageSquare className="w-3 h-3 text-amber-400 mt-0.5 shrink-0" />
+                    <p className="text-sm text-amber-600">{adminComment}</p>
                   </div>
                 )}
               </div>
@@ -128,36 +102,58 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
         </Card>
       )}
 
-      {/* 승인/반려 액션 버튼 */}
+      {reportStatus === 'rejected' && (
+        <Card className="border-0 shadow-sm bg-red-50/50">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-2">
+              <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-red-700">반려됨</p>
+                {adminComment && (
+                  <div className="flex items-start gap-1.5 mt-1">
+                    <MessageSquare className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                    <p className="text-sm text-red-600">{adminComment}</p>
+                  </div>
+                )}
+                {reviewedAt && (
+                  <p className="text-xs text-red-400 mt-1">{new Date(reviewedAt).toLocaleString('ko-KR')}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 검토 결과 */}
       {canReview && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <p className="text-sm font-medium text-foreground mb-3">검토 액션</p>
+            <p className="text-sm font-medium text-foreground mb-3">검토 결과</p>
 
-            {showCommentForm ? (
+            {actionType ? (
               <div className="space-y-3">
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="수정요청 사유를 입력하세요..."
-                  className="w-full p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-200 bg-background"
+                  placeholder={actionType === 'revision' ? '수정요청 사유를 입력하세요...' : '반려 사유를 입력하세요...'}
+                  className="w-full p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-slate-200 bg-background"
                   rows={3}
                 />
                 <div className="flex gap-2">
                   <Button
-                    variant="destructive"
+                    variant={actionType === 'reject' ? 'destructive' : 'outline'}
                     size="sm"
-                    onClick={handleRequestRevision}
+                    onClick={() => handleAction(actionType === 'revision' ? 'revision_requested' : 'rejected', true)}
                     disabled={loading}
                     className="gap-1.5"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    {loading ? '처리 중...' : '수정요청 보내기'}
+                    {actionType === 'revision' ? <RotateCcw className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                    {loading ? '처리 중...' : actionType === 'revision' ? '수정요청' : '반려'}
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => { setShowCommentForm(false); setComment(''); }}
+                    onClick={() => { setActionType(null); setComment(''); }}
                     disabled={loading}
                   >
                     취소
@@ -168,7 +164,7 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
               <div className="flex gap-2">
                 <Button
                   size="sm"
-                  onClick={handleApprove}
+                  onClick={() => handleAction('approved')}
                   disabled={loading}
                   className="gap-1.5 bg-emerald-500 hover:bg-emerald-600"
                 >
@@ -178,12 +174,22 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowCommentForm(true)}
+                  onClick={() => setActionType('revision')}
                   disabled={loading}
-                  className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+                  className="gap-1.5 text-amber-600 border-amber-200 hover:bg-amber-50"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   수정요청
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActionType('reject')}
+                  disabled={loading}
+                  className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                  반려
                 </Button>
               </div>
             )}

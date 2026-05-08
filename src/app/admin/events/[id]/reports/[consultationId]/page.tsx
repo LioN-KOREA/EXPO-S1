@@ -60,7 +60,8 @@ export default async function AdminReportDetailPage({
     submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
     under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
     approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
-    revision_requested: { label: '수정요청', variant: 'destructive' },
+    revision_requested: { label: '수정요청', variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },
+    rejected: { label: '반려', variant: 'destructive' },
   };
 
   const currentStatus = statusLabels[reportStatus];
@@ -141,7 +142,9 @@ export default async function AdminReportDetailPage({
             <div className="space-y-4">
               {fields.map((field) => {
                 const value = reportData[field.key];
-                const displayValue = value != null && value !== '' ? String(value) : '-';
+                const displayValue = value != null && value !== ''
+                  ? (field.type === 'number' && !isNaN(Number(value)) ? Number(value).toLocaleString() : String(value))
+                  : '-';
 
                 return (
                   <div key={field.key} className="border-b border-border pb-3 last:border-0">

@@ -46,10 +46,11 @@ export default async function ReportsPage({
   const reportsMap = new Map(reports?.map((r) => [r.consultation_id, r]) ?? []);
 
   // 5개 상태 집계
-  type ItemStatus = 'submitted' | 'approved' | 'revision_requested' | 'in_progress' | 'not_started';
+  type ItemStatus = 'submitted' | 'approved' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
   let submittedCount = 0;
   let approvedCount = 0;
   let revisionCount = 0;
+  let rejectedCount = 0;
   let inProgressCount = 0;
   let notStartedCount = 0;
 
@@ -72,6 +73,9 @@ export default async function ReportsPage({
       } else if (rs === 'revision_requested') {
         status = 'revision_requested';
         revisionCount++;
+      } else if (rs === 'rejected') {
+        status = 'rejected';
+        rejectedCount++;
       } else {
         status = 'in_progress';
         inProgressCount++;
@@ -122,6 +126,7 @@ export default async function ReportsPage({
           submitted: submittedCount,
           approved: approvedCount,
           revisionRequested: revisionCount,
+          rejected: rejectedCount,
           inProgress: inProgressCount,
           notStarted: notStartedCount,
         }}

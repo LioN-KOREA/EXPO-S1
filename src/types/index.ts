@@ -5,7 +5,7 @@
 export type UserRole = 'admin' | 'interpreter' | 'buyer' | 'seller';
 export type EventStatus = 'active' | 'archived';
 export type ConsultationStatus = 'scheduled' | 'in_progress' | 'completed';
-export type ReportStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'revision_requested';
+export type ReportStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'revision_requested' | 'rejected';
 export type TradePossibility = '상' | '중' | '하';
 
 // --- 사용자 ---

@@ -209,7 +209,8 @@ export default async function InterpreterEventPage({
                     approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
                     submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
                     under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
-                    revision_requested: { label: '수정요청', variant: 'destructive' },
+                    revision_requested: { label: '수정요청', variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },
+                    rejected: { label: '반려', variant: 'destructive' },
                     draft: { label: '작성중', variant: 'secondary' },
                   };
                   const statusInfo = rs ? statusMap[rs] : { label: '미작성', variant: 'secondary' as const };

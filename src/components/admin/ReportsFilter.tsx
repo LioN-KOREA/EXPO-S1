@@ -12,10 +12,11 @@ import {
   AlertCircle,
   RotateCcw,
   Clock,
+  XCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 
-type FilterStatus = 'all' | 'submitted' | 'approved' | 'revision_requested' | 'in_progress' | 'not_started';
+type FilterStatus = 'all' | 'submitted' | 'approved' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
 
 interface ConsultationItem {
   id: string;
@@ -25,7 +26,7 @@ interface ConsultationItem {
   date: string;
   start_time: string;
   end_time: string;
-  status: 'submitted' | 'approved' | 'revision_requested' | 'in_progress' | 'not_started';
+  status: 'submitted' | 'approved' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
 }
 
 interface ReportsFilterProps {
@@ -36,6 +37,7 @@ interface ReportsFilterProps {
     submitted: number;
     approved: number;
     revisionRequested: number;
+    rejected: number;
     inProgress: number;
     notStarted: number;
   };
@@ -45,8 +47,9 @@ const TABS: { key: FilterStatus; label: string; icon: typeof FileText; color: st
   { key: 'all', label: '전체', icon: FileText, color: 'text-slate-400', activeColor: 'bg-card text-foreground shadow-sm' },
   { key: 'submitted', label: '검토중', icon: Clock, color: 'text-blue-600', activeColor: 'bg-card text-blue-700 shadow-sm' },
   { key: 'approved', label: '승인됨', icon: CheckCircle2, color: 'text-emerald-600', activeColor: 'bg-card text-emerald-700 shadow-sm' },
-  { key: 'revision_requested', label: '수정요청', icon: RotateCcw, color: 'text-red-600', activeColor: 'bg-card text-red-700 shadow-sm' },
-  { key: 'in_progress', label: '작성중', icon: FileText, color: 'text-amber-600', activeColor: 'bg-card text-amber-700 shadow-sm' },
+  { key: 'revision_requested', label: '수정요청', icon: RotateCcw, color: 'text-amber-600', activeColor: 'bg-card text-amber-700 shadow-sm' },
+  { key: 'rejected', label: '반려', icon: XCircle, color: 'text-red-600', activeColor: 'bg-card text-red-700 shadow-sm' },
+  { key: 'in_progress', label: '작성중', icon: FileText, color: 'text-orange-600', activeColor: 'bg-card text-orange-700 shadow-sm' },
   { key: 'not_started', label: '미작성', icon: AlertCircle, color: 'text-slate-500', activeColor: 'bg-card text-foreground/80 shadow-sm' },
 ];
 
@@ -57,7 +60,9 @@ function getStatusBadge(status: ConsultationItem['status']) {
     case 'submitted':
       return <Badge variant="outline" className="text-xs gap-1 border-blue-200 text-blue-700 bg-blue-50"><Clock className="w-3 h-3" />검토중</Badge>;
     case 'revision_requested':
-      return <Badge variant="destructive" className="text-xs gap-1"><RotateCcw className="w-3 h-3" />수정요청</Badge>;
+      return <Badge className="text-xs gap-1 bg-amber-100 text-amber-700 border-0"><RotateCcw className="w-3 h-3" />수정요청</Badge>;
+    case 'rejected':
+      return <Badge variant="destructive" className="text-xs gap-1"><XCircle className="w-3 h-3" />반려</Badge>;
     case 'in_progress':
       return <Badge className="text-xs bg-amber-100 text-amber-700 border-0 gap-1"><FileText className="w-3 h-3" />작성중</Badge>;
     case 'not_started':
@@ -97,6 +102,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
     if (key === 'submitted') return counts.submitted;
     if (key === 'approved') return counts.approved;
     if (key === 'revision_requested') return counts.revisionRequested;
+    if (key === 'rejected') return counts.rejected;
     if (key === 'in_progress') return counts.inProgress;
     return counts.notStarted;
   }
