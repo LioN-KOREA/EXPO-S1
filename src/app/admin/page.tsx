@@ -12,7 +12,6 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import Link from 'next/link';
-import { OverallDashboardClient } from '@/components/admin/dashboard/OverallDashboardClient';
 import type { ReportStatus } from '@/types';
 
 export default async function AdminDashboard() {
@@ -128,18 +127,6 @@ export default async function AdminDashboard() {
           </Card>
         ))}
       </div>
-
-      {/* 전체 대시보드 차트/테이블 */}
-      {eventStats.length > 0 && (
-        <div className="mb-8">
-          <OverallDashboardClient
-            eventStats={eventStats}
-            totalConsultations={totalConsultations}
-            totalApproved={totalApproved}
-            totalSubmitted={totalSubmitted}
-          />
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 상담회별 진행 현황 */}
