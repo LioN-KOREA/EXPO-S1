@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ReportStatus } from '@/types';
+import { batchIn } from '@/lib/supabase/batch-query';
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
@@ -63,12 +64,12 @@ export default async function AdminDashboard() {
       let draftCount = 0;
 
       if (consultationIds && consultationIds.length > 0) {
-        const { data: reports } = await supabase
-          .from('consultation_reports')
-          .select('report_status, submitted')
-          .in('consultation_id', consultationIds.map(c => c.id));
+        const reports = await batchIn(
+          (ids) => supabase.from('consultation_reports').select('report_status, submitted').in('consultation_id', ids),
+          consultationIds.map(c => c.id),
+        );
 
-        reports?.forEach(r => {
+        reports.forEach((r: Record<string, unknown>) => {
           const rs = (r.report_status ?? (r.submitted ? 'submitted' : 'draft')) as ReportStatus;
           if (rs === 'approved') approvedCount++;
           else if (rs === 'submitted' || rs === 'under_review') submittedCount++;

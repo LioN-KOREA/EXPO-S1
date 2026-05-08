@@ -64,14 +64,14 @@ export async function GET(request: NextRequest) {
   });
 
   const consultationIds = consultations?.map((c) => c.id) ?? [];
-  const { data: reports } = consultationIds.length > 0
-    ? await supabase
-        .from('consultation_reports')
-        .select('*')
-        .in('consultation_id', consultationIds)
-    : { data: [] };
+  const reports: Record<string, unknown>[] = [];
+  for (let i = 0; i < consultationIds.length; i += 100) {
+    const batch = consultationIds.slice(i, i + 100);
+    const { data } = await supabase.from('consultation_reports').select('*').in('consultation_id', batch);
+    if (data) reports.push(...data);
+  }
 
-  const reportsMap = new Map(reports?.map((r) => [r.consultation_id, r]) ?? []);
+  const reportsMap = new Map(reports.map((r) => [r.consultation_id, r]));
 
   // 엑셀 생성
   const workbook = new ExcelJS.Workbook();

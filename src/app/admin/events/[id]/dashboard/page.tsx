@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { EventDashboardClient } from '@/components/admin/dashboard/EventDashboardClient';
 import type { TemplateField, ReportStatus } from '@/types';
+import { batchIn } from '@/lib/supabase/batch-query';
 
 export default async function EventDashboardPage({
   params,
@@ -28,11 +29,12 @@ export default async function EventDashboardPage({
     `)
     .eq('event_id', eventId);
 
-  // 리포트
+  // 리포트 (배치 조회)
   const consultationIds = consultations?.map(c => c.id) ?? [];
-  const { data: reports } = consultationIds.length > 0
-    ? await supabase.from('consultation_reports').select('*').in('consultation_id', consultationIds)
-    : { data: [] };
+  const reports = await batchIn(
+    (ids) => supabase.from('consultation_reports').select('*').in('consultation_id', ids),
+    consultationIds,
+  );
 
   // 템플릿 필드
   const { data: template } = await supabase
@@ -41,7 +43,7 @@ export default async function EventDashboardPage({
   const fields: TemplateField[] = (template?.fields as TemplateField[]) ?? [];
 
   // 상태별 집계
-  const reportsMap = new Map(reports?.map(r => [r.consultation_id, r]) ?? []);
+  const reportsMap = new Map(reports.map((r: Record<string, unknown>) => [r.consultation_id, r]));
   const statusCounts: Record<string, number> = { approved: 0, submitted: 0, revision_requested: 0, draft: 0, not_started: 0 };
 
   (consultations ?? []).forEach(c => {

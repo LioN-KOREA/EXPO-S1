@@ -4,6 +4,7 @@ import { ArrowLeft, Download } from 'lucide-react';
 import Link from 'next/link';
 import { ReportsFilter } from '@/components/admin/ReportsFilter';
 import type { ReportStatus } from '@/types';
+import { batchIn } from '@/lib/supabase/batch-query';
 
 export default async function ReportsPage({
   params,
@@ -35,14 +36,12 @@ export default async function ReportsPage({
     return timeA.localeCompare(timeB);
   });
 
-  // 일지 조회 (report_status 포함)
+  // 일지 조회 (배치 처리 — ID 많으면 URI too long 방지)
   const consultationIds = consultations?.map((c) => c.id) ?? [];
-  const { data: reports } = consultationIds.length > 0
-    ? await supabase
-        .from('consultation_reports')
-        .select('*')
-        .in('consultation_id', consultationIds)
-    : { data: [] };
+  const reports = await batchIn(
+    (ids) => supabase.from('consultation_reports').select('*').in('consultation_id', ids),
+    consultationIds,
+  );
 
   const reportsMap = new Map(reports?.map((r) => [r.consultation_id, r]) ?? []);
 

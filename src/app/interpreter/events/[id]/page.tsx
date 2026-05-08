@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ReportStatus } from '@/types';
+import { batchIn } from '@/lib/supabase/batch-query';
 
 export default async function InterpreterEventPage({
   params,
@@ -57,16 +58,14 @@ export default async function InterpreterEventPage({
     return timeA.localeCompare(timeB);
   });
 
-  // 제출 상태 확인
+  // 제출 상태 확인 (배치 조회)
   const consultationIds = consultations?.map((c) => c.id) ?? [];
-  const { data: reports } = consultationIds.length > 0
-    ? await supabase
-        .from('consultation_reports')
-        .select('consultation_id, submitted, report_status')
-        .in('consultation_id', consultationIds)
-    : { data: [] };
+  const reports = await batchIn(
+    (ids) => supabase.from('consultation_reports').select('consultation_id, submitted, report_status').in('consultation_id', ids),
+    consultationIds,
+  );
 
-  const reportsMap = new Map(reports?.map((r) => [r.consultation_id, r]) ?? []);
+  const reportsMap = new Map(reports.map((r: Record<string, unknown>) => [r.consultation_id, r]));
 
   // 5개 상태 통계
   const total = consultations?.length ?? 0;
