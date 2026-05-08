@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PaginationSelector } from '@/components/ui/pagination-selector';
 import {
   FileText,
@@ -56,6 +56,14 @@ const STATUS_TABS: { key: FilterStatus; label: string; icon: typeof FileText; co
   { key: 'not_started', label: '미작성', icon: AlertCircle, color: 'text-slate-500', activeColor: 'bg-card text-foreground/80 shadow-sm' },
 ];
 
+const VIEW_MODES: { key: ViewMode; label: string }[] = [
+  { key: 'date', label: '일자별' },
+  { key: 'booth', label: '부스별' },
+  { key: 'time', label: '시간별' },
+  { key: 'buyer', label: '바이어별' },
+  { key: 'seller', label: '셀러별' },
+];
+
 function getStatusBadge(status: ConsultationItem['status']) {
   switch (status) {
     case 'approved':
@@ -73,82 +81,126 @@ function getStatusBadge(status: ConsultationItem['status']) {
   }
 }
 
+function getItemKey(item: ConsultationItem, mode: ViewMode): string {
+  switch (mode) {
+    case 'date': return item.date;
+    case 'booth': return item.booth_number || '부스 미지정';
+    case 'time': return `${item.start_time} - ${item.end_time}`;
+    case 'buyer': return item.buyer_name || '바이어 미지정';
+    case 'seller': return item.seller_name || '셀러 미지정';
+  }
+}
+
 export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('date');
+  const [selectedValue, setSelectedValue] = useState<string>('_all');
   const [pageSize, setPageSize] = useState<number | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // 상태 필터
-  const filtered = useMemo(() => {
-    if (filter === 'all') return items;
-    return items.filter((i) => i.status === filter);
-  }, [items, filter]);
+  // 뷰 모드별 드롭다운 옵션 생성
+  const viewOptions = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach(item => set.add(getItemKey(item, viewMode)));
+    return Array.from(set).sort();
+  }, [items, viewMode]);
 
-  // 페이지네이션
-  const paginatedFiltered = useMemo(() => {
-    if (pageSize === 'all') return filtered;
+  // 1. 뷰 모드 필터
+  const viewFiltered = useMemo(() => {
+    if (selectedValue === '_all') return items;
+    return items.filter(item => getItemKey(item, viewMode) === selectedValue);
+  }, [items, viewMode, selectedValue]);
+
+  // 2. 상태 필터
+  const statusFiltered = useMemo(() => {
+    if (filter === 'all') return viewFiltered;
+    return viewFiltered.filter(i => i.status === filter);
+  }, [viewFiltered, filter]);
+
+  // 필터된 상태별 건수
+  const filteredCounts = useMemo(() => {
+    const c = { total: 0, submitted: 0, approved: 0, revisionRequested: 0, rejected: 0, inProgress: 0, notStarted: 0 };
+    viewFiltered.forEach(i => {
+      c.total++;
+      if (i.status === 'submitted') c.submitted++;
+      else if (i.status === 'approved') c.approved++;
+      else if (i.status === 'revision_requested') c.revisionRequested++;
+      else if (i.status === 'rejected') c.rejected++;
+      else if (i.status === 'in_progress') c.inProgress++;
+      else c.notStarted++;
+    });
+    return c;
+  }, [viewFiltered]);
+
+  // 3. 페이지네이션
+  const paginated = useMemo(() => {
+    if (pageSize === 'all') return statusFiltered;
     const start = (currentPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, pageSize, currentPage]);
+    return statusFiltered.slice(start, start + pageSize);
+  }, [statusFiltered, pageSize, currentPage]);
 
-  // 뷰 모드별 그룹핑
+  // 날짜별 그룹핑 (표시용)
   const grouped = useMemo(() => {
     const map = new Map<string, ConsultationItem[]>();
-    paginatedFiltered.forEach((item) => {
-      let key: string;
-      switch (viewMode) {
-        case 'date': key = item.date; break;
-        case 'booth': key = item.booth_number || '부스 미지정'; break;
-        case 'time': key = `${item.start_time} - ${item.end_time}`; break;
-        case 'buyer': key = item.buyer_name || '바이어 미지정'; break;
-        case 'seller': key = item.seller_name || '셀러 미지정'; break;
-        default: key = item.date;
-      }
+    paginated.forEach(item => {
+      const key = item.date;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     });
     return map;
-  }, [paginatedFiltered, viewMode]);
+  }, [paginated]);
 
   function getCount(key: FilterStatus) {
-    if (key === 'all') return counts.total;
-    if (key === 'submitted') return counts.submitted;
-    if (key === 'approved') return counts.approved;
-    if (key === 'revision_requested') return counts.revisionRequested;
-    if (key === 'rejected') return counts.rejected;
-    if (key === 'in_progress') return counts.inProgress;
-    return counts.notStarted;
-  }
-
-  function getGroupIcon(mode: ViewMode) {
-    switch (mode) {
-      case 'date': return <CalendarDays className="w-4 h-4 text-blue-500" />;
-      case 'booth': return <span className="text-xs font-bold text-purple-500">B</span>;
-      case 'time': return <Clock className="w-4 h-4 text-amber-500" />;
-      case 'buyer': return <span className="text-xs font-bold text-blue-500">Buy</span>;
-      case 'seller': return <span className="text-xs font-bold text-emerald-500">Sell</span>;
-    }
+    if (key === 'all') return selectedValue === '_all' ? counts.total : filteredCounts.total;
+    const fc = filteredCounts;
+    if (key === 'submitted') return fc.submitted;
+    if (key === 'approved') return fc.approved;
+    if (key === 'revision_requested') return fc.revisionRequested;
+    if (key === 'rejected') return fc.rejected;
+    if (key === 'in_progress') return fc.inProgress;
+    return fc.notStarted;
   }
 
   return (
     <div>
-      {/* 뷰 모드 탭 */}
-      <div className="mb-4">
-        <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v as ViewMode); setCurrentPage(1); }}>
-          <TabsList>
-            <TabsTrigger value="date">일자별</TabsTrigger>
-            <TabsTrigger value="booth">부스별</TabsTrigger>
-            <TabsTrigger value="time">시간별</TabsTrigger>
-            <TabsTrigger value="buyer">바이어별</TabsTrigger>
-            <TabsTrigger value="seller">셀러별</TabsTrigger>
-          </TabsList>
-        </Tabs>
+      {/* 뷰 모드 + 드롭다운 필터 */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        <Select value={viewMode} onValueChange={(v) => { if (v) { setViewMode(v as ViewMode); setSelectedValue('_all'); setCurrentPage(1); } }}>
+          <SelectTrigger className="w-[120px] h-9 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {VIEW_MODES.map(m => (
+              <SelectItem key={m.key} value={m.key} className="text-sm">{m.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={selectedValue} onValueChange={(v) => { if (v) { setSelectedValue(v); setCurrentPage(1); setFilter('all'); } }}>
+          <SelectTrigger className="w-[200px] h-9 text-sm">
+            <SelectValue placeholder="전체" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="_all" className="text-sm">전체</SelectItem>
+            {viewOptions.map(opt => (
+              <SelectItem key={opt} value={opt} className="text-sm">{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {selectedValue !== '_all' && (
+          <button
+            onClick={() => { setSelectedValue('_all'); setFilter('all'); }}
+            className="text-xs text-blue-600 hover:underline"
+          >
+            필터 초기화
+          </button>
+        )}
       </div>
 
       {/* 상태 필터 탭 */}
       <div className="flex gap-1 bg-card rounded-lg p-1 mb-4 flex-wrap">
-        {STATUS_TABS.map((tab) => {
+        {STATUS_TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = filter === tab.key;
           const count = getCount(tab.key);
@@ -171,7 +223,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
       {/* 페이지네이션 */}
       <div className="mb-4">
         <PaginationSelector
-          totalItems={filtered.length}
+          totalItems={statusFiltered.length}
           pageSize={pageSize}
           currentPage={currentPage}
           onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
@@ -180,36 +232,34 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
       </div>
 
       {/* 목록 */}
-      {filtered.length === 0 ? (
+      {statusFiltered.length === 0 ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-12 text-center">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-slate-500">
-              {filter !== 'all' ? '해당 상태의 항목이 없습니다' : '상담 데이터가 없습니다'}
+              {filter !== 'all' || selectedValue !== '_all' ? '해당 조건의 항목이 없습니다' : '상담 데이터가 없습니다'}
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-6">
-          {Array.from(grouped.entries()).map(([groupKey, groupItems]) => {
-            const groupApproved = groupItems.filter((i) => i.status === 'approved').length;
+          {Array.from(grouped.entries()).map(([date, dateItems]) => {
+            const dateApproved = dateItems.filter(i => i.status === 'approved').length;
             return (
-              <div key={groupKey}>
+              <div key={date}>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-                    {getGroupIcon(viewMode)}
-                    {groupKey}
+                    <CalendarDays className="w-4 h-4 text-blue-500" />
+                    {date}
                   </div>
                   <span className="text-xs text-slate-400">
-                    {filter === 'all'
-                      ? `${groupApproved}/${groupItems.length}건 승인`
-                      : `${groupItems.length}건`}
+                    {filter === 'all' ? `${dateApproved}/${dateItems.length}건 승인` : `${dateItems.length}건`}
                   </span>
                   <div className="flex-1 h-px bg-card" />
                 </div>
 
                 <div className="space-y-2">
-                  {groupItems.map((item) => {
+                  {dateItems.map(item => {
                     const isClickable = item.status !== 'not_started';
                     const content = (
                       <CardContent className="p-4">
@@ -221,9 +271,8 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
                               <span className="text-sm text-muted-foreground truncate">{item.seller_name}</span>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-slate-400">
-                              {viewMode !== 'date' && <span>{item.date}</span>}
-                              {viewMode !== 'time' && <span>{item.start_time} - {item.end_time}</span>}
-                              {viewMode !== 'booth' && item.booth_number && <span>부스 {item.booth_number}</span>}
+                              <span>{item.start_time} - {item.end_time}</span>
+                              {item.booth_number && <span>부스 {item.booth_number}</span>}
                               <span>통역: {item.interpreter_name}</span>
                             </div>
                           </div>
