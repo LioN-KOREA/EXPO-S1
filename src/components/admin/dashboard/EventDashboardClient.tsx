@@ -1,13 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { BarChart3, Table2, FileText, CheckCircle2, Clock, RotateCcw, AlertCircle, TrendingUp } from 'lucide-react';
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
-} from 'recharts';
+import { FileText, CheckCircle2, TrendingUp, Users, Building2, BarChart3 } from 'lucide-react';
 
 interface Props {
   totalConsultations: number;
@@ -19,25 +13,20 @@ interface Props {
   sellerRanking: { name: string; count: number }[];
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  approved: '#10b981',
-  submitted: '#3b82f6',
-  revision_requested: '#ef4444',
-  draft: '#f59e0b',
-  not_started: '#94a3b8',
-};
+const STATUS_CONFIG: { key: string; label: string; color: string; bg: string }[] = [
+  { key: 'approved', label: '승인', color: '#10b981', bg: 'bg-emerald-500' },
+  { key: 'submitted', label: '검토중', color: '#3b82f6', bg: 'bg-blue-500' },
+  { key: 'revision_requested', label: '수정요청', color: '#ef4444', bg: 'bg-red-500' },
+  { key: 'draft', label: '작성중', color: '#f59e0b', bg: 'bg-amber-500' },
+  { key: 'not_started', label: '미작성', color: '#cbd5e1', bg: 'bg-slate-300' },
+];
 
-const STATUS_LABELS: Record<string, string> = {
-  approved: '승인됨',
-  submitted: '검토중',
-  revision_requested: '수정요청',
-  draft: '작성중',
-  not_started: '미작성',
-};
+const POSSIBILITY_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 function formatAmount(n: number): string {
   if (n >= 100000000) return `${(n / 100000000).toFixed(1)}억`;
-  if (n >= 10000) return `${(n / 10000).toFixed(0)}만`;
+  if (n >= 10000000) return `${(n / 10000000).toFixed(1)}천만`;
+  if (n >= 10000) return `${Math.round(n / 10000).toLocaleString()}만`;
   return n.toLocaleString();
 }
 
@@ -50,230 +39,251 @@ export function EventDashboardClient({
   buyerRanking,
   sellerRanking,
 }: Props) {
-  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
-
-  const statusData = Object.entries(statusCounts)
-    .filter(([, v]) => v > 0)
-    .map(([key, value]) => ({ name: STATUS_LABELS[key] || key, value, color: STATUS_COLORS[key] || '#94a3b8' }));
-
-  const possibilityData = Object.entries(possibilityCounts).map(([key, value]) => ({ name: key, value }));
-  const POSSIBILITY_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+  const totalActive = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+  const possibilityTotal = Object.values(possibilityCounts).reduce((a, b) => a + b, 0);
+  const possibilityEntries = Object.entries(possibilityCounts);
+  const maxBuyerCount = buyerRanking.length > 0 ? buyerRanking[0].count : 1;
+  const maxSellerCount = sellerRanking.length > 0 ? sellerRanking[0].count : 1;
 
   return (
     <div className="space-y-6">
-      {/* 뷰 모드 토글 */}
-      <div className="flex justify-end">
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
-          <Button
-            variant={viewMode === 'chart' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('chart')}
-            className="gap-1.5 h-7 text-xs"
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            차트
-          </Button>
-          <Button
-            variant={viewMode === 'table' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('table')}
-            className="gap-1.5 h-7 text-xs"
-          >
-            <Table2 className="w-3.5 h-3.5" />
-            테이블
-          </Button>
-        </div>
-      </div>
 
-      {/* 요약 통계 카드 */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 text-center">
-            <FileText className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-foreground">{totalConsultations}</p>
-            <p className="text-xs text-muted-foreground">총 상담건수</p>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4 text-center">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
-            <p className="text-2xl font-bold text-foreground">{statusCounts.approved || 0}</p>
-            <p className="text-xs text-muted-foreground">승인 완료</p>
-          </CardContent>
-        </Card>
-        {amountTotals.slice(0, 2).map((amt, i) => (
-          <Card key={i} className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="w-5 h-5 text-purple-500 mx-auto mb-1" />
-              <p className="text-2xl font-bold text-foreground">{formatAmount(amt.total)}</p>
-              <p className="text-xs text-muted-foreground">{amt.label}</p>
-            </CardContent>
-          </Card>
+      {/* ── 요약 통계 카드 ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={<FileText className="w-5 h-5" />}
+          iconBg="bg-blue-50 text-blue-600"
+          label="총 상담건수"
+          value={totalConsultations}
+        />
+        <StatCard
+          icon={<CheckCircle2 className="w-5 h-5" />}
+          iconBg="bg-emerald-50 text-emerald-600"
+          label="승인 완료"
+          value={statusCounts.approved || 0}
+          sub={totalConsultations > 0 ? `${Math.round(((statusCounts.approved || 0) / totalConsultations) * 100)}%` : undefined}
+        />
+        {amountTotals.map((amt, i) => (
+          <StatCard
+            key={i}
+            icon={<TrendingUp className="w-5 h-5" />}
+            iconBg={i === 0 ? 'bg-violet-50 text-violet-600' : 'bg-amber-50 text-amber-600'}
+            label={amt.label}
+            value={formatAmount(amt.total)}
+            isString
+          />
         ))}
       </div>
 
-      {/* 상담일지 상태 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle className="text-base">상담일지 현황</CardTitle></CardHeader>
-          <CardContent>
-            {viewMode === 'chart' ? (
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={statusData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" label={({ name, value }) => `${name} ${value}`}>
-                      {statusData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {statusData.map(item => (
-                  <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm text-foreground">{item.name}</span>
-                    </div>
-                    <span className="text-sm font-semibold">{item.value}건</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 거래가능성 */}
-        {possibilityData.length > 0 && (
-          <Card className="border-0 shadow-sm">
-            <CardHeader><CardTitle className="text-base">{possibilityLabel}</CardTitle></CardHeader>
-            <CardContent>
-              {viewMode === 'chart' ? (
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={possibilityData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" label={({ name, value }) => `${name} ${value}`}>
-                        {possibilityData.map((_, i) => <Cell key={i} fill={POSSIBILITY_COLORS[i % POSSIBILITY_COLORS.length]} />)}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+      {/* ── 상담일지 현황 (수평 바) ── */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-muted-foreground" />
+            상담일지 현황
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* 전체 진행 바 */}
+          <div className="h-8 rounded-lg overflow-hidden flex bg-slate-100">
+            {STATUS_CONFIG.map(({ key, color }) => {
+              const count = statusCounts[key] || 0;
+              if (count === 0 || totalActive === 0) return null;
+              const pct = (count / totalActive) * 100;
+              return (
+                <div
+                  key={key}
+                  className="h-full transition-all duration-500 flex items-center justify-center"
+                  style={{ width: `${pct}%`, backgroundColor: color, minWidth: pct > 0 ? '2px' : 0 }}
+                >
+                  {pct >= 8 && (
+                    <span className="text-[11px] font-semibold text-white drop-shadow-sm">
+                      {count}
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {possibilityData.map((item, i) => (
-                    <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: POSSIBILITY_COLORS[i % POSSIBILITY_COLORS.length] }} />
-                        <span className="text-sm text-foreground">{item.name}</span>
-                      </div>
-                      <span className="text-sm font-semibold">{item.value}건</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
+              );
+            })}
+          </div>
 
-      {/* 금액 통계 (3개 이상 금액 필드가 있을 때) */}
-      {amountTotals.length > 2 && (
+          {/* 범례 + 숫자 */}
+          <div className="flex flex-wrap gap-x-5 gap-y-2 mt-4">
+            {STATUS_CONFIG.map(({ key, label, bg }) => {
+              const count = statusCounts[key] || 0;
+              if (count === 0) return null;
+              return (
+                <div key={key} className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-sm ${bg}`} />
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className="text-sm font-semibold text-foreground">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── 거래가능성 (수평 바 차트) ── */}
+      {possibilityEntries.length > 0 && (
         <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle className="text-base">금액 통계</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">{possibilityLabel}</CardTitle>
+          </CardHeader>
           <CardContent>
-            {viewMode === 'chart' ? (
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={amountTotals}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                    <YAxis tick={{ fontSize: 12 }} tickFormatter={formatAmount} />
-                    <Tooltip formatter={(value) => Number(value).toLocaleString()} />
-                    <Bar dataKey="total" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {amountTotals.map(item => (
-                  <div key={item.label} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-                    <span className="text-sm text-foreground">{item.label}</span>
-                    <span className="text-sm font-semibold">{item.total.toLocaleString()}</span>
+            <div className="space-y-3">
+              {possibilityEntries.map(([name, value], i) => {
+                const pct = possibilityTotal > 0 ? (value / possibilityTotal) * 100 : 0;
+                const color = POSSIBILITY_COLORS[i % POSSIBILITY_COLORS.length];
+                return (
+                  <div key={name}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-medium text-foreground">{name}</span>
+                      <span className="text-sm text-muted-foreground">{value}건 ({Math.round(pct)}%)</span>
+                    </div>
+                    <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: color }}
+                      />
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* 실적 순위 */}
+      {/* ── 실적 순위 ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* 바이어 */}
         <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle className="text-base">바이어 상담 순위</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              바이어 상담 순위
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            {viewMode === 'chart' && buyerRanking.length > 0 ? (
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={buyerRanking} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: 11 }} />
-                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} name="상담건수" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            {buyerRanking.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">데이터 없음</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 {buyerRanking.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                    <Badge variant="outline" className="text-xs w-6 h-6 flex items-center justify-center p-0">{i + 1}</Badge>
+                  <div key={i} className="flex items-center gap-3">
+                    <RankBadge rank={i + 1} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{item.country}</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-foreground truncate pr-2">{item.name}</span>
+                        <span className="text-xs font-semibold text-blue-600 shrink-0">{item.count}건</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-blue-400 transition-all duration-500"
+                            style={{ width: `${(item.count / maxBuyerCount) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground shrink-0 w-12">{item.country}</span>
+                      </div>
                     </div>
-                    <span className="text-sm font-semibold text-blue-600">{item.count}건</span>
                   </div>
                 ))}
-                {buyerRanking.length === 0 && <p className="text-sm text-muted-foreground">데이터 없음</p>}
               </div>
             )}
           </CardContent>
         </Card>
 
+        {/* 셀러 */}
         <Card className="border-0 shadow-sm">
-          <CardHeader><CardTitle className="text-base">셀러 상담 순위</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-muted-foreground" />
+              셀러 상담 순위
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            {viewMode === 'chart' && sellerRanking.length > 0 ? (
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sellerRanking} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: 11 }} />
-                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} name="상담건수" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            {sellerRanking.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">데이터 없음</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-2.5">
                 {sellerRanking.map((item, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                    <Badge variant="outline" className="text-xs w-6 h-6 flex items-center justify-center p-0">{i + 1}</Badge>
-                    <p className="text-sm font-medium text-foreground truncate flex-1">{item.name}</p>
-                    <span className="text-sm font-semibold text-emerald-600">{item.count}건</span>
+                  <div key={i} className="flex items-center gap-3">
+                    <RankBadge rank={i + 1} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-foreground truncate pr-2">{item.name}</span>
+                        <span className="text-xs font-semibold text-emerald-600 shrink-0">{item.count}건</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-400 transition-all duration-500"
+                          style={{ width: `${(item.count / maxSellerCount) * 100}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
-                {sellerRanking.length === 0 && <p className="text-sm text-muted-foreground">데이터 없음</p>}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
     </div>
+  );
+}
+
+/* ── Sub-components ── */
+
+function StatCard({
+  icon,
+  iconBg,
+  label,
+  value,
+  sub,
+  isString,
+}: {
+  icon: React.ReactNode;
+  iconBg: string;
+  label: string;
+  value: number | string;
+  sub?: string;
+  isString?: boolean;
+}) {
+  return (
+    <Card className="border-0 shadow-sm">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+            <p className="text-2xl font-bold text-foreground tracking-tight">
+              {isString ? value : Number(value).toLocaleString()}
+            </p>
+            {sub && (
+              <p className="text-xs text-emerald-600 font-medium mt-0.5">{sub}</p>
+            )}
+          </div>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  const colors = rank === 1
+    ? 'bg-amber-50 text-amber-700 ring-amber-200'
+    : rank === 2
+      ? 'bg-slate-50 text-slate-600 ring-slate-200'
+      : rank === 3
+        ? 'bg-orange-50 text-orange-700 ring-orange-200'
+        : 'bg-muted text-muted-foreground ring-border';
+
+  return (
+    <span className={`w-7 h-7 rounded-lg ring-1 flex items-center justify-center text-xs font-bold shrink-0 ${colors}`}>
+      {rank}
+    </span>
   );
 }
