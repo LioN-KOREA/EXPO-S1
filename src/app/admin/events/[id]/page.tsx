@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Upload, Clock, Users, FileText, Download } from 'lucide-react';
+import { ArrowLeft, Upload, Clock, Users, FileText, Download, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { DeleteEventButton } from '@/components/admin/DeleteEventButton';
 
@@ -43,8 +43,17 @@ export default async function EventDetailPage({
 
   const managementItems = [
     {
+      title: '관리 / 등록',
+      description: '타임테이블, 바이어·셀러, 통역사, 양식 등록',
+      href: `/admin/events/${id}/registration`,
+      icon: ClipboardList,
+      count: 0,
+      countLabel: '',
+      color: 'from-rose-500 to-rose-600',
+    },
+    {
       title: '타임테이블',
-      description: '상담 스케줄 엑셀 업로드 및 관리',
+      description: '상담 스케줄 조회 및 통역사 배정',
       href: `/admin/events/${id}/timetable`,
       icon: Clock,
       count: slotsRes.count ?? 0,
@@ -53,7 +62,7 @@ export default async function EventDetailPage({
     },
     {
       title: '통역사 배정',
-      description: '통역사 계정 엑셀 업로드 및 배정',
+      description: '통역사 배정 및 관리',
       href: `/admin/events/${id}/interpreters`,
       icon: Users,
       count: interpretersRes.count ?? 0,
@@ -62,7 +71,7 @@ export default async function EventDetailPage({
     },
     {
       title: '상담일지 양식',
-      description: '상담일지 양식 엑셀 업로드 및 설정',
+      description: '상담일지 양식 조회',
       href: `/admin/events/${id}/template`,
       icon: FileText,
       count: Array.isArray(templateRes?.data?.fields) ? templateRes.data.fields.length : 0,
