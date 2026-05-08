@@ -230,6 +230,19 @@ export default function TimetablePage() {
   }
 
   // 개별 셀 통역사 배정
+  async function ensureEventInterpreter(supabase: ReturnType<typeof createClient>, interpreterId: string) {
+    // event_interpreters에 없으면 자동 추가 (통역사 대시보드에서 보이도록)
+    await supabase.from('event_interpreters').upsert(
+      { event_id: eventId, interpreter_id: interpreterId },
+      { onConflict: 'event_id,interpreter_id' }
+    );
+    // interpreters 목록에 없으면 프로필 조회 후 추가
+    if (!interpreters.find(i => i.id === interpreterId)) {
+      const { data: profile } = await supabase.from('profiles').select('id, name, email').eq('id', interpreterId).single();
+      if (profile) setInterpreters(prev => [...prev, profile]);
+    }
+  }
+
   async function assignOne(consultationId: string, interpreterId: string | null) {
     const supabase = createClient();
     const { error } = await supabase.from('consultations').update({ interpreter_id: interpreterId }).eq('id', consultationId);
@@ -241,6 +254,7 @@ export default function TimetablePage() {
       }
       return;
     }
+    if (interpreterId) await ensureEventInterpreter(supabase, interpreterId);
     setConsultations(prev => prev.map(c => c.id === consultationId ? { ...c, interpreter_id: interpreterId } : c));
   }
 
@@ -251,6 +265,7 @@ export default function TimetablePage() {
     for (const c of targets) {
       await supabase.from('consultations').update({ interpreter_id: interpreterId }).eq('id', c.id);
     }
+    if (interpreterId) await ensureEventInterpreter(supabase, interpreterId);
     setConsultations(prev => prev.map(c =>
       c.buyer_id === buyerId ? { ...c, interpreter_id: interpreterId } : c
     ));
