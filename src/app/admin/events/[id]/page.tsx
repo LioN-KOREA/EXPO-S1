@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Upload, Clock, Users, FileText, Download, ClipboardList, BarChart3 } from 'lucide-react';
 import Link from 'next/link';
 import { DeleteEventButton } from '@/components/admin/DeleteEventButton';
+import { batchIn } from '@/lib/supabase/batch-query';
+import type { ReportStatus } from '@/types';
 
 export default async function EventDetailPage({
   params,
@@ -24,22 +26,30 @@ export default async function EventDetailPage({
   if (!event) notFound();
 
   // 통계 조회
-  const [slotsRes, interpretersRes, consultationsRes, reportsRes, templateRes] = await Promise.all([
+  const [slotsRes, interpretersRes, consultationsRes, templateRes] = await Promise.all([
     supabase.from('time_slots').select('*', { count: 'exact', head: true }).eq('event_id', id),
     supabase.from('event_interpreters').select('*', { count: 'exact', head: true }).eq('event_id', id),
     supabase.from('consultations').select('*', { count: 'exact', head: true }).eq('event_id', id),
-    supabase.from('consultations')
-      .select('id')
-      .eq('event_id', id)
-      .then(async ({ data: cons }) => {
-        if (!cons || cons.length === 0) return { count: 0 };
-        return supabase.from('consultation_reports')
-          .select('*', { count: 'exact', head: true })
-          .in('consultation_id', cons.map(c => c.id))
-          .eq('submitted', true);
-      }),
     supabase.from('report_templates').select('fields').eq('event_id', id).single(),
   ]);
+
+  // 상담일지 상태별 집계 (배치 조회)
+  const { data: consIds } = await supabase.from('consultations').select('id').eq('event_id', id);
+  const reports = await batchIn(
+    (ids) => supabase.from('consultation_reports').select('report_status, submitted').in('consultation_id', ids),
+    consIds?.map(c => c.id) ?? [],
+  );
+  const reportStatusCounts = { approved: 0, submitted: 0, revision_requested: 0, rejected: 0, draft: 0 };
+  reports.forEach((r: Record<string, unknown>) => {
+    const rs = (r.report_status ?? (r.submitted ? 'submitted' : 'draft')) as ReportStatus;
+    if (rs === 'approved') reportStatusCounts.approved++;
+    else if (rs === 'submitted' || rs === 'under_review') reportStatusCounts.submitted++;
+    else if (rs === 'revision_requested') reportStatusCounts.revision_requested++;
+    else if (rs === 'rejected') reportStatusCounts.rejected++;
+    else reportStatusCounts.draft++;
+  });
+  const totalCons = consultationsRes.count ?? 0;
+  const notStarted = totalCons - reports.length;
 
   const managementItems = [
     {
@@ -92,9 +102,10 @@ export default async function EventDetailPage({
       description: '전체 상담일지 조회 및 엑셀 다운로드',
       href: `/admin/events/${id}/reports`,
       icon: Download,
-      count: reportsRes.count ?? 0,
-      countLabel: '건 제출',
+      count: 0,
+      countLabel: '',
       color: 'from-purple-500 to-purple-600',
+      statusSummary: { ...reportStatusCounts, not_started: notStarted },
     },
   ];
 
@@ -143,6 +154,16 @@ export default async function EventDetailPage({
                       <p className="text-xs text-slate-500 mt-2">
                         {item.count} {item.countLabel}
                       </p>
+                    )}
+                    {'statusSummary' in item && item.statusSummary && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                        {item.statusSummary.approved > 0 && <span className="text-xs text-emerald-600">승인 {item.statusSummary.approved}</span>}
+                        {item.statusSummary.submitted > 0 && <span className="text-xs text-blue-600">검토중 {item.statusSummary.submitted}</span>}
+                        {item.statusSummary.revision_requested > 0 && <span className="text-xs text-amber-600">수정요청 {item.statusSummary.revision_requested}</span>}
+                        {item.statusSummary.rejected > 0 && <span className="text-xs text-red-600">반려 {item.statusSummary.rejected}</span>}
+                        {item.statusSummary.draft > 0 && <span className="text-xs text-orange-600">작성중 {item.statusSummary.draft}</span>}
+                        {item.statusSummary.not_started > 0 && <span className="text-xs text-slate-500">미작성 {item.statusSummary.not_started}</span>}
+                      </div>
                     )}
                   </div>
                 </div>
