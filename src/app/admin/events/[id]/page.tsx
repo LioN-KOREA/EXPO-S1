@@ -139,9 +139,11 @@ export default async function EventDetailPage({
                       {item.title}
                     </h3>
                     <p className="text-sm text-slate-500 mt-1">{item.description}</p>
-                    <p className="text-xs text-slate-500 mt-2">
-                      {item.count} {item.countLabel}
-                    </p>
+                    {item.countLabel && (
+                      <p className="text-xs text-slate-500 mt-2">
+                        {item.count} {item.countLabel}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
