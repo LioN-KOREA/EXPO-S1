@@ -12,8 +12,10 @@ import {
   CheckCircle2,
   FileText,
   AlertCircle,
+  RotateCcw,
 } from 'lucide-react';
 import Link from 'next/link';
+import type { ReportStatus } from '@/types';
 
 export default async function InterpreterEventPage({
   params,
@@ -60,22 +62,28 @@ export default async function InterpreterEventPage({
   const { data: reports } = consultationIds.length > 0
     ? await supabase
         .from('consultation_reports')
-        .select('consultation_id, submitted')
+        .select('consultation_id, submitted, report_status')
         .in('consultation_id', consultationIds)
     : { data: [] };
 
   const reportsMap = new Map(reports?.map((r) => [r.consultation_id, r]) ?? []);
 
-  // 통계
+  // 5개 상태 통계
   const total = consultations?.length ?? 0;
-  let submitted = 0;
-  let inProgress = 0;
+  let approvedCount = 0;
+  let submittedCount = 0;
+  let revisionCount = 0;
+  let inProgressCount = 0;
   reports?.forEach((r) => {
-    if (r.submitted) submitted++;
-    else inProgress++;
+    const rs = (r.report_status ?? (r.submitted ? 'submitted' : 'draft')) as ReportStatus;
+    if (rs === 'approved') approvedCount++;
+    else if (rs === 'submitted' || rs === 'under_review') submittedCount++;
+    else if (rs === 'revision_requested') revisionCount++;
+    else inProgressCount++;
   });
-  const notStarted = total - submitted - inProgress;
-  const rate = total > 0 ? Math.round((submitted / total) * 100) : 0;
+  const notStarted = total - approvedCount - submittedCount - revisionCount - inProgressCount;
+  const completedCount = approvedCount + submittedCount; // 제출 이상
+  const rate = total > 0 ? Math.round((approvedCount / total) * 100) : 0;
 
   // 날짜별 그룹핑
   const grouped = new Map<string, NonNullable<typeof consultations>>();
@@ -106,36 +114,66 @@ export default async function InterpreterEventPage({
               <span className={`text-sm font-bold ${
                 rate === 100 ? 'text-emerald-600' : rate >= 50 ? 'text-blue-600' : 'text-slate-500'
               }`}>
-                {submitted}/{total} ({rate}%)
+                {approvedCount}/{total} ({rate}%)
               </span>
             </div>
             <div className="w-full h-2.5 bg-card rounded-full overflow-hidden flex mb-3">
-              {submitted > 0 && (
+              {approvedCount > 0 && (
                 <div
                   className="h-full bg-emerald-400"
-                  style={{ width: `${(submitted / total) * 100}%` }}
+                  style={{ width: `${(approvedCount / total) * 100}%` }}
                 />
               )}
-              {inProgress > 0 && (
+              {submittedCount > 0 && (
+                <div
+                  className="h-full bg-blue-400"
+                  style={{ width: `${(submittedCount / total) * 100}%` }}
+                />
+              )}
+              {revisionCount > 0 && (
+                <div
+                  className="h-full bg-red-400"
+                  style={{ width: `${(revisionCount / total) * 100}%` }}
+                />
+              )}
+              {inProgressCount > 0 && (
                 <div
                   className="h-full bg-amber-400"
-                  style={{ width: `${(inProgress / total) * 100}%` }}
+                  style={{ width: `${(inProgressCount / total) * 100}%` }}
                 />
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1.5 text-xs text-emerald-600">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                제출 {submitted}
-              </span>
-              <span className="flex items-center gap-1.5 text-xs text-amber-600">
-                <FileText className="w-3.5 h-3.5" />
-                작성중 {inProgress}
-              </span>
-              <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                <AlertCircle className="w-3.5 h-3.5" />
-                미작성 {notStarted}
-              </span>
+            <div className="flex items-center gap-3 flex-wrap">
+              {approvedCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  승인 {approvedCount}
+                </span>
+              )}
+              {submittedCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-blue-600">
+                  <Clock className="w-3.5 h-3.5" />
+                  검토중 {submittedCount}
+                </span>
+              )}
+              {revisionCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-red-600">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  수정요청 {revisionCount}
+                </span>
+              )}
+              {inProgressCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-amber-600">
+                  <FileText className="w-3.5 h-3.5" />
+                  작성중 {inProgressCount}
+                </span>
+              )}
+              {notStarted > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  미작성 {notStarted}
+                </span>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -166,14 +204,16 @@ export default async function InterpreterEventPage({
               <div className="space-y-2">
                 {items.map((consultation) => {
                   const report = reportsMap.get(consultation.id);
-                  const statusLabel = report?.submitted
-                    ? '제출완료'
-                    : report
-                      ? '작성중'
-                      : '미작성';
-                  const statusVariant = report?.submitted
-                    ? 'default' as const
-                    : 'secondary' as const;
+                  const rs = report ? ((report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as ReportStatus) : null;
+
+                  const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
+                    approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
+                    submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+                    under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+                    revision_requested: { label: '수정요청', variant: 'destructive' },
+                    draft: { label: '작성중', variant: 'secondary' },
+                  };
+                  const statusInfo = rs ? statusMap[rs] : { label: '미작성', variant: 'secondary' as const };
 
                   return (
                     <Link
@@ -190,8 +230,8 @@ export default async function InterpreterEventPage({
                                   <Clock className="w-3 h-3" />
                                   {consultation.time_slot?.start_time} - {consultation.time_slot?.end_time}
                                 </div>
-                                <Badge variant={statusVariant} className="text-xs">
-                                  {statusLabel}
+                                <Badge variant={statusInfo.variant} className={`text-xs ${'className' in statusInfo ? statusInfo.className || '' : ''}`}>
+                                  {statusInfo.label}
                                 </Badge>
                               </div>
 

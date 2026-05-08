@@ -9,10 +9,12 @@ import {
   ChevronRight,
   CheckCircle2,
   AlertCircle,
+  RotateCcw,
+  Clock,
 } from 'lucide-react';
 import Link from 'next/link';
 
-type FilterStatus = 'all' | 'submitted' | 'in_progress' | 'not_started';
+type FilterStatus = 'all' | 'submitted' | 'approved' | 'revision_requested' | 'in_progress' | 'not_started';
 
 interface ConsultationItem {
   id: string;
@@ -22,7 +24,7 @@ interface ConsultationItem {
   date: string;
   start_time: string;
   end_time: string;
-  status: 'submitted' | 'in_progress' | 'not_started';
+  status: 'submitted' | 'approved' | 'revision_requested' | 'in_progress' | 'not_started';
 }
 
 interface ReportsFilterProps {
@@ -31,6 +33,8 @@ interface ReportsFilterProps {
   counts: {
     total: number;
     submitted: number;
+    approved: number;
+    revisionRequested: number;
     inProgress: number;
     notStarted: number;
   };
@@ -38,10 +42,27 @@ interface ReportsFilterProps {
 
 const TABS: { key: FilterStatus; label: string; icon: typeof FileText; color: string; activeColor: string }[] = [
   { key: 'all', label: '전체', icon: FileText, color: 'text-slate-400', activeColor: 'bg-card text-foreground shadow-sm' },
-  { key: 'submitted', label: '제출완료', icon: CheckCircle2, color: 'text-emerald-600', activeColor: 'bg-card text-emerald-700 shadow-sm' },
+  { key: 'submitted', label: '검토중', icon: Clock, color: 'text-blue-600', activeColor: 'bg-card text-blue-700 shadow-sm' },
+  { key: 'approved', label: '승인됨', icon: CheckCircle2, color: 'text-emerald-600', activeColor: 'bg-card text-emerald-700 shadow-sm' },
+  { key: 'revision_requested', label: '수정요청', icon: RotateCcw, color: 'text-red-600', activeColor: 'bg-card text-red-700 shadow-sm' },
   { key: 'in_progress', label: '작성중', icon: FileText, color: 'text-amber-600', activeColor: 'bg-card text-amber-700 shadow-sm' },
   { key: 'not_started', label: '미작성', icon: AlertCircle, color: 'text-slate-500', activeColor: 'bg-card text-foreground/80 shadow-sm' },
 ];
+
+function getStatusBadge(status: ConsultationItem['status']) {
+  switch (status) {
+    case 'approved':
+      return <Badge className="text-xs gap-1 bg-emerald-500"><CheckCircle2 className="w-3 h-3" />승인됨</Badge>;
+    case 'submitted':
+      return <Badge variant="outline" className="text-xs gap-1 border-blue-200 text-blue-700 bg-blue-50"><Clock className="w-3 h-3" />검토중</Badge>;
+    case 'revision_requested':
+      return <Badge variant="destructive" className="text-xs gap-1"><RotateCcw className="w-3 h-3" />수정요청</Badge>;
+    case 'in_progress':
+      return <Badge className="text-xs bg-amber-100 text-amber-700 border-0 gap-1"><FileText className="w-3 h-3" />작성중</Badge>;
+    case 'not_started':
+      return <Badge variant="secondary" className="text-xs gap-1"><AlertCircle className="w-3 h-3" />미작성</Badge>;
+  }
+}
 
 export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
   const [filter, setFilter] = useState<FilterStatus>('all');
@@ -64,6 +85,8 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
   function getCount(key: FilterStatus) {
     if (key === 'all') return counts.total;
     if (key === 'submitted') return counts.submitted;
+    if (key === 'approved') return counts.approved;
+    if (key === 'revision_requested') return counts.revisionRequested;
     if (key === 'in_progress') return counts.inProgress;
     return counts.notStarted;
   }
@@ -71,7 +94,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
   return (
     <div>
       {/* 상태 필터 탭 */}
-      <div className="flex gap-1 bg-card rounded-lg p-1 mb-6">
+      <div className="flex gap-1 bg-card rounded-lg p-1 mb-6 flex-wrap">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = filter === tab.key;
@@ -81,7 +104,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-all flex-1 justify-center ${
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-all justify-center ${
                 isActive ? tab.activeColor : `${tab.color} hover:bg-card`
               }`}
             >
@@ -108,7 +131,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
       ) : (
         <div className="space-y-6">
           {Array.from(grouped.entries()).map(([date, dateItems]) => {
-            const dateSubmitted = dateItems.filter((i) => i.status === 'submitted').length;
+            const dateApproved = dateItems.filter((i) => i.status === 'approved').length;
             return (
               <div key={date}>
                 <div className="flex items-center gap-2 mb-3">
@@ -118,7 +141,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
                   </div>
                   <span className="text-xs text-slate-400">
                     {filter === 'all'
-                      ? `${dateSubmitted}/${dateItems.length}건 제출`
+                      ? `${dateApproved}/${dateItems.length}건 승인`
                       : `${dateItems.length}건`}
                   </span>
                   <div className="flex-1 h-px bg-card" />
@@ -147,22 +170,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            {item.status === 'submitted' ? (
-                              <Badge variant="default" className="text-xs gap-1">
-                                <CheckCircle2 className="w-3 h-3" />
-                                제출완료
-                              </Badge>
-                            ) : item.status === 'in_progress' ? (
-                              <Badge className="text-xs bg-amber-100 text-amber-700 border-0 gap-1">
-                                <FileText className="w-3 h-3" />
-                                작성중
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-xs gap-1">
-                                <AlertCircle className="w-3 h-3" />
-                                미작성
-                              </Badge>
-                            )}
+                            {getStatusBadge(item.status)}
                             {isClickable && (
                               <ChevronRight className="w-4 h-4 text-muted-foreground" />
                             )}

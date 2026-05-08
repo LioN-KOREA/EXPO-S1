@@ -5,6 +5,7 @@
 export type UserRole = 'admin' | 'interpreter' | 'buyer' | 'seller';
 export type EventStatus = 'active' | 'archived';
 export type ConsultationStatus = 'scheduled' | 'in_progress' | 'completed';
+export type ReportStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'revision_requested';
 export type TradePossibility = '상' | '중' | '하';
 
 // --- 사용자 ---
@@ -111,6 +112,10 @@ export interface ConsultationReport {
   data: Record<string, unknown>;
   submitted: boolean;
   submitted_at?: string;
+  report_status: ReportStatus;
+  admin_comment?: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
   created_at: string;
   updated_at: string;
 }

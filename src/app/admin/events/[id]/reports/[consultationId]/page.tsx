@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Clock, User, Building2, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import type { TemplateField } from '@/types';
+import type { TemplateField, ReportStatus } from '@/types';
+import { ReportActions } from '@/components/admin/ReportActions';
 
 export default async function AdminReportDetailPage({
   params,
@@ -52,6 +53,17 @@ export default async function AdminReportDetailPage({
   const buyer = consultation.buyer as Record<string, string> | null;
   const seller = consultation.seller as Record<string, string> | null;
   const interpreter = consultation.interpreter as Record<string, string> | null;
+  const reportStatus = (report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as ReportStatus;
+
+  const statusLabels: Record<ReportStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
+    draft: { label: '작성중', variant: 'secondary' },
+    submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+    under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+    approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
+    revision_requested: { label: '수정요청', variant: 'destructive' },
+  };
+
+  const currentStatus = statusLabels[reportStatus];
 
   return (
     <div>
@@ -71,8 +83,8 @@ export default async function AdminReportDetailPage({
               <Clock className="w-3 h-3" />
               {ts?.date} {ts?.start_time} - {ts?.end_time}
             </div>
-            <Badge variant={report.submitted ? 'default' : 'secondary'} className="text-xs">
-              {report.submitted ? '제출완료' : '작성중'}
+            <Badge variant={currentStatus.variant} className={`text-xs ${currentStatus.className || ''}`}>
+              {currentStatus.label}
             </Badge>
           </div>
 
@@ -107,16 +119,15 @@ export default async function AdminReportDetailPage({
         </CardContent>
       </Card>
 
-      {/* 작성중 안내 */}
-      {!report.submitted && (
-        <Card className="border-0 shadow-sm mb-6 bg-amber-50/50">
-          <CardContent className="p-4">
-            <p className="text-sm text-amber-700">
-              이 일지는 아직 <span className="font-semibold">작성중</span>이며 통역사가 최종 제출하지 않은 상태입니다.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* 상태 안내 + 승인/반려 액션 */}
+      <div className="mb-6">
+        <ReportActions
+          reportId={report.id}
+          reportStatus={reportStatus}
+          adminComment={report.admin_comment}
+          reviewedAt={report.reviewed_at}
+        />
+      </div>
 
       {/* 상담일지 내용 */}
       <Card className="border-0 shadow-sm">

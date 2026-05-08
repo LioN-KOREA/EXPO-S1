@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DynamicForm } from '@/components/interpreter/DynamicForm';
-import { ArrowLeft, Save, Send, User, Building2, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Send, User, Building2, Clock, CheckCircle2, Loader2, AlertTriangle, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import type { TemplateField, Consultation, ConsultationReport } from '@/types';
+import type { TemplateField, Consultation, ConsultationReport, ReportStatus } from '@/types';
 
 export default function ConsultationReportPage() {
   const params = useParams();
@@ -104,8 +104,9 @@ export default function ConsultationReportPage() {
     const currentReport = reportRef.current;
     const currentFormData = formDataRef.current;
 
-    // 제출된 일지는 자동저장 안 함
-    if (currentReport?.submitted) return;
+    // 제출/승인된 일지는 자동저장 안 함
+    const status = currentReport?.report_status;
+    if (status === 'submitted' || status === 'under_review' || status === 'approved') return;
 
     setAutoSaveStatus('saving');
     const supabase = createClient();
@@ -118,6 +119,7 @@ export default function ConsultationReportPage() {
       data: currentFormData,
       submitted: false,
       submitted_at: null,
+      report_status: 'draft' as ReportStatus,
       updated_at: new Date().toISOString(),
     };
 
@@ -173,7 +175,8 @@ export default function ConsultationReportPage() {
   // formData 변경 시 3초 debounce 자동 저장
   useEffect(() => {
     if (isInitialLoad.current) return;
-    if (report?.submitted) return;
+    const rs = report?.report_status;
+    if (rs === 'submitted' || rs === 'under_review' || rs === 'approved') return;
 
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
 
@@ -184,7 +187,7 @@ export default function ConsultationReportPage() {
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     };
-  }, [formData, executeAutoSave, report?.submitted]);
+  }, [formData, executeAutoSave, report?.report_status]);
 
   function handleFieldChange(key: string, value: unknown) {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -214,6 +217,8 @@ export default function ConsultationReportPage() {
       data: formData,
       submitted: submit,
       submitted_at: submit ? new Date().toISOString() : null,
+      report_status: (submit ? 'submitted' : 'draft') as ReportStatus,
+      admin_comment: submit ? null : undefined, // 재제출 시 이전 코멘트 초기화
       updated_at: new Date().toISOString(),
     };
 
@@ -294,7 +299,21 @@ export default function ConsultationReportPage() {
     );
   }
 
-  const isSubmitted = report?.submitted ?? false;
+  const reportStatus: ReportStatus = report?.report_status ?? (report?.submitted ? 'submitted' : 'draft');
+  // 편집 가능: draft 또는 revision_requested
+  const isEditable = !report || reportStatus === 'draft' || reportStatus === 'revision_requested';
+  // 읽기 전용: submitted, under_review, approved
+  const isReadOnly = !isEditable;
+
+  const statusConfig: Record<ReportStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
+    draft: { label: report ? '작성중' : '미작성', variant: 'secondary' },
+    submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+    under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+    approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
+    revision_requested: { label: '수정요청', variant: 'destructive' },
+  };
+
+  const currentStatus = statusConfig[reportStatus];
 
   return (
     <div>
@@ -306,6 +325,24 @@ export default function ConsultationReportPage() {
         일정표로 돌아가기
       </Link>
 
+      {/* 수정요청 알림 */}
+      {reportStatus === 'revision_requested' && report?.admin_comment && (
+        <Card className="border-0 shadow-sm mb-4 bg-red-50/50 border-red-100">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-red-700">관리자 수정요청</p>
+                <div className="flex items-start gap-1.5 mt-1">
+                  <MessageSquare className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                  <p className="text-sm text-red-600">{report.admin_comment}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* 상담 정보 헤더 */}
       <Card className="border-0 shadow-sm mb-6">
         <CardContent className="p-5">
@@ -314,8 +351,8 @@ export default function ConsultationReportPage() {
               <Clock className="w-3 h-3" />
               {consultation.time_slot?.start_time} - {consultation.time_slot?.end_time}
             </div>
-            <Badge variant={isSubmitted ? 'default' : 'secondary'} className="text-xs">
-              {isSubmitted ? '제출완료' : report ? '작성중' : '미작성'}
+            <Badge variant={currentStatus.variant} className={`text-xs ${currentStatus.className || ''}`}>
+              {currentStatus.label}
             </Badge>
           </div>
 
@@ -348,7 +385,7 @@ export default function ConsultationReportPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">상담일지 작성</CardTitle>
             {/* 자동 저장 상태 표시 */}
-            {!isSubmitted && fields.length > 0 && (
+            {isEditable && fields.length > 0 && (
               <div className="flex items-center gap-1.5 text-xs">
                 {autoSaveStatus === 'saving' && (
                   <span className="flex items-center gap-1 text-slate-500">
@@ -380,10 +417,10 @@ export default function ConsultationReportPage() {
                 fields={fields}
                 values={formData}
                 onChange={handleFieldChange}
-                disabled={isSubmitted}
+                disabled={isReadOnly}
               />
 
-              {!isSubmitted && (
+              {isEditable && (
                 <div className="flex items-center justify-between mt-6 pt-4 border-t">
                   <div className="flex gap-3">
                     <Button
@@ -401,7 +438,7 @@ export default function ConsultationReportPage() {
                       className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
                     >
                       <Send className="w-4 h-4" />
-                      {saving ? '제출 중...' : '제출'}
+                      {saving ? '제출 중...' : reportStatus === 'revision_requested' ? '재제출' : '제출'}
                     </Button>
                   </div>
                   <p className="text-[11px] text-slate-500 hidden sm:block">

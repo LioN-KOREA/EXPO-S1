@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download } from 'lucide-react';
 import Link from 'next/link';
 import { ReportsFilter } from '@/components/admin/ReportsFilter';
+import type { ReportStatus } from '@/types';
 
 export default async function ReportsPage({
   params,
@@ -34,7 +35,7 @@ export default async function ReportsPage({
     return timeA.localeCompare(timeB);
   });
 
-  // 일지 조회 (제출/미제출 모두)
+  // 일지 조회 (report_status 포함)
   const consultationIds = consultations?.map((c) => c.id) ?? [];
   const { data: reports } = consultationIds.length > 0
     ? await supabase
@@ -45,19 +46,38 @@ export default async function ReportsPage({
 
   const reportsMap = new Map(reports?.map((r) => [r.consultation_id, r]) ?? []);
 
-  const submitted = reports?.filter((r) => r.submitted).length ?? 0;
-  const inProgress = reports?.filter((r) => !r.submitted).length ?? 0;
-  const total = consultations?.length ?? 0;
-  const notStarted = total - submitted - inProgress;
+  // 5개 상태 집계
+  type ItemStatus = 'submitted' | 'approved' | 'revision_requested' | 'in_progress' | 'not_started';
+  let submittedCount = 0;
+  let approvedCount = 0;
+  let revisionCount = 0;
+  let inProgressCount = 0;
+  let notStartedCount = 0;
 
   // 클라이언트 컴포넌트용 데이터 직렬화
   const items = (consultations ?? []).map((c) => {
     const report = reportsMap.get(c.id);
-    const status: 'submitted' | 'in_progress' | 'not_started' = report?.submitted
-      ? 'submitted'
-      : report
-        ? 'in_progress'
-        : 'not_started';
+
+    let status: ItemStatus;
+    if (!report) {
+      status = 'not_started';
+      notStartedCount++;
+    } else {
+      const rs = (report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as ReportStatus;
+      if (rs === 'approved') {
+        status = 'approved';
+        approvedCount++;
+      } else if (rs === 'submitted' || rs === 'under_review') {
+        status = 'submitted';
+        submittedCount++;
+      } else if (rs === 'revision_requested') {
+        status = 'revision_requested';
+        revisionCount++;
+      } else {
+        status = 'in_progress';
+        inProgressCount++;
+      }
+    }
 
     return {
       id: c.id,
@@ -71,6 +91,8 @@ export default async function ReportsPage({
     };
   });
 
+  const total = consultations?.length ?? 0;
+
   return (
     <div>
       <Link href={`/admin/events/${eventId}`} className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">
@@ -82,7 +104,7 @@ export default async function ReportsPage({
         <div>
           <h2 className="text-2xl font-bold text-foreground">상담일지 조회</h2>
           <p className="text-slate-500 mt-1">
-            {submitted}/{total}건 제출 완료
+            {approvedCount}/{total}건 승인 완료
           </p>
         </div>
         <a href={`/api/export/reports?event_id=${eventId}`}>
@@ -96,7 +118,14 @@ export default async function ReportsPage({
       <ReportsFilter
         eventId={eventId}
         items={items}
-        counts={{ total, submitted, inProgress, notStarted }}
+        counts={{
+          total,
+          submitted: submittedCount,
+          approved: approvedCount,
+          revisionRequested: revisionCount,
+          inProgress: inProgressCount,
+          notStarted: notStartedCount,
+        }}
       />
     </div>
   );
