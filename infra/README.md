@@ -27,6 +27,8 @@ pulumi stack init e1s
 
 # Supabase access token from https://supabase.com/dashboard/account/tokens
 pulumi config set --secret supabaseAccessToken <token>
+pulumi config set --secret supabaseServiceRoleKey <token>
+pulumi config set --secret supabaseAnonKey <token>
 pulumi config set supabaseOrganizationId <org-id>
 pulumi config set --secret dbPassword <strong-password>
 ```
@@ -45,7 +47,7 @@ npx open-next@latest build
 cd infra
 npm install
 unset AWS_ACCESS_KEY_ID && unset AWS_CREDENTIAL_EXPIRATION && unset AWS_ACCESS_TOKEN && unset AWS_SECRET_ACCESS_KEY # If your SSO session has expired or if you haven't logged in yet
-aws sso login # If your SSO session has expired or if you haven't logged in yet
+aws login # If your SSO session has expired or if you haven't logged in yet
 eval "$(aws configure export-credentials --format env)" # If your SSO session has expired or if you haven't logged in yet
 pulumi up
 ```
