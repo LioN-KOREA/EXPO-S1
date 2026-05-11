@@ -1,0 +1,9 @@
+config:
+  aws:region: ap-northeast-2
+  expo-s1-infra:supabaseRegion: ap-northeast-2
+  expo-s1-infra:bucketName: lk-expo-s1
+  
+  # Set these with:
+  #   pulumi config set --secret supabaseAccessToken <token>
+  #   pulumi config set supabaseOrganizationId <org-id>
+  #   pulumi config set --secret dbPassword <strong-password>

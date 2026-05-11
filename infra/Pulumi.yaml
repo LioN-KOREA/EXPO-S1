@@ -1,0 +1,16 @@
+name: expo-s1-infra
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
+description: IaC for the export-consultation app — Supabase Cloud + AWS (S3 + CloudFront + Lambda via OpenNext)
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: aws-typescript
+packages:
+  supabase:
+    source: pulumi/pulumi/terraform-provider
+    version: 1.1.1
+    parameters:
+      - supabase/supabase

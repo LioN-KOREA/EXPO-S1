@@ -1,0 +1,23 @@
+{
+  "name": "expo-s1-infra",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "build:app": "cd .. && npm run build && npx open-next@latest build",
+    "preview": "pulumi preview",
+    "up": "pulumi up",
+    "destroy": "pulumi destroy"
+  },
+  "dependencies": {
+    "@pulumi/aws": "^6.66.0",
+    "@pulumi/command": "^1.0.1",
+    "@pulumi/pulumi": "^3.140.0",
+    "@pulumi/supabase": "file:sdks/supabase",
+    "@pulumi/synced-folder": "^0.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5"
+  }
+}
