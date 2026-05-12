@@ -31,6 +31,10 @@ pulumi config set --secret supabaseServiceRoleKey <token>
 pulumi config set --secret supabaseAnonKey <token>
 pulumi config set supabaseOrganizationId <org-id>
 pulumi config set --secret dbPassword <strong-password>
+
+export NEXT_PUBLIC_SUPABASE_URL=<the supabase URL for the project>
+export NEXT_PUBLIC_SUPABASE_ANON_KEY=<the anon key for the supabase project>
+
 ```
 
 ## Build + Deploy
