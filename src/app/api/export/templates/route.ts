@@ -132,7 +132,7 @@ function buildTimetableTemplate(wb: XLSX.WorkBook) {
   ];
 
   ws['!cols'] = [{ wch: 6 }, { wch: 25 }, { wch: 10 }, { wch: 8 }, ...Array(8).fill({ wch: 28 })];
-  ws['!rows'] = [undefined, undefined, { hpt: 80 }, { hpt: 80 }];
+  ws['!rows'] = [{}, {}, { hpt: 80 }, { hpt: 80 }];
 
   XLSX.utils.book_append_sheet(wb, ws, '상담테이블');
 
