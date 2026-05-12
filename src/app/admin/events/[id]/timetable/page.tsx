@@ -635,8 +635,10 @@ export default function TimetablePage() {
                         return (
                           <tr key={buyer.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
                             <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
-                              <div className="truncate max-w-[150px]" title={buyer.company_name}>{buyer.company_name}</div>
-                              <div className="text-[10px] text-slate-500">{buyer.country}</div>
+                              <div className="max-w-[180px]" title={buyer.company_name}>
+                                <div className="text-sm text-foreground leading-tight">{buyer.company_name}</div>
+                                <div className="text-[10px] text-slate-500">{buyer.country}</div>
+                              </div>
                             </td>
                             {assignMode && (
                               <td className="px-2 py-2 border-r bg-violet-50/50">
@@ -660,8 +662,10 @@ export default function TimetablePage() {
                         return (
                           <tr key={buyer.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
                             <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
-                              <div className="text-sm font-semibold text-foreground">{buyer.booth_number || '미지정'}</div>
-                              <div className="text-[10px] text-slate-500 truncate max-w-[150px]">{buyer.company_name}</div>
+                              <div className="max-w-[180px]" title={buyer.company_name}>
+                                <div className="text-sm text-foreground leading-tight">{buyer.company_name}</div>
+                                <div className="text-[10px] text-slate-500">{buyer.country} {buyer.booth_number ? `[${buyer.booth_number}]` : ''}</div>
+                              </div>
                             </td>
                             <td className="px-2 py-2 text-center">
                               <Badge variant="secondary" className="text-xs">{buyer.booth_number || '-'}</Badge>
