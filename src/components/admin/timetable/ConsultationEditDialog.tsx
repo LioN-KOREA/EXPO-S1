@@ -127,7 +127,9 @@ export function ConsultationEditDialog({
             <Label className="text-xs text-muted-foreground">바이어</Label>
             <Select value={buyerId || null} onValueChange={(v) => setBuyerId(v ?? '')}>
               <SelectTrigger className="mt-1 h-9 text-sm">
-                <SelectValue placeholder="바이어 선택" />
+                <SelectValue placeholder="바이어 선택">
+                  {!buyerId ? '바이어 미지정' : buyers.find(b => b.id === buyerId)?.company_name || '바이어 선택'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {buyers.map(b => (
@@ -156,7 +158,9 @@ export function ConsultationEditDialog({
             <Label className="text-xs text-muted-foreground">셀러</Label>
             <Select value={sellerId || null} onValueChange={(v) => setSellerId(v ?? '')}>
               <SelectTrigger className="mt-1 h-9 text-sm">
-                <SelectValue placeholder="셀러 선택" />
+                <SelectValue placeholder="셀러 선택">
+                  {!sellerId ? '셀러 미지정' : sellers.find(s => s.id === sellerId)?.company_name || '셀러 선택'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {sellers.map(s => (
@@ -173,7 +177,9 @@ export function ConsultationEditDialog({
             <Label className="text-xs text-muted-foreground">통역사</Label>
             <Select value={interpreterId || '_none'} onValueChange={(v) => setInterpreterId(!v || v === '_none' ? '' : v)}>
               <SelectTrigger className="mt-1 h-9 text-sm">
-                <SelectValue placeholder="통역사 선택" />
+                <SelectValue placeholder="통역사 선택" >
+                  {!interpreterId || interpreterId === '_none' ? '통역사 미배정' : interpreters.find(i => i.id === interpreterId)?.name || '통역사 선택'}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_none" className="text-sm text-muted-foreground">미배정</SelectItem>
