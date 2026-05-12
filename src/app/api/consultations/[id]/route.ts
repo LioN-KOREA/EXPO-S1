@@ -38,8 +38,23 @@ export async function PATCH(
     }
   }
 
-  if (Object.keys(updateData).length === 0) {
+  // 부스번호 변경 (buyers 테이블)
+  if ('booth_number' in body && body.buyer_id) {
+    await admin.from('buyers').update({ booth_number: body.booth_number }).eq('id', body.buyer_id);
+  } else if ('booth_number' in body && !body.buyer_id) {
+    // buyer_id 변경 없이 부스번호만 변경
+    const { data: con } = await admin.from('consultations').select('buyer_id').eq('id', id).single();
+    if (con) {
+      await admin.from('buyers').update({ booth_number: body.booth_number }).eq('id', con.buyer_id);
+    }
+  }
+
+  if (Object.keys(updateData).length === 0 && !('booth_number' in body)) {
     return NextResponse.json({ error: '수정할 항목이 없습니다' }, { status: 400 });
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    return NextResponse.json({ success: true });
   }
 
   // 통역사 배정 시 event_interpreters에도 자동 등록

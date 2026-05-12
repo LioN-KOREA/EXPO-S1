@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ExcelUploader } from '@/components/admin/ExcelUploader';
+import { TemplateDownloadButton } from '@/components/admin/TemplateDownloadButton';
 import { toast } from 'sonner';
 
 export function InterpreterRegistration({ eventId }: { eventId: string }) {
@@ -27,7 +28,12 @@ export function InterpreterRegistration({ eventId }: { eventId: string }) {
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardHeader><CardTitle className="text-lg">통역사 엑셀 업로드</CardTitle></CardHeader>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">통역사 엑셀 업로드</CardTitle>
+          <TemplateDownloadButton type="interpreters" />
+        </div>
+      </CardHeader>
       <CardContent>
         <p className="text-sm text-slate-500 mb-4">
           엑셀 파일 (이름, 이메일, 전화번호)로 통역사 계정을 생성하고 이 상담회에 배정합니다.

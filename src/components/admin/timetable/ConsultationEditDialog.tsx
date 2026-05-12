@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Clock, Save, Loader2 } from 'lucide-react';
+import { Clock, Save, Loader2, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TimeSlot, BuyerData, SellerData, ConsultationData, Interpreter } from './types';
 
@@ -20,6 +19,107 @@ interface ConsultationEditDialogProps {
   sellers: SellerData[];
   interpreters: Interpreter[];
   onSaved: (updated: Partial<ConsultationData> & { id: string }) => void;
+}
+
+// 검색 가능한 선택 컴포넌트
+function SearchableSelect<T extends { id: string }>({
+  label,
+  items,
+  value,
+  onChange,
+  renderItem,
+  renderSelected,
+  searchFn,
+  placeholder,
+  allowNone,
+  noneLabel,
+}: {
+  label: string;
+  items: T[];
+  value: string;
+  onChange: (id: string) => void;
+  renderItem: (item: T) => React.ReactNode;
+  renderSelected: (item: T) => string;
+  searchFn: (item: T, query: string) => boolean;
+  placeholder: string;
+  allowNone?: boolean;
+  noneLabel?: string;
+}) {
+  const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedItem = items.find(i => i.id === value);
+  const filtered = useMemo(() => {
+    if (!search) return items;
+    return items.filter(i => searchFn(i, search.toLowerCase()));
+  }, [items, search, searchFn]);
+
+  return (
+    <div>
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="relative mt-1">
+        <div
+          className="flex items-center h-9 px-3 border rounded-md text-sm cursor-pointer hover:border-slate-400 transition-colors bg-card"
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <span className={`flex-1 truncate ${!selectedItem && (!value || value === '_none') ? 'text-muted-foreground' : 'text-foreground'}`}>
+            {selectedItem ? renderSelected(selectedItem) : (allowNone ? (noneLabel || '미지정') : placeholder)}
+          </span>
+          {selectedItem && (
+            <button
+              type="button"
+              className="ml-1 p-0.5 hover:bg-slate-100 rounded"
+              onClick={(e) => { e.stopPropagation(); onChange(''); setIsOpen(false); }}
+            >
+              <X className="w-3 h-3 text-slate-400" />
+            </button>
+          )}
+        </div>
+
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-card border rounded-lg shadow-lg">
+            <div className="p-2 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={`${label} 검색...`}
+                  className="h-8 pl-7 text-xs"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="max-h-[200px] overflow-y-auto">
+              {allowNone && (
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted"
+                  onClick={() => { onChange('_none'); setIsOpen(false); setSearch(''); }}
+                >
+                  {noneLabel || '미지정'}
+                </button>
+              )}
+              {filtered.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-slate-400">검색 결과 없음</p>
+              ) : (
+                filtered.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-muted ${item.id === value ? 'bg-blue-50 text-blue-700' : ''}`}
+                    onClick={() => { onChange(item.id); setIsOpen(false); setSearch(''); }}
+                  >
+                    {renderItem(item)}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function ConsultationEditDialog({
@@ -37,19 +137,26 @@ export function ConsultationEditDialog({
   const [sellerId, setSellerId] = useState('');
   const [interpreterId, setInterpreterId] = useState('');
   const [memo, setMemo] = useState('');
+  const [boothNumber, setBoothNumber] = useState('');
 
-  // 현재 바이어의 부스번호
-  const currentBuyer = buyers.find(b => b.id === buyerId);
-
-  // open 변경 시 form state 리셋
   useEffect(() => {
     if (open && consultation) {
       setBuyerId(consultation.buyer_id);
       setSellerId(consultation.seller_id || '');
       setInterpreterId(consultation.interpreter_id || '');
       setMemo(consultation.memo || '');
+      const buyer = buyers.find(b => b.id === consultation.buyer_id);
+      setBoothNumber(buyer?.booth_number || '');
     }
-  }, [open, consultation]);
+  }, [open, consultation, buyers]);
+
+  // 바이어 변경 시 부스번호 동기화
+  useEffect(() => {
+    if (buyerId) {
+      const buyer = buyers.find(b => b.id === buyerId);
+      setBoothNumber(buyer?.booth_number || '');
+    }
+  }, [buyerId, buyers]);
 
   async function handleSave() {
     if (!consultation) return;
@@ -58,8 +165,16 @@ export function ConsultationEditDialog({
     const body: Record<string, unknown> = {};
     if (buyerId !== consultation.buyer_id) body.buyer_id = buyerId;
     if (sellerId !== (consultation.seller_id || '')) body.seller_id = sellerId || null;
-    if (interpreterId !== (consultation.interpreter_id || '')) body.interpreter_id = interpreterId || null;
+    if (interpreterId !== (consultation.interpreter_id || '')) {
+      body.interpreter_id = (!interpreterId || interpreterId === '_none') ? null : interpreterId;
+    }
     if (memo !== (consultation.memo || '')) body.memo = memo || null;
+
+    // 부스번호 변경 체크
+    const originalBuyer = buyers.find(b => b.id === consultation.buyer_id);
+    if (boothNumber !== (originalBuyer?.booth_number || '')) {
+      body.booth_number = boothNumber || null;
+    }
 
     if (Object.keys(body).length === 0) {
       onOpenChange(false);
@@ -81,7 +196,6 @@ export function ConsultationEditDialog({
         return;
       }
 
-      // 로컬 상태 업데이트를 위해 변경 내용 전달
       const updated: Partial<ConsultationData> & { id: string } = { id: consultation.id };
       if ('buyer_id' in body) updated.buyer_id = body.buyer_id as string;
       if ('seller_id' in body) {
@@ -105,7 +219,7 @@ export function ConsultationEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="text-lg">상담 상세 수정</DialogTitle>
         </DialogHeader>
@@ -122,75 +236,80 @@ export function ConsultationEditDialog({
             </div>
           </div>
 
-          {/* 바이어 */}
-          <div>
-            <Label className="text-xs text-muted-foreground">바이어</Label>
-            <Select value={buyerId || null} onValueChange={(v) => setBuyerId(v ?? '')}>
-              <SelectTrigger className="mt-1 h-9 text-sm">
-                <SelectValue placeholder="바이어 선택">
-                  {!buyerId ? '바이어 미지정' : buyers.find(b => b.id === buyerId)?.company_name || '바이어 선택'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {buyers.map(b => (
-                  <SelectItem key={b.id} value={b.id} className="text-sm">
-                    {b.company_name} ({b.country}) {b.booth_number ? `[${b.booth_number}]` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* 바이어 (검색) */}
+          <SearchableSelect
+            label="바이어"
+            items={buyers}
+            value={buyerId}
+            onChange={setBuyerId}
+            renderItem={(b) => (
+              <div className="flex items-center justify-between">
+                <span>{b.company_name}</span>
+                <span className="text-xs text-slate-400">{b.country} {b.booth_number ? `[${b.booth_number}]` : ''}</span>
+              </div>
+            )}
+            renderSelected={(b) => `${b.company_name} (${b.country})`}
+            searchFn={(b, q) =>
+              b.company_name.toLowerCase().includes(q) ||
+              b.country.toLowerCase().includes(q) ||
+              (b.booth_number || '').toLowerCase().includes(q)
+            }
+            placeholder="바이어 선택"
+          />
 
-          {/* 부스번호 */}
+          {/* 부스번호 (수정 가능) */}
           <div>
             <Label className="text-xs text-muted-foreground">부스번호</Label>
             <Input
-              value={currentBuyer?.booth_number || ''}
-              disabled
-              placeholder="바이어에 연동됨"
-              className="mt-1 h-9 text-sm bg-muted"
+              value={boothNumber}
+              onChange={(e) => setBoothNumber(e.target.value)}
+              placeholder="예: A01"
+              className="mt-1 h-9 text-sm"
             />
-            <p className="text-[10px] text-muted-foreground mt-1">부스번호는 바이어에 연동됩니다</p>
           </div>
 
-          {/* 셀러 */}
-          <div>
-            <Label className="text-xs text-muted-foreground">셀러</Label>
-            <Select value={sellerId || null} onValueChange={(v) => setSellerId(v ?? '')}>
-              <SelectTrigger className="mt-1 h-9 text-sm">
-                <SelectValue placeholder="셀러 선택">
-                  {!sellerId ? '셀러 미지정' : sellers.find(s => s.id === sellerId)?.company_name || '셀러 선택'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {sellers.map(s => (
-                  <SelectItem key={s.id} value={s.id} className="text-sm">
-                    {s.company_name_kr || s.company_name} - {s.contact_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* 셀러 (검색) */}
+          <SearchableSelect
+            label="셀러"
+            items={sellers}
+            value={sellerId}
+            onChange={setSellerId}
+            renderItem={(s) => (
+              <div>
+                <span className="font-medium">{s.company_name_kr || s.company_name}</span>
+                {s.contact_name && <span className="text-xs text-slate-400 ml-2">{s.contact_name}</span>}
+              </div>
+            )}
+            renderSelected={(s) => s.company_name_kr || s.company_name}
+            searchFn={(s, q) =>
+              s.company_name.toLowerCase().includes(q) ||
+              (s.company_name_kr || '').toLowerCase().includes(q) ||
+              (s.contact_name || '').toLowerCase().includes(q)
+            }
+            placeholder="셀러 선택"
+          />
 
-          {/* 통역사 */}
-          <div>
-            <Label className="text-xs text-muted-foreground">통역사</Label>
-            <Select value={interpreterId || '_none'} onValueChange={(v) => setInterpreterId(!v || v === '_none' ? '' : v)}>
-              <SelectTrigger className="mt-1 h-9 text-sm">
-                <SelectValue placeholder="통역사 선택" >
-                  {!interpreterId || interpreterId === '_none' ? '통역사 미배정' : interpreters.find(i => i.id === interpreterId)?.name || '통역사 선택'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none" className="text-sm text-muted-foreground">미배정</SelectItem>
-                {interpreters.map(i => (
-                  <SelectItem key={i.id} value={i.id} className="text-sm">
-                    {i.name} ({i.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* 통역사 (검색) */}
+          <SearchableSelect
+            label="통역사"
+            items={interpreters}
+            value={interpreterId}
+            onChange={setInterpreterId}
+            renderItem={(i) => (
+              <div className="flex items-center justify-between">
+                <span>{i.name}</span>
+                <span className="text-xs text-slate-400">{i.email}</span>
+              </div>
+            )}
+            renderSelected={(i) => i.name}
+            searchFn={(i, q) =>
+              i.name.toLowerCase().includes(q) ||
+              i.email.toLowerCase().includes(q)
+            }
+            placeholder="통역사 선택"
+            allowNone
+            noneLabel="미배정"
+          />
 
           {/* 비고 */}
           <div>

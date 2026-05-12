@@ -108,6 +108,7 @@ export default function ConsultationReportPage() {
     const status = currentReport?.report_status;
     if (status === 'submitted' || status === 'under_review' || status === 'approved') return;
 
+
     setAutoSaveStatus('saving');
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -300,8 +301,8 @@ export default function ConsultationReportPage() {
   }
 
   const reportStatus: ReportStatus = report?.report_status ?? (report?.submitted ? 'submitted' : 'draft');
-  // 편집 가능: draft 또는 revision_requested
-  const isEditable = !report || reportStatus === 'draft' || reportStatus === 'revision_requested';
+  // 편집 가능: draft, revision_requested, rejected
+  const isEditable = !report || reportStatus === 'draft' || reportStatus === 'revision_requested' || reportStatus === 'rejected';
   // 읽기 전용: submitted, under_review, approved
   const isReadOnly = !isEditable;
 
@@ -327,7 +328,7 @@ export default function ConsultationReportPage() {
       </Link>
 
       {/* 수정요청 알림 */}
-      {reportStatus === 'revision_requested' && report?.admin_comment && (
+      {(reportStatus === 'revision_requested' || reportStatus === 'rejected') && report?.admin_comment && (
         <Card className="border-0 shadow-sm mb-4 bg-red-50/50 border-red-100">
           <CardContent className="p-4">
             <div className="flex items-start gap-2">

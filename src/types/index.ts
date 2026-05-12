@@ -16,6 +16,9 @@ export interface Profile {
   role: UserRole;
   phone?: string;
   language?: string;
+  company_name?: string;
+  country?: string;
+  extra_info?: Record<string, unknown>;
   linked_buyer_id?: string;
   linked_seller_id?: string;
   must_change_password?: boolean;

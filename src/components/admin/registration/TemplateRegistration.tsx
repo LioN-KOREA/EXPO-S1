@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ExcelUploader } from '@/components/admin/ExcelUploader';
+import { TemplateDownloadButton } from '@/components/admin/TemplateDownloadButton';
 import { CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TemplateField } from '@/types';
@@ -45,7 +46,12 @@ export function TemplateRegistration({ eventId }: { eventId: string }) {
   return (
     <div className="space-y-6">
       <Card className="border-0 shadow-sm">
-        <CardHeader><CardTitle className="text-lg">상담일지 양식 업로드</CardTitle></CardHeader>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">상담일지 양식 업로드</CardTitle>
+            <TemplateDownloadButton type="report-template" />
+          </div>
+        </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-500 mb-4">엑셀 양식에서 필드명과 타입을 추출합니다. 기존 양식이 있으면 덮어쓰기됩니다.</p>
           <ExcelUploader onUpload={handleUpload} loading={loading} description="상담일지 양식 엑셀 업로드" />

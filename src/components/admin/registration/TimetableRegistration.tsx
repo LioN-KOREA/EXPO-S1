@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ExcelUploader } from '@/components/admin/ExcelUploader';
+import { TemplateDownloadButton } from '@/components/admin/TemplateDownloadButton';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -89,7 +90,10 @@ export function TimetableRegistration({ eventId }: { eventId: string }) {
       <Card className="border-0 shadow-sm">
         <CardHeader><CardTitle className="text-lg">상담 스케줄 엑셀 업로드</CardTitle></CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-500 mb-4">엑셀 업로드 시 바이어/셀러 계정이 자동 생성됩니다. 기존 데이터가 있으면 덮어쓰기됩니다.</p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-slate-500">엑셀 업로드 시 바이어/셀러 계정이 자동 생성됩니다. 기존 데이터가 있으면 덮어쓰기됩니다.</p>
+            <TemplateDownloadButton type="timetable" />
+          </div>
           <ExcelUploader onUpload={handleUpload} loading={loading} description="상담테이블 엑셀 파일 업로드" />
         </CardContent>
       </Card>

@@ -2,11 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
-
-function getLast4Digits(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  return digits.slice(-4) || '0000';
-}
+import { getLast4Digits } from '@/lib/utils/password';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -31,11 +27,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
 
   try {
-    // 교체 모드: 기존 배정 전부 해제
-    if (mode === 'replace') {
-      await admin.from('event_interpreters').delete().eq('event_id', eventId);
-    }
-
+    // 파싱을 먼저 수행 (교체 전에 검증)
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -51,6 +43,11 @@ export async function POST(request: NextRequest) {
     const langCol = headers.findIndex(h => h.includes('언어') || h.includes('lang') || h.includes('통역'));
 
     if (nameCol === -1 || emailCol === -1) throw new Error('이름과 이메일 열이 필요합니다');
+
+    // 교체 모드: 검증 완료 후 기존 배정 해제
+    if (mode === 'replace') {
+      await admin.from('event_interpreters').delete().eq('event_id', eventId);
+    }
 
     let created = 0;
     let assigned = 0;

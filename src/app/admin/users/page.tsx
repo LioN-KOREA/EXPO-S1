@@ -21,8 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Users, Shield, Languages, Building2, User, Trash2 } from 'lucide-react';
+import { Plus, Users, Shield, Languages, Building2, User, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { UserBulkUploadDialog } from '@/components/admin/UserBulkUploadDialog';
+import { UserEditDialog } from '@/components/admin/UserEditDialog';
+import { getCountryName } from '@/lib/constants/countries';
 import type { Profile, UserRole } from '@/types';
 
 const ROLE_CONFIG: Record<string, { label: string; color: string; icon: typeof Shield }> = {
@@ -49,6 +52,8 @@ export default function UsersPage() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [editUser, setEditUser] = useState<Profile | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -155,7 +160,9 @@ export default function UsersPage() {
           <h2 className="text-2xl font-bold text-foreground">사용자 관리</h2>
           <p className="text-slate-500 mt-1">전체 사용자 계정을 관리합니다</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <div className="flex gap-2">
+          <UserBulkUploadDialog onComplete={loadUsers} />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger
             render={<Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md" />}
           >
@@ -207,6 +214,7 @@ export default function UsersPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* 역할별 통계 카드 */}
@@ -312,11 +320,20 @@ export default function UsersPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {user.company_name && <span className="text-xs text-slate-500 hidden sm:block">{user.company_name}</span>}
+                      {user.country && <Badge className="text-[10px] bg-slate-100 text-slate-600 border-0">{getCountryName(user.country)}</Badge>}
                       {user.language && <Badge className="text-[10px] bg-sky-100 text-sky-700 border-0">{user.language}</Badge>}
                       {user.phone && <span className="text-xs text-slate-500 hidden sm:block">{user.phone}</span>}
                       <Badge className={`text-xs ${cfg.color} border-0`}>
                         {cfg.label}
                       </Badge>
+                      <button
+                        onClick={() => { setEditUser(user); setEditOpen(true); }}
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                        title="수정"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => handleDelete(user.id, user.name)}
                         className="p-1.5 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
@@ -332,6 +349,13 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      <UserEditDialog
+        user={editUser}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onUpdated={loadUsers}
+      />
     </div>
   );
 }

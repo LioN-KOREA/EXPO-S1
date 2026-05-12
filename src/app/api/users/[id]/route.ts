@@ -1,6 +1,85 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { isValidCountryCode } from '@/lib/constants/countries';
+import type { UserRole } from '@/types';
+
+const ALLOWED_ROLES: UserRole[] = ['admin', 'interpreter', 'buyer', 'seller'];
+const ALLOWED_FIELDS = ['name', 'email', 'role', 'phone', 'language', 'company_name', 'country'];
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: userId } = await params;
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
+
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
+
+  const admin = createAdminClient();
+  const body = await request.json();
+
+  // 허용된 필드만 추출
+  const updates: Record<string, unknown> = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in body) updates[key] = body[key];
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ error: '수정할 필드가 없습니다' }, { status: 400 });
+  }
+
+  // 역할 검증
+  if (updates.role && !ALLOWED_ROLES.includes(updates.role as UserRole)) {
+    return NextResponse.json({ error: '유효하지 않은 역할입니다' }, { status: 400 });
+  }
+
+  // 국가코드 검증
+  if (updates.country && typeof updates.country === 'string' && updates.country !== '' && !isValidCountryCode(updates.country)) {
+    return NextResponse.json({ error: '유효하지 않은 국가코드입니다' }, { status: 400 });
+  }
+
+  try {
+    // 이메일 변경 전 기존 이메일 보관 (롤백용)
+    let oldEmail: string | null = null;
+    if (updates.email) {
+      const { data: currentProfile } = await admin.from('profiles').select('email').eq('id', userId).single();
+      oldEmail = currentProfile?.email || null;
+
+      const { error: authErr } = await admin.auth.admin.updateUserById(userId, {
+        email: updates.email as string,
+      });
+      if (authErr) {
+        return NextResponse.json({ error: `이메일 변경 실패: ${authErr.message}` }, { status: 400 });
+      }
+    }
+
+    // Profile 업데이트
+    const { data: updated, error: profileErr } = await admin
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (profileErr) {
+      // Auth 이메일 롤백
+      if (oldEmail) {
+        await admin.auth.admin.updateUserById(userId, { email: oldEmail });
+      }
+      throw profileErr;
+    }
+
+    return NextResponse.json({ success: true, updated });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '수정 실패';
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
+}
 
 export async function DELETE(
   request: NextRequest,

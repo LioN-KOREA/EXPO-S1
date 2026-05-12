@@ -2,12 +2,13 @@
 
 import { useParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Upload, Users, UserPlus, FileText } from 'lucide-react';
+import { ArrowLeft, Upload, Users, UserPlus, FileText, UsersRound } from 'lucide-react';
 import Link from 'next/link';
 import { TimetableRegistration } from '@/components/admin/registration/TimetableRegistration';
 import { BuyerSellerRegistration } from '@/components/admin/registration/BuyerSellerRegistration';
 import { InterpreterRegistration } from '@/components/admin/registration/InterpreterRegistration';
 import { TemplateRegistration } from '@/components/admin/registration/TemplateRegistration';
+import { UserBulkRegistration } from '@/components/admin/registration/UserBulkRegistration';
 
 export default function RegistrationPage() {
   const params = useParams();
@@ -43,6 +44,10 @@ export default function RegistrationPage() {
             <FileText className="w-3.5 h-3.5" />
             상담일지 양식
           </TabsTrigger>
+          <TabsTrigger value="bulk-users" className="gap-1.5">
+            <UsersRound className="w-3.5 h-3.5" />
+            사용자 통합등록
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="timetable">
@@ -56,6 +61,9 @@ export default function RegistrationPage() {
         </TabsContent>
         <TabsContent value="template">
           <TemplateRegistration eventId={eventId} />
+        </TabsContent>
+        <TabsContent value="bulk-users">
+          <UserBulkRegistration />
         </TabsContent>
       </Tabs>
     </div>

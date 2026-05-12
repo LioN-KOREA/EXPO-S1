@@ -44,7 +44,7 @@ export default async function EventDashboardPage({
 
   // 상태별 집계
   const reportsMap = new Map(reports.map((r: Record<string, unknown>) => [r.consultation_id, r]));
-  const statusCounts: Record<string, number> = { approved: 0, submitted: 0, revision_requested: 0, draft: 0, not_started: 0 };
+  const statusCounts: Record<string, number> = { approved: 0, submitted: 0, revision_requested: 0, rejected: 0, draft: 0, not_started: 0 };
 
   (consultations ?? []).forEach(c => {
     const report = reportsMap.get(c.id);
@@ -53,14 +53,18 @@ export default async function EventDashboardPage({
     if (rs === 'approved') statusCounts.approved++;
     else if (rs === 'submitted' || rs === 'under_review') statusCounts.submitted++;
     else if (rs === 'revision_requested') statusCounts.revision_requested++;
+    else if (rs === 'rejected') statusCounts.rejected++;
     else statusCounts.draft++;
   });
 
-  // 금액 필드 자동 감지 (number 타입 필드에서 '금액', '액', 'amount', 'contract' 포함)
-  const amountKeywords = ['금액', '액', 'amount', 'contract', '계약', '추진'];
+  // 금액 필드 자동 감지
+  const amountKeywords = ['금액', '액', 'amount', 'contract', '계약', '추진', '상담'];
   const amountFields = fields.filter(f =>
     f.type === 'number' && amountKeywords.some(k => f.label.toLowerCase().includes(k))
   );
+
+  // 수출상담액 필드 (첫 번째 금액 필드를 메인으로)
+  const mainAmountField = amountFields[0];
 
   // 거래가능성 필드 감지
   const possibilityField = fields.find(f =>
@@ -68,47 +72,117 @@ export default async function EventDashboardPage({
   );
 
   // 금액 집계
-  const amountTotals: { label: string; total: number }[] = amountFields.map(f => {
+  const amountTotals: { label: string; total: number; key: string }[] = amountFields.map(f => {
     let total = 0;
     reports?.forEach(r => {
       const val = (r.data as Record<string, unknown>)?.[f.key];
       if (val && !isNaN(Number(val))) total += Number(val);
     });
-    return { label: f.label, total };
+    return { label: f.label, total, key: f.key };
   });
 
-  // 거래가능성 집계
+  // 총 수출상담액 (메인 금액)
+  const totalMainAmount = amountTotals[0]?.total ?? 0;
+
+  // 거래가능성 집계 + 평균 계산
   const possibilityCounts: Record<string, number> = {};
+  const possibilityScores: Record<string, number> = { '상': 100, '중': 50, '하': 0 };
+  let possibilitySum = 0;
+  let possibilityCount = 0;
+
   if (possibilityField) {
     reports?.forEach(r => {
       const val = String((r.data as Record<string, unknown>)?.[possibilityField.key] ?? '');
-      if (val) possibilityCounts[val] = (possibilityCounts[val] || 0) + 1;
+      if (val) {
+        possibilityCounts[val] = (possibilityCounts[val] || 0) + 1;
+        if (val in possibilityScores) {
+          possibilitySum += possibilityScores[val];
+          possibilityCount++;
+        }
+      }
     });
   }
+  const avgPossibility = possibilityCount > 0 ? Math.round(possibilitySum / possibilityCount) : 0;
 
-  // 바이어별 상담건수 순위
-  const buyerRanking: { name: string; country: string; count: number }[] = [];
-  const buyerCountMap = new Map<string, number>();
-  consultations?.forEach(c => {
-    buyerCountMap.set(c.buyer_id, (buyerCountMap.get(c.buyer_id) || 0) + 1);
-  });
-  buyerCountMap.forEach((count, buyerId) => {
-    const c = consultations?.find(x => x.buyer_id === buyerId);
-    buyerRanking.push({ name: c?.buyer?.company_name ?? '', country: c?.buyer?.country ?? '', count });
-  });
-  buyerRanking.sort((a, b) => b.count - a.count);
+  // ── 실적순위: 금액 기준 (바이어/셀러) ──
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function getAmountForConsultation(consultationId: string): number {
+    if (!mainAmountField) return 0;
+    const report = reportsMap.get(consultationId);
+    if (!report) return 0;
+    const val = (report.data as Record<string, unknown>)?.[mainAmountField.key];
+    return val && !isNaN(Number(val)) ? Number(val) : 0;
+  }
 
-  // 셀러별 상담건수 순위
-  const sellerRanking: { name: string; count: number }[] = [];
-  const sellerCountMap = new Map<string, number>();
+  // 바이어별 금액 순위
+  const buyerAmountMap = new Map<string, { name: string; country: string; amount: number; count: number }>();
   consultations?.forEach(c => {
-    sellerCountMap.set(c.seller_id, (sellerCountMap.get(c.seller_id) || 0) + 1);
+    const existing = buyerAmountMap.get(c.buyer_id);
+    const amt = getAmountForConsultation(c.id);
+    if (existing) {
+      existing.amount += amt;
+      existing.count++;
+    } else {
+      buyerAmountMap.set(c.buyer_id, {
+        name: c.buyer?.company_name ?? '',
+        country: c.buyer?.country ?? '',
+        amount: amt,
+        count: 1,
+      });
+    }
   });
-  sellerCountMap.forEach((count, sellerId) => {
-    const c = consultations?.find(x => x.seller_id === sellerId);
-    sellerRanking.push({ name: c?.seller?.company_name_kr || c?.seller?.company_name || '', count });
+  const buyerRanking = Array.from(buyerAmountMap.values()).sort((a, b) => b.amount - a.amount);
+
+  // 셀러별 금액 순위
+  const sellerAmountMap = new Map<string, { name: string; amount: number; count: number }>();
+  consultations?.forEach(c => {
+    const existing = sellerAmountMap.get(c.seller_id);
+    const amt = getAmountForConsultation(c.id);
+    if (existing) {
+      existing.amount += amt;
+      existing.count++;
+    } else {
+      sellerAmountMap.set(c.seller_id, {
+        name: c.seller?.company_name_kr || c.seller?.company_name || '',
+        amount: amt,
+        count: 1,
+      });
+    }
   });
-  sellerRanking.sort((a, b) => b.count - a.count);
+  const sellerRanking = Array.from(sellerAmountMap.values()).sort((a, b) => b.amount - a.amount);
+
+  // ── 성과지표: 국가별 ──
+  const countryStats = new Map<string, { country: string; count: number; amount: number; possibility: number; possibilityTotal: number }>();
+  consultations?.forEach(c => {
+    const country = c.buyer?.country ?? '기타';
+    const existing = countryStats.get(country);
+    const amt = getAmountForConsultation(c.id);
+
+    let possScore = 0;
+    if (possibilityField) {
+      const report = reportsMap.get(c.id);
+      const val = String((report?.data as Record<string, unknown>)?.[possibilityField.key] ?? '');
+      if (val in possibilityScores) possScore = possibilityScores[val];
+    }
+
+    if (existing) {
+      existing.count++;
+      existing.amount += amt;
+      if (possScore > 0) { existing.possibility += possScore; existing.possibilityTotal++; }
+    } else {
+      countryStats.set(country, {
+        country,
+        count: 1,
+        amount: amt,
+        possibility: possScore > 0 ? possScore : 0,
+        possibilityTotal: possScore > 0 ? 1 : 0,
+      });
+    }
+  });
+  const countryMetrics = Array.from(countryStats.values()).map(c => ({
+    ...c,
+    avgPossibility: c.possibilityTotal > 0 ? Math.round(c.possibility / c.possibilityTotal) : 0,
+  }));
 
   return (
     <div>
@@ -124,12 +198,16 @@ export default async function EventDashboardPage({
 
       <EventDashboardClient
         totalConsultations={consultations?.length ?? 0}
+        totalMainAmount={totalMainAmount}
+        mainAmountLabel={mainAmountField?.label ?? '수출상담액'}
         statusCounts={statusCounts}
         amountTotals={amountTotals}
         possibilityCounts={possibilityCounts}
         possibilityLabel={possibilityField?.label ?? '거래가능성'}
+        avgPossibility={avgPossibility}
         buyerRanking={buyerRanking.slice(0, 10)}
         sellerRanking={sellerRanking.slice(0, 10)}
+        countryMetrics={countryMetrics}
       />
     </div>
   );
