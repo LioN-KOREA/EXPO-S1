@@ -1,157 +1,133 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import ExcelJS from 'exceljs';
+import XLSX from 'xlsx-js-style';
+
+const HEADER_STYLE = {
+  fill: { fgColor: { rgb: '1E3A5F' } },
+  font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 },
+  alignment: { horizontal: 'center' as const, vertical: 'center' as const },
+  border: {
+    top: { style: 'thin' as const },
+    bottom: { style: 'thin' as const },
+    left: { style: 'thin' as const },
+    right: { style: 'thin' as const },
+  },
+};
+
+const NUMBER_STYLE = { numFmt: '#,##0' };
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
-  }
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+  if (profile?.role !== 'admin') return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
 
   const eventId = request.nextUrl.searchParams.get('event_id');
-  if (!eventId) {
-    return NextResponse.json({ error: 'event_id가 필요합니다' }, { status: 400 });
-  }
+  if (!eventId) return NextResponse.json({ error: 'event_id가 필요합니다' }, { status: 400 });
 
-  // 상담회 이름 조회
-  const { data: event } = await supabase
-    .from('events')
-    .select('name')
-    .eq('id', eventId)
-    .single();
+  const { data: event } = await supabase.from('events').select('name').eq('id', eventId).single();
 
-  // 양식 필드 조회
-  const { data: template } = await supabase
-    .from('report_templates')
-    .select('fields')
-    .eq('event_id', eventId)
-    .single();
-
+  const { data: template } = await supabase.from('report_templates').select('fields').eq('event_id', eventId).single();
   const fields = (template?.fields ?? []) as Array<{ key: string; label: string; type?: string }>;
 
-  // 상담 + 일지 데이터 조회
   const { data: consultations } = await supabase
     .from('consultations')
-    .select(`
-      *,
-      time_slot:time_slots(*),
-      buyer:buyers(*),
-      seller:sellers(*),
-      interpreter:profiles!consultations_interpreter_id_fkey(name)
-    `)
+    .select('*, time_slot:time_slots(*), buyer:buyers(*), seller:sellers(*), interpreter:profiles!consultations_interpreter_id_fkey(name)')
     .eq('event_id', eventId);
 
-  // 날짜+시간순 정렬
   consultations?.sort((a, b) => {
     const dateA = a.time_slot?.date || '';
     const dateB = b.time_slot?.date || '';
     if (dateA !== dateB) return dateA.localeCompare(dateB);
-    const timeA = a.time_slot?.start_time || '';
-    const timeB = b.time_slot?.start_time || '';
-    return timeA.localeCompare(timeB);
+    return (a.time_slot?.start_time || '').localeCompare(b.time_slot?.start_time || '');
   });
 
-  const consultationIds = consultations?.map((c) => c.id) ?? [];
+  const consultationIds = consultations?.map(c => c.id) ?? [];
   const reports: Record<string, unknown>[] = [];
   for (let i = 0; i < consultationIds.length; i += 100) {
     const batch = consultationIds.slice(i, i + 100);
     const { data } = await supabase.from('consultation_reports').select('*').in('consultation_id', batch);
     if (data) reports.push(...data);
   }
+  const reportsMap = new Map(reports.map(r => [r.consultation_id, r]));
 
-  const reportsMap = new Map(reports.map((r) => [r.consultation_id, r]));
-
-  // 엑셀 생성
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('상담일지');
-
-  // 헤더 구성: 기본 정보 + 동적 필드
   const baseHeaders = ['날짜', '시간', '바이어', '바이어국가', '셀러', '통역사', '제출여부'];
-  const dynamicHeaders = fields.map((f) => f.label);
+  const dynamicHeaders = fields.map(f => f.label);
   const allHeaders = [...baseHeaders, ...dynamicHeaders];
 
-  // 헤더 행 스타일
-  const headerRow = worksheet.addRow(allHeaders);
-  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-  headerRow.fill = {
-    type: 'pattern',
-    pattern: 'solid',
-    fgColor: { argb: 'FF1E3A5F' },
-  };
-  headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+  const rows: unknown[][] = [allHeaders];
 
-  // 데이터 행
-  consultations?.forEach((c) => {
+  consultations?.forEach(c => {
     const report = reportsMap.get(c.id);
     const reportData = (report?.data ?? {}) as Record<string, unknown>;
 
-    const baseValues = [
+    const status = report ? (() => {
+      const rs = (report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as string;
+      if (rs === 'approved') return '승인';
+      if (rs === 'submitted' || rs === 'under_review') return '검토중';
+      if (rs === 'revision_requested') return '수정요청';
+      if (rs === 'rejected') return '반려';
+      if (rs === 'draft') return '작성중';
+      return '미제출';
+    })() : '미제출';
+
+    const row = [
       c.time_slot?.date ?? '',
       `${c.time_slot?.start_time}-${c.time_slot?.end_time}`,
       c.buyer?.company_name ?? '',
       c.buyer?.country ?? '',
       c.seller?.company_name_kr || c.seller?.company_name || '',
       c.interpreter?.name ?? '',
-      report ? (() => {
-        const rs = (report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as string;
-        if (rs === 'approved') return '승인';
-        if (rs === 'submitted' || rs === 'under_review') return '검토중';
-        if (rs === 'revision_requested') return '수정요청';
-        if (rs === 'rejected') return '반려';
-        if (rs === 'draft') return '작성중';
-        return '미제출';
-      })() : '미제출',
+      status,
+      ...fields.map(f => {
+        const raw = reportData[f.key];
+        if (raw === null || raw === undefined || raw === '') return '';
+        if (f.type === 'number') {
+          const cleaned = String(raw).replace(/,/g, '').trim();
+          if (cleaned && !isNaN(Number(cleaned))) return Number(cleaned);
+          return '';
+        }
+        return String(raw);
+      }),
     ];
+    rows.push(row);
+  });
 
-    const dynamicValues = fields.map((f) => {
-      const raw = reportData[f.key];
-      if (raw === null || raw === undefined || raw === '') return '';
-      // 숫자 타입 필드는 실제 숫자로 저장 (콤마 제거 후 변환)
-      if (f.type === 'number') {
-        const cleaned = String(raw).replace(/,/g, '').trim();
-        if (cleaned && !isNaN(Number(cleaned))) return Number(cleaned);
-        return '';
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // 헤더 스타일
+  allHeaders.forEach((_, i) => {
+    const cell = ws[XLSX.utils.encode_cell({ r: 0, c: i })];
+    if (cell) cell.s = HEADER_STYLE;
+  });
+
+  // 숫자 컬럼 포맷
+  fields.forEach((f, i) => {
+    if (f.type === 'number') {
+      const colIdx = baseHeaders.length + i;
+      for (let r = 1; r < rows.length; r++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c: colIdx })];
+        if (cell && typeof cell.v === 'number') cell.s = NUMBER_STYLE;
       }
-      return String(raw);
-    });
-
-    worksheet.addRow([...baseValues, ...dynamicValues]);
+    }
   });
 
-  // 숫자 컬럼에 콤마 포맷 적용
-  const numberColIndices = fields
-    .map((f, i) => f.type === 'number' ? baseHeaders.length + i : -1)
-    .filter(i => i >= 0);
-
-  numberColIndices.forEach(colIdx => {
-    const col = worksheet.getColumn(colIdx + 1); // 1-based
-    col.numFmt = '#,##0';
-  });
-
-  // 열 너비 자동 조절
-  worksheet.columns.forEach((col) => {
-    let maxLen = 10;
-    col.eachCell?.((cell) => {
-      const len = String(cell.value ?? '').length;
+  // 열 너비
+  ws['!cols'] = allHeaders.map((h, i) => {
+    let maxLen = h.length;
+    rows.forEach(row => {
+      const len = String(row[i] ?? '').length;
       if (len > maxLen) maxLen = Math.min(len, 50);
     });
-    col.width = maxLen + 2;
+    return { wch: maxLen + 2 };
   });
 
-  // Buffer 생성
-  const buffer = await workbook.xlsx.writeBuffer();
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '상담일지');
+  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
   return new NextResponse(buffer, {
     headers: {

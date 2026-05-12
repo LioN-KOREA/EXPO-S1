@@ -1,8 +1,26 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
-import ExcelJS from 'exceljs';
+import XLSX from 'xlsx-js-style';
 import { batchIn } from '@/lib/supabase/batch-query';
 import type { TemplateField, ReportStatus } from '@/types';
+
+const HEADER_STYLE = {
+  fill: { fgColor: { rgb: '1E3A5F' } },
+  font: { color: { rgb: 'FFFFFF' }, bold: true, sz: 10 },
+  alignment: { horizontal: 'center' as const, vertical: 'center' as const },
+};
+const NUM_STYLE = { numFmt: '#,##0' };
+
+function applyHeaderStyle(ws: XLSX.WorkSheet, row: number, colCount: number) {
+  for (let c = 0; c < colCount; c++) {
+    const cell = ws[XLSX.utils.encode_cell({ r: row, c })];
+    if (cell) cell.s = HEADER_STYLE;
+  }
+}
+
+function setColWidths(ws: XLSX.WorkSheet, widths: number[]) {
+  ws['!cols'] = widths.map(w => ({ wch: w }));
+}
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -32,21 +50,22 @@ export async function GET(request: NextRequest) {
   const { data: template } = await supabase.from('report_templates').select('fields').eq('event_id', eventId).single();
   const fields: TemplateField[] = (template?.fields as TemplateField[]) ?? [];
 
-  // 금액 필드
   const amountKeywords = ['금액', '액', 'amount', 'contract', '계약', '추진', '상담'];
   const amountFields = fields.filter(f => f.type === 'number' && amountKeywords.some(k => f.label.toLowerCase().includes(k)));
   const possibilityField = fields.find(f => f.label.includes('거래가능성') || f.label.includes('가능성'));
+  const possibilityScores: Record<string, number> = { '상': 100, '중': 50, '하': 0 };
 
-  function applyHeaderStyle(row: ExcelJS.Row) {
-    row.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
-    row.alignment = { horizontal: 'center', vertical: 'middle' };
+  function getAmount(consultationId: string, field: TemplateField): number {
+    const report = reportsMap.get(consultationId);
+    if (!report) return 0;
+    const val = (report.data as Record<string, unknown>)?.[field.key];
+    const cleaned = String(val ?? '').replace(/,/g, '').trim();
+    return cleaned && !isNaN(Number(cleaned)) ? Number(cleaned) : 0;
   }
 
-  const workbook = new ExcelJS.Workbook();
+  const wb = XLSX.utils.book_new();
 
   // ── 시트 1: 요약 통계 ──
-  const summarySheet = workbook.addWorksheet('요약 통계');
   const statusCounts: Record<string, number> = { approved: 0, submitted: 0, revision_requested: 0, rejected: 0, draft: 0, not_started: 0 };
   (consultations ?? []).forEach(c => {
     const report = reportsMap.get(c.id);
@@ -59,96 +78,78 @@ export async function GET(request: NextRequest) {
     else statusCounts.draft++;
   });
 
-  summarySheet.addRow(['항목', '값']);
-  applyHeaderStyle(summarySheet.getRow(1));
-  summarySheet.addRow(['총 상담건수', consultations?.length ?? 0]);
+  const summaryRows: unknown[][] = [['항목', '값'], ['총 상담건수', consultations?.length ?? 0]];
   amountFields.forEach(f => {
     let total = 0;
-    reports.forEach(r => {
-      const val = (r.data as Record<string, unknown>)?.[f.key];
-      const cleaned = String(val ?? '').replace(/,/g, '').trim();
-      if (cleaned && !isNaN(Number(cleaned))) total += Number(cleaned);
-    });
-    summarySheet.addRow([f.label, total]);
+    reports.forEach(r => { total += getAmount(r.consultation_id as string, f); });
+    summaryRows.push([f.label, total]);
   });
-  summarySheet.addRow(['승인', statusCounts.approved]);
-  summarySheet.addRow(['검토중', statusCounts.submitted]);
-  summarySheet.addRow(['수정요청', statusCounts.revision_requested]);
-  summarySheet.addRow(['반려', statusCounts.rejected]);
-  summarySheet.addRow(['작성중', statusCounts.draft]);
-  summarySheet.addRow(['미작성', statusCounts.not_started]);
-  summarySheet.getColumn(1).width = 20;
-  summarySheet.getColumn(2).width = 20;
-  summarySheet.getColumn(2).numFmt = '#,##0';
+  summaryRows.push(['승인', statusCounts.approved], ['검토중', statusCounts.submitted], ['수정요청', statusCounts.revision_requested], ['반려', statusCounts.rejected], ['작성중', statusCounts.draft], ['미작성', statusCounts.not_started]);
+
+  const ws1 = XLSX.utils.aoa_to_sheet(summaryRows);
+  applyHeaderStyle(ws1, 0, 2);
+  for (let r = 1; r < summaryRows.length; r++) {
+    const cell = ws1[XLSX.utils.encode_cell({ r, c: 1 })];
+    if (cell && typeof cell.v === 'number') cell.s = NUM_STYLE;
+  }
+  setColWidths(ws1, [20, 20]);
+  XLSX.utils.book_append_sheet(wb, ws1, '요약 통계');
 
   // ── 시트 2: 바이어별 실적 ──
-  const buyerSheet = workbook.addWorksheet('바이어별 실적');
   const buyerHeaders = ['바이어', '국가', '상담건수', ...amountFields.map(f => f.label)];
-  applyHeaderStyle(buyerSheet.addRow(buyerHeaders));
-
   const buyerMap = new Map<string, { name: string; country: string; count: number; amounts: number[] }>();
   consultations?.forEach(c => {
     const existing = buyerMap.get(c.buyer_id);
-    const amts = amountFields.map(f => {
-      const report = reportsMap.get(c.id);
-      const val = (report?.data as Record<string, unknown>)?.[f.key];
-      const cleaned = String(val ?? '').replace(/,/g, '').trim();
-      return cleaned && !isNaN(Number(cleaned)) ? Number(cleaned) : 0;
-    });
-    if (existing) {
-      existing.count++;
-      amts.forEach((a, i) => existing.amounts[i] += a);
-    } else {
-      buyerMap.set(c.buyer_id, { name: c.buyer?.company_name ?? '', country: c.buyer?.country ?? '', count: 1, amounts: [...amts] });
-    }
+    const amts = amountFields.map(f => getAmount(c.id, f));
+    if (existing) { existing.count++; amts.forEach((a, i) => existing.amounts[i] += a); }
+    else buyerMap.set(c.buyer_id, { name: c.buyer?.company_name ?? '', country: c.buyer?.country ?? '', count: 1, amounts: [...amts] });
   });
+  const buyerRows: unknown[][] = [buyerHeaders];
   Array.from(buyerMap.values()).sort((a, b) => (b.amounts[0] || 0) - (a.amounts[0] || 0)).forEach(b => {
-    buyerSheet.addRow([b.name, b.country, b.count, ...b.amounts]);
+    buyerRows.push([b.name, b.country, b.count, ...b.amounts]);
   });
-  buyerSheet.columns.forEach((col, i) => { col.width = i < 2 ? 25 : 18; if (i >= 2) col.numFmt = '#,##0'; });
+  const ws2 = XLSX.utils.aoa_to_sheet(buyerRows);
+  applyHeaderStyle(ws2, 0, buyerHeaders.length);
+  for (let r = 1; r < buyerRows.length; r++) {
+    for (let c = 2; c < buyerHeaders.length; c++) {
+      const cell = ws2[XLSX.utils.encode_cell({ r, c })];
+      if (cell && typeof cell.v === 'number') cell.s = NUM_STYLE;
+    }
+  }
+  setColWidths(ws2, buyerHeaders.map((_, i) => i < 2 ? 25 : 18));
+  XLSX.utils.book_append_sheet(wb, ws2, '바이어별 실적');
 
   // ── 시트 3: 셀러별 실적 ──
-  const sellerSheet = workbook.addWorksheet('셀러별 실적');
   const sellerHeaders = ['셀러', '상담건수', ...amountFields.map(f => f.label)];
-  applyHeaderStyle(sellerSheet.addRow(sellerHeaders));
-
   const sellerMap = new Map<string, { name: string; count: number; amounts: number[] }>();
   consultations?.forEach(c => {
     const existing = sellerMap.get(c.seller_id);
-    const amts = amountFields.map(f => {
-      const report = reportsMap.get(c.id);
-      const val = (report?.data as Record<string, unknown>)?.[f.key];
-      const cleaned = String(val ?? '').replace(/,/g, '').trim();
-      return cleaned && !isNaN(Number(cleaned)) ? Number(cleaned) : 0;
-    });
-    if (existing) {
-      existing.count++;
-      amts.forEach((a, i) => existing.amounts[i] += a);
-    } else {
-      sellerMap.set(c.seller_id, { name: c.seller?.company_name_kr || c.seller?.company_name || '', count: 1, amounts: [...amts] });
-    }
+    const amts = amountFields.map(f => getAmount(c.id, f));
+    if (existing) { existing.count++; amts.forEach((a, i) => existing.amounts[i] += a); }
+    else sellerMap.set(c.seller_id, { name: c.seller?.company_name_kr || c.seller?.company_name || '', count: 1, amounts: [...amts] });
   });
+  const sellerRows: unknown[][] = [sellerHeaders];
   Array.from(sellerMap.values()).sort((a, b) => (b.amounts[0] || 0) - (a.amounts[0] || 0)).forEach(s => {
-    sellerSheet.addRow([s.name, s.count, ...s.amounts]);
+    sellerRows.push([s.name, s.count, ...s.amounts]);
   });
-  sellerSheet.columns.forEach((col, i) => { col.width = i < 1 ? 25 : 18; if (i >= 1) col.numFmt = '#,##0'; });
+  const ws3 = XLSX.utils.aoa_to_sheet(sellerRows);
+  applyHeaderStyle(ws3, 0, sellerHeaders.length);
+  for (let r = 1; r < sellerRows.length; r++) {
+    for (let c = 1; c < sellerHeaders.length; c++) {
+      const cell = ws3[XLSX.utils.encode_cell({ r, c })];
+      if (cell && typeof cell.v === 'number') cell.s = NUM_STYLE;
+    }
+  }
+  setColWidths(ws3, sellerHeaders.map((_, i) => i < 1 ? 25 : 18));
+  XLSX.utils.book_append_sheet(wb, ws3, '셀러별 실적');
 
   // ── 시트 4: 국가별 성과 ──
-  const countrySheet = workbook.addWorksheet('국가별 성과');
   const countryHeaders = ['국가', '상담건수', ...amountFields.map(f => f.label), '평균 거래가능성(%)'];
-  applyHeaderStyle(countrySheet.addRow(countryHeaders));
-
-  const possibilityScores: Record<string, number> = { '상': 100, '중': 50, '하': 0 };
   const countryMap = new Map<string, { country: string; count: number; amounts: number[]; possSum: number; possCount: number }>();
   consultations?.forEach(c => {
     const country = c.buyer?.country ?? '기타';
     const existing = countryMap.get(country);
-    const amts = amountFields.map(f => {
-      const report = reportsMap.get(c.id);
-      const val = (report?.data as Record<string, unknown>)?.[f.key];
-      const cleaned = String(val ?? '').replace(/,/g, '').trim();
-      return cleaned && !isNaN(Number(cleaned)) ? Number(cleaned) : 0;
-    });
+    const amts = amountFields.map(f => getAmount(c.id, f));
     let possScore = 0; let hasPoss = false;
     if (possibilityField) {
       const report = reportsMap.get(c.id);
@@ -156,20 +157,29 @@ export async function GET(request: NextRequest) {
       if (val in possibilityScores) { possScore = possibilityScores[val]; hasPoss = true; }
     }
     if (existing) {
-      existing.count++;
-      amts.forEach((a, i) => existing.amounts[i] += a);
+      existing.count++; amts.forEach((a, i) => existing.amounts[i] += a);
       if (hasPoss) { existing.possSum += possScore; existing.possCount++; }
     } else {
       countryMap.set(country, { country, count: 1, amounts: [...amts], possSum: hasPoss ? possScore : 0, possCount: hasPoss ? 1 : 0 });
     }
   });
+  const countryRows: unknown[][] = [countryHeaders];
   Array.from(countryMap.values()).sort((a, b) => b.count - a.count).forEach(c => {
     const avg = c.possCount > 0 ? Math.round(c.possSum / c.possCount) : '';
-    countrySheet.addRow([c.country, c.count, ...c.amounts, avg]);
+    countryRows.push([c.country, c.count, ...c.amounts, avg]);
   });
-  countrySheet.columns.forEach((col, i) => { col.width = i < 1 ? 20 : 18; if (i >= 1) col.numFmt = '#,##0'; });
+  const ws4 = XLSX.utils.aoa_to_sheet(countryRows);
+  applyHeaderStyle(ws4, 0, countryHeaders.length);
+  for (let r = 1; r < countryRows.length; r++) {
+    for (let c = 1; c < countryHeaders.length; c++) {
+      const cell = ws4[XLSX.utils.encode_cell({ r, c })];
+      if (cell && typeof cell.v === 'number') cell.s = NUM_STYLE;
+    }
+  }
+  setColWidths(ws4, countryHeaders.map((_, i) => i < 1 ? 20 : 18));
+  XLSX.utils.book_append_sheet(wb, ws4, '국가별 성과');
 
-  const buffer = await workbook.xlsx.writeBuffer();
+  const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
   const filename = `대시보드_${event?.name || eventId}.xlsx`;
 
   return new NextResponse(buffer, {
