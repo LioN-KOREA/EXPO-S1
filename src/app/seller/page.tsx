@@ -179,13 +179,10 @@ export default async function SellerDashboard() {
                           </div>
                           <div className="ml-3 shrink-0">
                             {hasReport ? (
-                              <Link href={`/seller/report/${c.id}`}>
-                                <div className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors">
-                                  <FileText className="w-3.5 h-3.5" />
-                                  일지 보기
-                                  <ChevronRight className="w-3 h-3" />
-                                </div>
-                              </Link>
+                              <Badge className="text-xs bg-emerald-100 text-emerald-700 border-0">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                완료
+                              </Badge>
                             ) : (
                               <Badge variant="secondary" className="text-xs">
                                 {report ? '작성중' : '대기'}

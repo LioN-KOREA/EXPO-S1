@@ -6,23 +6,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { TemplateField } from '@/types';
 
-export default async function SellerReportViewPage({
-  params,
-}: {
-  params: Promise<{ consultationId: string }>;
-}) {
-  const { consultationId } = await params;
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // 셀러 본인 확인
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('linked_seller_id, name')
-    .eq('id', user!.id)
-    .single();
-
-  if (!profile?.linked_seller_id) redirect('/seller');
+export default async function SellerReportViewPage() {
+  // 셀러는 상담일지를 볼 수 없음
+  redirect('/seller');
 
   // 상담 정보 조회 (본인 상담인지 확인)
   const { data: consultation } = await supabase
