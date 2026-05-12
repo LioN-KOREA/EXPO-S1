@@ -362,12 +362,22 @@ export default function TimetablePage() {
         className={`text-xs space-y-0.5 ${!assignMode ? 'cursor-pointer hover:bg-blue-50/50 rounded p-1 -m-1 transition-colors' : ''}`}
         onClick={() => !assignMode && handleCellClick(cons)}
       >
-        {viewMode === 'buyer' || viewMode === 'booth' ? (
+        {viewMode === 'buyer' ? (
           <>
             <div className="font-medium text-foreground/80 truncate max-w-[140px]">
               {cons.seller?.company_name_kr || cons.seller?.company_name}
             </div>
             <div className="text-slate-500 truncate max-w-[140px]">{cons.seller?.contact_name}</div>
+          </>
+        ) : viewMode === 'booth' ? (
+          <>
+            <div className="font-medium text-blue-600 truncate max-w-[140px]" title={buyerInfo?.company_name}>
+              {buyerInfo?.company_name}
+            </div>
+            <div className="border-t border-dashed border-slate-200 my-0.5" />
+            <div className="text-foreground/80 truncate max-w-[140px]">
+              {cons.seller?.company_name_kr || cons.seller?.company_name}
+            </div>
           </>
         ) : viewMode === 'interpreter' ? (
           <>
@@ -617,7 +627,7 @@ export default function TimetablePage() {
                             <div className="text-[10px] text-violet-300">(바이어별 일괄)</div>
                           </th>
                         )}
-                        {(viewMode === 'buyer' || viewMode === 'booth') && (
+                        {viewMode === 'buyer' && (
                           <th className="px-2 py-3 text-center font-medium w-14">부스</th>
                         )}
                         {timeSlots.map(slot => (
@@ -662,13 +672,7 @@ export default function TimetablePage() {
                         return (
                           <tr key={buyer.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
                             <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
-                              <div className="max-w-[180px]" title={buyer.company_name}>
-                                <div className="text-sm text-foreground leading-tight">{buyer.company_name}</div>
-                                <div className="text-[10px] text-slate-500">{buyer.country} {buyer.booth_number ? `[${buyer.booth_number}]` : ''}</div>
-                              </div>
-                            </td>
-                            <td className="px-2 py-2 text-center">
-                              <Badge variant="secondary" className="text-xs">{buyer.booth_number || '-'}</Badge>
+                              <div className="text-sm font-semibold text-foreground">{buyer.booth_number || '미지정'}</div>
                             </td>
                             {timeSlots.map(slot => (
                               <td key={slot.id} className="px-2 py-1.5 border-l">
