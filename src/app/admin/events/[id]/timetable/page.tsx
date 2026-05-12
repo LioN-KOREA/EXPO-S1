@@ -153,6 +153,7 @@ export default function TimetablePage() {
   const [sellers, setSellers] = useState<SellerData[]>([]);
   const [consultations, setConsultations] = useState<ConsultationData[]>([]);
   const [interpreters, setInterpreters] = useState<Interpreter[]>([]);
+  const [selectedDate, setSelectedDate] = useState<string>('');
 
   const loadData = useCallback(async () => {
     setDataLoading(true);
@@ -302,6 +303,23 @@ export default function TimetablePage() {
     setConsultations(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
   }
 
+  // 날짜 목록 (고유값, 정렬)
+  const dates = useMemo(() => {
+    const set = new Set(timeSlots.map(s => s.date));
+    return Array.from(set).sort();
+  }, [timeSlots]);
+
+  // 첫 로드 시 첫 날짜 선택
+  useEffect(() => {
+    if (dates.length > 0 && !selectedDate) setSelectedDate(dates[0]);
+  }, [dates, selectedDate]);
+
+  // 선택된 날짜의 타임슬롯만
+  const filteredSlots = useMemo(() => {
+    if (!selectedDate) return timeSlots;
+    return timeSlots.filter(s => s.date === selectedDate);
+  }, [timeSlots, selectedDate]);
+
   // 부스 뷰: 부스번호로 정렬된 바이어 배열 (그룹 헤더 표시용)
   const boothSortedBuyers = useMemo(() => {
     const sorted = [...buyers].sort((a, b) => (a.booth_number || '').localeCompare(b.booth_number || ''));
@@ -324,7 +342,6 @@ export default function TimetablePage() {
         }
       });
       const rows = interpreters.map(i => ({ interpreter: i, cons: interpMap.get(i.id) || [] }));
-      if (unassigned.length > 0) rows.push({ interpreter: { id: '_none', name: '미배정', email: '' }, cons: unassigned });
       return rows;
     }
     return sellers;
@@ -590,7 +607,7 @@ export default function TimetablePage() {
       ) : hasData && (
         <>
           {/* 뷰 모드 탭 + 페이지네이션 */}
-          <div className="flex items-center justify-between mb-4 gap-4">
+          <div className="flex items-center justify-between mb-3 gap-4">
             <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v as ViewMode); setCurrentPage(1); }}>
               <TabsList>
                 <TabsTrigger value="buyer">바이어</TabsTrigger>
@@ -607,6 +624,25 @@ export default function TimetablePage() {
               onPageChange={setCurrentPage}
             />
           </div>
+
+          {/* 날짜 탭 */}
+          {dates.length >= 1 && (
+            <div className="flex gap-1 mb-4">
+              {dates.map(date => (
+                <button
+                  key={date}
+                  onClick={() => setSelectedDate(date)}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                    selectedDate === date
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-card text-muted-foreground hover:bg-muted border border-border'
+                  }`}
+                >
+                  {date}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* 모바일 스크롤 안내 */}
           <p className="text-xs text-slate-400 mb-2 lg:hidden">← 좌우로 스크롤하여 전체 타임테이블을 확인하세요 →</p>
@@ -630,7 +666,7 @@ export default function TimetablePage() {
                         {viewMode === 'buyer' && (
                           <th className="px-2 py-3 text-center font-medium w-14">부스</th>
                         )}
-                        {timeSlots.map(slot => (
+                        {filteredSlots.map(slot => (
                           <th key={slot.id} className="px-2 py-3 text-center font-medium min-w-[160px]">
                             <div>{slot.start_time}</div>
                             <div className="text-xs text-blue-200">~{slot.end_time}</div>
@@ -658,7 +694,7 @@ export default function TimetablePage() {
                             <td className="px-2 py-2 text-center">
                               {buyer.booth_number && <Badge variant="secondary" className="text-xs">{buyer.booth_number}</Badge>}
                             </td>
-                            {timeSlots.map(slot => (
+                            {filteredSlots.map(slot => (
                               <td key={slot.id} className="px-2 py-1.5 border-l">
                                 {renderCell(findConsultation(buyer.id, slot.id), slot)}
                               </td>
@@ -674,7 +710,7 @@ export default function TimetablePage() {
                             <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
                               <div className="text-sm font-semibold text-foreground">{buyer.booth_number || '미지정'}</div>
                             </td>
-                            {timeSlots.map(slot => (
+                            {filteredSlots.map(slot => (
                               <td key={slot.id} className="px-2 py-1.5 border-l">
                                 {renderCell(findConsultation(buyer.id, slot.id), slot)}
                               </td>
@@ -691,7 +727,7 @@ export default function TimetablePage() {
                               <div className="truncate max-w-[150px]">{row.interpreter.name}</div>
                               <div className="text-[10px] text-slate-500">{row.interpreter.email}</div>
                             </td>
-                            {timeSlots.map(slot => {
+                            {filteredSlots.map(slot => {
                               const cons = row.cons.find(c => c.time_slot_id === slot.id);
                               return (
                                 <td key={slot.id} className="px-2 py-1.5 border-l">
@@ -714,7 +750,7 @@ export default function TimetablePage() {
                               </div>
                               <div className="text-[10px] text-slate-500">{seller.contact_name}</div>
                             </td>
-                            {timeSlots.map(slot => {
+                            {filteredSlots.map(slot => {
                               const cons = sellerCons.find(c => c.time_slot_id === slot.id);
                               return (
                                 <td key={slot.id} className="px-2 py-1.5 border-l">
