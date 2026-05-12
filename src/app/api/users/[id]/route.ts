@@ -32,7 +32,7 @@ export async function PATCH(
   // 비밀번호 리셋 처리
   if ('password' in body && body.password) {
     if (typeof body.password !== 'string' || body.password.length < 4) {
-      return NextResponse.json({ error: '비밀번호는 최소 4자 이상이어야 합니다' }, { status: 400 });
+      return NextResponse.json({ error: '비밀번호는 최소 4자 이상이어야 합니다 (전화번호 뒤 4자리 초기화 제외 시 6자 이상 권장)' }, { status: 400 });
     }
     const { error: pwErr } = await admin.auth.admin.updateUserById(userId, {
       password: body.password,

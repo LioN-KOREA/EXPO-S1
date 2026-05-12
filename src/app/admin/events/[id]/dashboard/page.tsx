@@ -77,7 +77,8 @@ export default async function EventDashboardPage({
     let total = 0;
     reports?.forEach(r => {
       const val = (r.data as Record<string, unknown>)?.[f.key];
-      if (val && !isNaN(Number(val))) total += Number(val);
+      const cleaned = String(val ?? '').replace(/,/g, '').trim();
+      if (cleaned && !isNaN(Number(cleaned))) total += Number(cleaned);
     });
     return { label: f.label, total, key: f.key };
   });
@@ -112,7 +113,8 @@ export default async function EventDashboardPage({
     const report = reportsMap.get(consultationId);
     if (!report) return 0;
     const val = (report.data as Record<string, unknown>)?.[mainAmountField.key];
-    return val && !isNaN(Number(val)) ? Number(val) : 0;
+    const cleaned = String(val ?? '').replace(/,/g, '').trim();
+    return cleaned && !isNaN(Number(cleaned)) ? Number(cleaned) : 0;
   }
 
   // 바이어별 금액 순위

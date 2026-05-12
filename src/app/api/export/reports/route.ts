@@ -104,7 +104,15 @@ export async function GET(request: NextRequest) {
       c.buyer?.country ?? '',
       c.seller?.company_name_kr || c.seller?.company_name || '',
       c.interpreter?.name ?? '',
-      report?.submitted ? '제출완료' : '미제출',
+      report ? (() => {
+        const rs = (report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as string;
+        if (rs === 'approved') return '승인';
+        if (rs === 'submitted' || rs === 'under_review') return '검토중';
+        if (rs === 'revision_requested') return '수정요청';
+        if (rs === 'rejected') return '반려';
+        if (rs === 'draft') return '작성중';
+        return '미제출';
+      })() : '미제출',
     ];
 
     const dynamicValues = fields.map((f) => {
