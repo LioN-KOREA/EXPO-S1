@@ -70,9 +70,9 @@ export function EventDashboardClient({
 
       {/* ── 1. 총 수출상담액 (히어로) ── */}
       <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-600 to-indigo-600">
-        <CardContent className="p-6">
-          <p className="text-sm text-blue-100 font-medium">총 {mainAmountLabel}</p>
-          <p className="text-4xl font-bold text-white mt-2 tracking-tight">
+        <CardContent className="p-4 sm:p-6">
+          <p className="text-xs sm:text-sm text-blue-100 font-medium">총 {mainAmountLabel}</p>
+          <p className="text-2xl sm:text-4xl font-bold text-white mt-1 sm:mt-2 tracking-tight break-all">
             ${totalMainAmount.toLocaleString()}
           </p>
         </CardContent>
@@ -302,13 +302,13 @@ export function EventDashboardClient({
 function StatCard({ icon, iconBg, label, value }: { icon: React.ReactNode; iconBg: string; label: string; value: string }) {
   return (
     <Card className="border-0 shadow-sm">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-            <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
+      <CardContent className="p-3 sm:p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1 truncate">{label}</p>
+            <p className="text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">{value}</p>
           </div>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
             {icon}
           </div>
         </div>
