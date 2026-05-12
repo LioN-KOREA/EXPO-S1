@@ -66,12 +66,41 @@ new aws.iam.RolePolicyAttachment("ssr-logs", {
   policyArn: aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole,
 });
 
+const cfg2 = new pulumi.Config("aws");
+const region = cfg2.get("region") ?? "us-east-1";
+
+// ─── DynamoDB table for OpenNext tag-revalidation cache ───────────────────────
+// Required by OpenNext's incremental-cache layer even when `revalidateTag()`
+// is never called. PAY_PER_REQUEST → $0 baseline; only billed per op.
+const tagCacheTable = new aws.dynamodb.Table("opennext-tag-cache", {
+  billingMode: "PAY_PER_REQUEST",
+  hashKey: "tag",
+  rangeKey: "path",
+  attributes: [
+    { name: "tag", type: "S" },
+    { name: "path", type: "S" },
+    { name: "revalidatedAt", type: "N" },
+  ],
+  globalSecondaryIndexes: [{
+    name: "revalidate",
+    hashKey: "path",
+    rangeKey: "revalidatedAt",
+    projectionType: "ALL",
+  }],
+});
+
 const lambdaEnv = {
   variables: {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
     SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
     NODE_ENV: "production",
+    // OpenNext incremental cache — reuses the assets bucket with a key prefix
+    // to keep cache objects separate from public assets.
+    CACHE_BUCKET_NAME: bucket.bucket,
+    CACHE_BUCKET_KEY_PREFIX: "_cache",
+    CACHE_BUCKET_REGION: region,
+    CACHE_DYNAMO_TABLE: tagCacheTable.name,
   },
 };
 
@@ -118,6 +147,43 @@ new aws.iam.RolePolicy("image-s3-read", {
       Effect: "Allow",
       Action: ["s3:GetObject"],
       Resource: `${arn}/*`,
+    }],
+  })),
+});
+
+// OpenNext incremental cache — read+write on the _cache/ prefix only.
+new aws.iam.RolePolicy("ssr-cache-rw", {
+  role: lambdaRole.id,
+  policy: pulumi.all([bucket.arn]).apply(([arn]) => JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [
+      {
+        Effect: "Allow",
+        Action: ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+        Resource: `${arn}/_cache/*`,
+      },
+      {
+        Effect: "Allow",
+        Action: ["s3:ListBucket"],
+        Resource: arn,
+        Condition: { StringLike: { "s3:prefix": ["_cache/*"] } },
+      },
+    ],
+  })),
+});
+
+// OpenNext tag-revalidation cache permissions on the DynamoDB table + GSI.
+new aws.iam.RolePolicy("ssr-tag-cache-rw", {
+  role: lambdaRole.id,
+  policy: pulumi.all([tagCacheTable.arn]).apply(([arn]) => JSON.stringify({
+    Version: "2012-10-17",
+    Statement: [{
+      Effect: "Allow",
+      Action: [
+        "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:DeleteItem",
+        "dynamodb:Query", "dynamodb:BatchWriteItem", "dynamodb:BatchGetItem",
+      ],
+      Resource: [arn, `${arn}/index/*`],
     }],
   })),
 });
