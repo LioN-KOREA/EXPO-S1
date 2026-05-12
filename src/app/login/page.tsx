@@ -58,8 +58,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: '#06070b' }}>
       {/* Background glow */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-[20%] left-[5%] w-[500px] h-[500px] rounded-full opacity-100" style={{ background: 'radial-gradient(circle, rgba(56,120,246,0.09) 0%, transparent 65%)', animation: 'drift1 8s ease-in-out infinite' }} />
-        <div className="absolute -bottom-[10%] right-[5%] w-[450px] h-[450px] rounded-full opacity-100" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.07) 0%, transparent 65%)', animation: 'drift2 10s ease-in-out infinite' }} />
+        <div className="absolute -top-[20%] left-[5%] w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full opacity-100" style={{ background: 'radial-gradient(circle, rgba(56,120,246,0.09) 0%, transparent 65%)', animation: 'drift1 8s ease-in-out infinite' }} />
+        <div className="absolute -bottom-[10%] right-[5%] w-[280px] h-[280px] sm:w-[450px] sm:h-[450px] rounded-full opacity-100" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.07) 0%, transparent 65%)', animation: 'drift2 10s ease-in-out infinite' }} />
       </div>
 
       {/* Noise texture overlay */}
@@ -75,7 +75,7 @@ export default function LoginPage() {
       </button>
 
       {/* Login container */}
-      <div className="relative z-[2] w-full max-w-[400px] px-6">
+      <div className="relative z-[2] w-full max-w-sm px-4 sm:px-6">
         {/* Logo */}
         <div className="text-center mb-9">
           <div className="relative w-[52px] h-[52px] mx-auto mb-4">

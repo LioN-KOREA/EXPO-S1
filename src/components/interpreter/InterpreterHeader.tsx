@@ -34,10 +34,10 @@ export function InterpreterHeader({ userName }: InterpreterHeaderProps) {
           <Logo size={30} textSize="15px" />
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
           <LanguageToggle />
           <ThemeToggle />
-          <span className="text-sm text-slate-400 hidden sm:block">{userName}</span>
+          <span className="text-xs sm:text-sm text-slate-400 hidden sm:block max-w-[100px] truncate">{userName}</span>
           <Button
             variant="ghost"
             size="sm"

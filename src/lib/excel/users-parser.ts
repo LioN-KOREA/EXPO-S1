@@ -123,7 +123,7 @@ export function parseUsersExcel(buffer: ArrayBuffer): UserParseResult {
     const role = ROLE_MAP[typeRaw];
     if (!role) {
       if (typeRaw) {
-        errors.push({ row: rowNum, field: '유형', message: `알 수 없는 유형: "${typeRaw}" (BUYER/SELLER/INTERPRETER/ADMIN 사용)` });
+        errors.push({ row: rowNum, field: '유형', message: `알 수 없는 유형: "${typeRaw}" (바이어/셀러/통역사/관리자 또는 BUYER/SELLER/INTERPRETER/ADMIN)` });
       } else {
         errors.push({ row: rowNum, field: '유형', message: '유형(권한)이 비어있습니다' });
       }

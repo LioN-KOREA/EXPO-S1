@@ -598,6 +598,9 @@ export default function TimetablePage() {
             />
           </div>
 
+          {/* 모바일 스크롤 안내 */}
+          <p className="text-xs text-slate-400 mb-2 lg:hidden">← 좌우로 스크롤하여 전체 타임테이블을 확인하세요 →</p>
+
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0">
               <ScrollArea className="w-full">

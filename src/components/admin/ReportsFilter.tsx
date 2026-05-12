@@ -207,7 +207,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
       </div>
 
       {/* 상태 필터 탭 */}
-      <div className="flex gap-1 bg-card rounded-lg p-1 mb-4 flex-wrap">
+      <div className="flex gap-1 bg-card rounded-lg p-1 mb-4 overflow-x-auto">
         {STATUS_TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = filter === tab.key;

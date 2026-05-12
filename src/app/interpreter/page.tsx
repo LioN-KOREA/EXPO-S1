@@ -102,7 +102,7 @@ export default async function InterpreterDashboard() {
 
       {/* 요약 통계 카드 */}
       {totalConsultations > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4 text-center">
               <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center mx-auto mb-2">

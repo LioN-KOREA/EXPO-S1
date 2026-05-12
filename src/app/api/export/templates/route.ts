@@ -108,7 +108,7 @@ function buildUsersTemplate(workbook: ExcelJS.Workbook) {
     ws.getCell(`A${i}`).dataValidation = {
       type: 'list',
       allowBlank: false,
-      formulae: ['"BUYER,SELLER,INTERPRETER,ADMIN"'],
+      formulae: ['"바이어,셀러,통역사,관리자,BUYER,SELLER,INTERPRETER,ADMIN"'],
     };
   }
 
@@ -127,7 +127,7 @@ function buildUsersTemplate(workbook: ExcelJS.Workbook) {
   guide.addRow(['사용자 일괄 등록 양식 작성 안내']);
   guide.addRow([]);
   guide.addRow(['1. "사용자 리스트" 시트에 데이터를 입력해주세요.']);
-  guide.addRow(['2. 유형(권한): BUYER, SELLER, INTERPRETER, ADMIN 중 선택']);
+  guide.addRow(['2. 유형(권한): 바이어/셀러/통역사/관리자 또는 BUYER/SELLER/INTERPRETER/ADMIN 중 선택']);
   guide.addRow(['3. 이름, 아이디(이메일), 연락처는 필수입니다.']);
   guide.addRow(['4. 국가: Country 시트의 Code 값을 사용해주세요 (예: KR, CN, US)']);
   guide.addRow(['5. 초기 비밀번호: 연락처 뒤 4자리로 자동 설정됩니다.']);

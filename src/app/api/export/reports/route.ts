@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     .eq('event_id', eventId)
     .single();
 
-  const fields = (template?.fields ?? []) as Array<{ key: string; label: string }>;
+  const fields = (template?.fields ?? []) as Array<{ key: string; label: string; type?: string }>;
 
   // 상담 + 일지 데이터 조회
   const { data: consultations } = await supabase
@@ -107,9 +107,29 @@ export async function GET(request: NextRequest) {
       report?.submitted ? '제출완료' : '미제출',
     ];
 
-    const dynamicValues = fields.map((f) => String(reportData[f.key] ?? ''));
+    const dynamicValues = fields.map((f) => {
+      const raw = reportData[f.key];
+      if (raw === null || raw === undefined || raw === '') return '';
+      // 숫자 타입 필드는 실제 숫자로 저장 (콤마 제거 후 변환)
+      if (f.type === 'number') {
+        const cleaned = String(raw).replace(/,/g, '').trim();
+        if (cleaned && !isNaN(Number(cleaned))) return Number(cleaned);
+        return '';
+      }
+      return String(raw);
+    });
 
     worksheet.addRow([...baseValues, ...dynamicValues]);
+  });
+
+  // 숫자 컬럼에 콤마 포맷 적용
+  const numberColIndices = fields
+    .map((f, i) => f.type === 'number' ? baseHeaders.length + i : -1)
+    .filter(i => i >= 0);
+
+  numberColIndices.forEach(colIdx => {
+    const col = worksheet.getColumn(colIdx + 1); // 1-based
+    col.numFmt = '#,##0';
   });
 
   // 열 너비 자동 조절

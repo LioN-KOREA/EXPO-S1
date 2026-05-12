@@ -44,15 +44,15 @@ export default function ChangePasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: '#06070b' }}>
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-[20%] left-[5%] w-[500px] h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 65%)', animation: 'drift1 8s ease-in-out infinite' }} />
-        <div className="absolute -bottom-[10%] right-[5%] w-[450px] h-[450px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(234,88,12,0.06) 0%, transparent 65%)', animation: 'drift2 10s ease-in-out infinite' }} />
+        <div className="absolute -top-[20%] left-[5%] w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 65%)', animation: 'drift1 8s ease-in-out infinite' }} />
+        <div className="absolute -bottom-[10%] right-[5%] w-[280px] h-[280px] sm:w-[450px] sm:h-[450px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(234,88,12,0.06) 0%, transparent 65%)', animation: 'drift2 10s ease-in-out infinite' }} />
       </div>
 
       <button onClick={() => setLocale(locale === 'ko' ? 'en' : 'ko')} className="absolute top-6 right-6 z-10 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs text-slate-500 border border-white/[0.08] bg-white/[0.03] hover:text-slate-300 transition-all">
         <Globe className="w-3.5 h-3.5" />{locale === 'ko' ? 'English' : '한국어'}
       </button>
 
-      <div className="relative z-[2] w-full max-w-[400px] px-6">
+      <div className="relative z-[2] w-full max-w-sm px-4 sm:px-6">
         <div className="text-center mb-9">
           <div className="relative w-[52px] h-[52px] mx-auto mb-4">
             <div className="absolute inset-0 rounded-full border-[2.5px] border-transparent" style={{ borderTopColor: '#f59e0b', borderRightColor: '#f97316' }} />

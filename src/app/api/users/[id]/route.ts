@@ -29,8 +29,29 @@ export async function PATCH(
     if (key in body) updates[key] = body[key];
   }
 
-  if (Object.keys(updates).length === 0) {
+  // 비밀번호 리셋 처리
+  if ('password' in body && body.password) {
+    if (typeof body.password !== 'string' || body.password.length < 4) {
+      return NextResponse.json({ error: '비밀번호는 최소 4자 이상이어야 합니다' }, { status: 400 });
+    }
+    const { error: pwErr } = await admin.auth.admin.updateUserById(userId, {
+      password: body.password,
+    });
+    if (pwErr) {
+      return NextResponse.json({ error: `비밀번호 변경 실패: ${pwErr.message}` }, { status: 400 });
+    }
+    // must_change_password 설정
+    if (body.must_change_password !== undefined) {
+      updates.must_change_password = body.must_change_password;
+    }
+  }
+
+  if (Object.keys(updates).length === 0 && !('password' in body)) {
     return NextResponse.json({ error: '수정할 필드가 없습니다' }, { status: 400 });
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return NextResponse.json({ success: true });
   }
 
   // 역할 검증

@@ -102,7 +102,7 @@ export function UserEditDialog({ user, open, onOpenChange, onUpdated }: UserEdit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>사용자 정보 수정</DialogTitle>
         </DialogHeader>
@@ -174,6 +174,59 @@ export function UserEditDialog({ user, open, onOpenChange, onUpdated }: UserEdit
             {saving ? '저장 중...' : '저장'}
           </Button>
         </form>
+
+        {/* 비밀번호 리셋 */}
+        <div className="border-t pt-4 mt-2">
+          <p className="text-xs text-muted-foreground mb-2">비밀번호 관리</p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs"
+              onClick={async () => {
+                if (!user) return;
+                const newPw = prompt('새 비밀번호를 입력하세요 (최소 6자):');
+                if (!newPw || newPw.length < 6) { toast.error('비밀번호는 최소 6자 이상이어야 합니다'); return; }
+                const forceChange = confirm('첫 로그인 시 비밀번호 변경을 강제하시겠습니까?');
+                try {
+                  const res = await fetch(`/api/users/${user.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: newPw, must_change_password: forceChange }),
+                  });
+                  if (!res.ok) { const d = await res.json(); toast.error(d.error || '비밀번호 변경 실패'); return; }
+                  toast.success('비밀번호가 변경되었습니다');
+                } catch { toast.error('오류가 발생했습니다'); }
+              }}
+            >
+              비밀번호 변경
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs"
+              onClick={async () => {
+                if (!user) return;
+                if (!user.phone) { toast.error('전화번호가 없어 초기화할 수 없습니다'); return; }
+                const digits = user.phone.replace(/\D/g, '').slice(-4) || '0000';
+                if (!confirm(`비밀번호를 전화번호 뒤 4자리(${digits})로 초기화하시겠습니까?\n첫 로그인 시 변경이 강제됩니다.`)) return;
+                try {
+                  const res = await fetch(`/api/users/${user.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: digits, must_change_password: true }),
+                  });
+                  if (!res.ok) { const d = await res.json(); toast.error(d.error || '초기화 실패'); return; }
+                  toast.success(`비밀번호가 ${digits}로 초기화되었습니다`);
+                } catch { toast.error('오류가 발생했습니다'); }
+              }}
+            >
+              전화번호 뒤4자리로 초기화
+            </Button>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

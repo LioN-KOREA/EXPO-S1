@@ -118,7 +118,7 @@ export function UserBulkRegistration() {
         <CardContent>
           <p className="text-sm text-slate-500 mb-4">
             엑셀 파일 하나로 바이어, 셀러, 통역사 계정을 한번에 등록합니다.
-            유형(BUYER/SELLER/INTERPRETER), 이름, 이메일, 연락처는 필수입니다.
+            유형(바이어/셀러/통역사), 이름, 이메일, 연락처는 필수입니다.
             초기 비밀번호는 전화번호 뒤 4자리이며, 첫 로그인 시 변경해야 합니다.
           </p>
           {!preview && (
@@ -147,7 +147,7 @@ export function UserBulkRegistration() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* 요약 카드 */}
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               <div className="bg-slate-50 rounded-lg p-3 text-center">
                 <p className="text-xl font-bold text-slate-700">{summary?.total ?? 0}</p>
                 <p className="text-xs text-slate-500">전체</p>

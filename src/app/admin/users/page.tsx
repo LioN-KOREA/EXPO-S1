@@ -155,12 +155,12 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-foreground">사용자 관리</h2>
-          <p className="text-slate-500 mt-1">전체 사용자 계정을 관리합니다</p>
+          <p className="text-slate-500 mt-1 text-sm">전체 사용자 계정을 관리합니다</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <UserBulkUploadDialog onComplete={loadUsers} />
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger
@@ -242,13 +242,13 @@ export default function UsersPage() {
       </div>
 
       {/* 탭 + 검색 */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex gap-1 bg-card rounded-lg p-1">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+        <div className="flex gap-1 bg-card rounded-lg p-1 overflow-x-auto w-full sm:w-auto">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap ${
                 activeTab === tab.key
                   ? 'bg-card text-foreground shadow-sm'
                   : 'text-slate-500 hover:text-muted-foreground'
@@ -262,7 +262,7 @@ export default function UsersPage() {
           placeholder="이름 또는 이메일 검색"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="max-w-[200px] h-8 text-sm"
+          className="w-full sm:max-w-[200px] h-8 text-sm"
         />
       </div>
 

@@ -144,7 +144,7 @@ export function UserBulkUploadDialog({ onComplete }: { onComplete: () => void })
         ) : (
           <div className="space-y-4">
             {/* 요약 카드 */}
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="bg-slate-50 rounded-lg p-2.5 text-center">
                 <p className="text-lg font-bold text-slate-700">{summary?.total ?? 0}</p>
                 <p className="text-[10px] text-slate-500">전체</p>
