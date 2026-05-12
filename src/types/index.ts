@@ -119,6 +119,7 @@ export interface ConsultationReport {
   admin_comment?: string;
   reviewed_at?: string;
   reviewed_by?: string;
+  version: number;
   created_at: string;
   updated_at: string;
 }

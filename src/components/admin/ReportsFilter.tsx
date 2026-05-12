@@ -18,7 +18,7 @@ import {
 import Link from 'next/link';
 
 type FilterStatus = 'all' | 'submitted' | 'approved' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
-type ViewMode = 'date' | 'booth' | 'time' | 'buyer' | 'seller';
+type ViewMode = 'date' | 'booth' | 'time' | 'buyer' | 'seller' | 'interpreter';
 
 interface ConsultationItem {
   id: string;
@@ -62,6 +62,7 @@ const VIEW_MODES: { key: ViewMode; label: string }[] = [
   { key: 'time', label: '시간별' },
   { key: 'buyer', label: '바이어별' },
   { key: 'seller', label: '셀러별' },
+  { key: 'interpreter', label: '통역사별' },
 ];
 
 function getStatusBadge(status: ConsultationItem['status']) {
@@ -88,6 +89,7 @@ function getItemKey(item: ConsultationItem, mode: ViewMode): string {
     case 'time': return `${item.start_time} - ${item.end_time}`;
     case 'buyer': return item.buyer_name || '바이어 미지정';
     case 'seller': return item.seller_name || '셀러 미지정';
+    case 'interpreter': return item.interpreter_name || '통역사 미배정';
   }
 }
 
@@ -167,7 +169,9 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <Select value={viewMode} onValueChange={(v) => { if (v) { setViewMode(v as ViewMode); setSelectedValue('_all'); setCurrentPage(1); } }}>
           <SelectTrigger className="w-[120px] h-9 text-sm">
-            <SelectValue />
+            <SelectValue>
+              {VIEW_MODES.find(m => m.key === viewMode)?.label ?? viewMode}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {VIEW_MODES.map(m => (
@@ -178,10 +182,14 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
 
         <Select value={selectedValue} onValueChange={(v) => { if (v) { setSelectedValue(v); setCurrentPage(1); setFilter('all'); } }}>
           <SelectTrigger className="w-[200px] h-9 text-sm">
-            <SelectValue placeholder="전체" />
+            <SelectValue>
+              {selectedValue === '_all'
+                ? `전체${VIEW_MODES.find(m => m.key === viewMode)?.label?.replace('별', '') ?? ''}`
+                : selectedValue}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="_all" className="text-sm">전체</SelectItem>
+            <SelectItem value="_all" className="text-sm">전체{VIEW_MODES.find(m => m.key === viewMode)?.label?.replace('별', '') ?? ''}</SelectItem>
             {viewOptions.map(opt => (
               <SelectItem key={opt} value={opt} className="text-sm">{opt}</SelectItem>
             ))}

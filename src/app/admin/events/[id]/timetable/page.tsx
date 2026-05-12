@@ -336,7 +336,11 @@ export default function TimetablePage() {
   const effectivePageSize = pageSize === 'all' ? totalItems : pageSize;
   const maxPage = effectivePageSize > 0 ? Math.max(1, Math.ceil(totalItems / effectivePageSize)) : 1;
   const safePage = Math.min(currentPage, maxPage);
-  if (safePage !== currentPage) setCurrentPage(safePage);
+
+  // 렌더링 중 상태 변경 방지 — useEffect로 이동
+  useEffect(() => {
+    if (safePage !== currentPage) setCurrentPage(safePage);
+  }, [safePage, currentPage]);
 
   const paginatedData = useMemo(() => {
     if (pageSize === 'all') return viewRows;
@@ -653,8 +657,8 @@ export default function TimetablePage() {
                         return (
                           <tr key={buyer.id} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted'}>
                             <td className="px-3 py-2 font-medium text-foreground sticky left-0 z-10 border-r" style={{ backgroundColor: bgColor }}>
-                              <div className="truncate max-w-[150px]" title={buyer.company_name}>{buyer.company_name}</div>
-                              <div className="text-[10px] text-slate-500">{buyer.country}</div>
+                              <div className="text-sm font-semibold text-foreground">{buyer.booth_number || '미지정'}</div>
+                              <div className="text-[10px] text-slate-500 truncate max-w-[150px]">{buyer.company_name}</div>
                             </td>
                             <td className="px-2 py-2 text-center">
                               <Badge variant="secondary" className="text-xs">{buyer.booth_number || '-'}</Badge>

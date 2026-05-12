@@ -131,7 +131,7 @@ export default function ConsultationReportPage() {
         .from('consultation_reports')
         .update(payload)
         .eq('id', currentReport.id)
-        .eq('version', (currentReport as unknown as { version: number }).version || 1);
+        .eq('version', currentReport.version || 1);
 
       if (count === 0 && !updateError) {
         // 다른 디바이스에서 먼저 수정됨

@@ -138,6 +138,7 @@ export function ConsultationEditDialog({
   const [interpreterId, setInterpreterId] = useState('');
   const [memo, setMemo] = useState('');
   const [boothNumber, setBoothNumber] = useState('');
+  const [boothDirty, setBoothDirty] = useState(false);
 
   useEffect(() => {
     if (open && consultation) {
@@ -147,14 +148,16 @@ export function ConsultationEditDialog({
       setMemo(consultation.memo || '');
       const buyer = buyers.find(b => b.id === consultation.buyer_id);
       setBoothNumber(buyer?.booth_number || '');
+      setBoothDirty(false);
     }
   }, [open, consultation, buyers]);
 
-  // 바이어 변경 시 부스번호 동기화
+  // 바이어 변경 시 부스번호 동기화 (dirty 리셋)
   useEffect(() => {
     if (buyerId) {
       const buyer = buyers.find(b => b.id === buyerId);
       setBoothNumber(buyer?.booth_number || '');
+      setBoothDirty(false);
     }
   }, [buyerId, buyers]);
 
@@ -170,9 +173,8 @@ export function ConsultationEditDialog({
     }
     if (memo !== (consultation.memo || '')) body.memo = memo || null;
 
-    // 부스번호 변경 체크
-    const originalBuyer = buyers.find(b => b.id === consultation.buyer_id);
-    if (boothNumber !== (originalBuyer?.booth_number || '')) {
+    // 부스번호: 사용자가 직접 수정했을 때만 전송
+    if (boothDirty) {
       body.booth_number = boothNumber || null;
     }
 
@@ -262,7 +264,7 @@ export function ConsultationEditDialog({
             <Label className="text-xs text-muted-foreground">부스번호</Label>
             <Input
               value={boothNumber}
-              onChange={(e) => setBoothNumber(e.target.value)}
+              onChange={(e) => { setBoothNumber(e.target.value); setBoothDirty(true); }}
               placeholder="예: A01"
               className="mt-1 h-9 text-sm"
             />
