@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { EventDashboardClient } from '@/components/admin/dashboard/EventDashboardClient';
 import type { TemplateField, ReportStatus } from '@/types';
 import { batchIn } from '@/lib/supabase/batch-query';
@@ -191,9 +192,17 @@ export default async function EventDashboardPage({
         상담회 상세로
       </Link>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground">{event.name} - 대시보드</h2>
-        <p className="text-slate-500 text-sm mt-1">{event.start_date} ~ {event.end_date}</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">{event.name} - 대시보드</h2>
+          <p className="text-slate-500 text-sm mt-1">{event.start_date} ~ {event.end_date}</p>
+        </div>
+        <a href={`/api/export/dashboard?event_id=${eventId}`}>
+          <Button variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            엑셀 다운로드
+          </Button>
+        </a>
       </div>
 
       <EventDashboardClient
