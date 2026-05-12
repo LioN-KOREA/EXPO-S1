@@ -34,6 +34,7 @@ export default function EventsPage() {
     const { data } = await supabase
       .from('events')
       .select('*')
+      .is('deleted_at', null) // Explicitly filter out deleted events to ensure that deleted events do not show up, even though RLS should already enforce this
       .order('created_at', { ascending: false });
     setEvents(data || []);
     setLoading(false);
