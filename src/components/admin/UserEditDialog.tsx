@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { COUNTRIES } from '@/lib/constants/countries';
+import { getInitialPassword } from '@/lib/utils/password';
 import type { Profile, UserRole } from '@/types';
 
 interface UserEditDialogProps {
@@ -210,20 +211,21 @@ export function UserEditDialog({ user, open, onOpenChange, onUpdated }: UserEdit
               onClick={async () => {
                 if (!user) return;
                 if (!user.phone) { toast.error('전화번호가 없어 초기화할 수 없습니다'); return; }
-                const digits = user.phone.replace(/\D/g, '').slice(-4) || '0000';
-                if (!confirm(`비밀번호를 전화번호 뒤 4자리(${digits})로 초기화하시겠습니까?\n첫 로그인 시 변경이 강제됩니다.`)) return;
+                const pwd = getInitialPassword(user.phone);
+                if (pwd === 'excon00') { toast.error('전화번호 자릿수가 너무 짧아 초기화할 수 없습니다'); return; }
+                if (!confirm(`비밀번호를 ${pwd}로 초기화하시겠습니까?\n(전화번호에서 국가코드·area code 제외한 subscriber number)\n첫 로그인 시 변경이 강제됩니다.`)) return;
                 try {
                   const res = await fetch(`/api/users/${user.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: digits, must_change_password: true }),
+                    body: JSON.stringify({ password: pwd, must_change_password: true }),
                   });
                   if (!res.ok) { const d = await res.json(); toast.error(d.error || '초기화 실패'); return; }
-                  toast.success(`비밀번호가 ${digits}로 초기화되었습니다`);
+                  toast.success(`비밀번호가 ${pwd}로 초기화되었습니다`);
                 } catch { toast.error('오류가 발생했습니다'); }
               }}
             >
-              전화번호 뒤4자리로 초기화
+              전화번호로 초기화
             </Button>
           </div>
         </div>

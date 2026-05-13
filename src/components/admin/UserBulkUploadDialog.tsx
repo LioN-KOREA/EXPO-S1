@@ -135,7 +135,7 @@ export function UserBulkUploadDialog({ onComplete }: { onComplete: () => void })
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate-500">
                 엑셀 파일로 사용자를 일괄 등록합니다. 유형, 이름, 이메일, 연락처는 필수입니다.
-                <br />초기 비밀번호는 전화번호 뒤 4자리, 첫 로그인 시 변경 필요.
+                <br />초기 비밀번호: 전화번호에서 국가코드·area code 제외한 subscriber number(예: 010-1234-5678 → 12345678, (212) 555-1234 → 5551234). 첫 로그인 시 변경 필요.
               </p>
               <TemplateDownloadButton type="users" label="양식 다운로드" />
             </div>

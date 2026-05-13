@@ -119,7 +119,7 @@ export function UserBulkRegistration() {
           <p className="text-sm text-slate-500 mb-4">
             엑셀 파일 하나로 바이어, 셀러, 통역사 계정을 한번에 등록합니다.
             유형(바이어/셀러/통역사), 이름, 이메일, 연락처는 필수입니다.
-            초기 비밀번호는 전화번호 뒤 4자리이며, 첫 로그인 시 변경해야 합니다.
+            초기 비밀번호: 전화번호에서 국가코드·area code 제외한 subscriber number(예: 010-1234-5678 → 12345678, (212) 555-1234 → 5551234). 첫 로그인 시 변경해야 합니다.
           </p>
           {!preview && (
             <ExcelUploader onUpload={handleUpload} loading={loading} description="사용자 통합 등록 엑셀 파일을 업로드하세요" />

@@ -249,12 +249,45 @@ export default function TimetablePage() {
     }
   }
 
+  function dumpError(err: unknown): Record<string, unknown> {
+    if (!err || typeof err !== 'object') return { value: String(err) };
+    const e = err as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const k of ['message', 'code', 'details', 'hint', 'status', 'statusText', 'name']) {
+      if (e[k] !== undefined) out[k] = e[k];
+    }
+    try { out._stringified = JSON.stringify(err, Object.getOwnPropertyNames(err as object)); } catch {}
+    out._keys = Object.keys(e);
+    out._proto = Object.getPrototypeOf(e)?.constructor?.name;
+    return out;
+  }
+
   async function assignOne(consultationId: string, interpreterId: string | null) {
     const supabase = createClient();
-    const { error } = await supabase.from('consultations').update({ interpreter_id: interpreterId }).eq('id', consultationId);
+    const result = await supabase
+      .from('consultations')
+      .update({ interpreter_id: interpreterId })
+      .eq('id', consultationId)
+      .select('id');
+    const { data, error, status, statusText } = result;
+    console.log('[assignOne] result', { consultationId, interpreterId, status, statusText, dataLen: data?.length, hasError: !!error });
     if (error) {
-      if (error.code === '23505') toast.error('이 통역사는 같은 시간에 다른 상담이 배정되어 있습니다');
-      else toast.error('배정에 실패했습니다');
+      const dump = dumpError(error);
+      console.error('[assignOne] update failed', dump);
+      if ((error as { code?: string }).code === '23505') toast.error('이 통역사는 같은 시간에 다른 상담이 배정되어 있습니다');
+      else {
+        const msg = (error as { message?: string; code?: string }).message
+          || (error as { code?: string }).code
+          || statusText
+          || `HTTP ${status}`
+          || '알 수 없는 오류';
+        toast.error(`배정 실패: ${msg}`);
+      }
+      return;
+    }
+    if (!data || data.length === 0) {
+      console.error('[assignOne] update returned 0 rows (RLS denied or row missing)', { consultationId, interpreterId, status, statusText });
+      toast.error(`배정 권한이 없거나 대상이 없음 (HTTP ${status})`);
       return;
     }
     if (interpreterId) await ensureEventInterpreter(supabase, interpreterId);
@@ -263,16 +296,53 @@ export default function TimetablePage() {
 
   async function assignBuyer(buyerId: string, interpreterId: string | null) {
     const targets = consultations.filter(c => c.buyer_id === buyerId);
-    const supabase = createClient();
-    for (const c of targets) {
-      await supabase.from('consultations').update({ interpreter_id: interpreterId }).eq('id', c.id);
+    if (targets.length === 0) {
+      toast.error('대상 상담이 없습니다');
+      return;
     }
-    if (interpreterId) await ensureEventInterpreter(supabase, interpreterId);
-    setConsultations(prev => prev.map(c =>
-      c.buyer_id === buyerId ? { ...c, interpreter_id: interpreterId } : c
-    ));
+    const supabase = createClient();
+    let successCount = 0;
+    const failures: { id: string; reason: string }[] = [];
+    for (const c of targets) {
+      const result = await supabase
+        .from('consultations')
+        .update({ interpreter_id: interpreterId })
+        .eq('id', c.id)
+        .select('id');
+      const { data, error, status, statusText } = result;
+      console.log('[assignBuyer] result', { id: c.id, interpreterId, status, statusText, dataLen: data?.length, hasError: !!error });
+      if (error) {
+        const dump = dumpError(error);
+        console.error('[assignBuyer] update failed', dump);
+        const code = (error as { code?: string }).code;
+        const msg = (error as { message?: string }).message;
+        const reason = code === '23505'
+          ? '같은 시간 다른 상담에 이미 배정됨'
+          : (msg || code || statusText || `HTTP ${status}` || '알 수 없는 오류');
+        failures.push({ id: c.id, reason });
+        continue;
+      }
+      if (!data || data.length === 0) {
+        failures.push({ id: c.id, reason: `RLS/대상없음 (HTTP ${status})` });
+        console.error('[assignBuyer] update returned 0 rows', { id: c.id, interpreterId, status, statusText });
+        continue;
+      }
+      successCount++;
+    }
+    if (successCount > 0 && interpreterId) await ensureEventInterpreter(supabase, interpreterId);
+    setConsultations(prev => prev.map(c => {
+      if (c.buyer_id !== buyerId) return c;
+      const failed = failures.find(f => f.id === c.id);
+      return failed ? c : { ...c, interpreter_id: interpreterId };
+    }));
     const name = interpreters.find(i => i.id === interpreterId)?.name || '미배정';
-    toast.success(`${targets.length}건 → ${name}`);
+    if (failures.length === 0) {
+      toast.success(`${successCount}건 → ${name}`);
+    } else if (successCount === 0) {
+      toast.error(`전체 배정 실패 (${failures[0].reason})`);
+    } else {
+      toast.warning(`${successCount}건 성공 / ${failures.length}건 실패 (${failures[0].reason})`);
+    }
   }
 
   function findConsultation(buyerId: string, slotId: string) {

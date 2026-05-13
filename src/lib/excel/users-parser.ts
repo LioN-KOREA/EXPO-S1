@@ -1,6 +1,6 @@
 import { readSheetRows } from './reader';
 import { isValidCountryCode } from '@/lib/constants/countries';
-import { getLast4Digits } from '@/lib/utils/password';
+import { getInitialPassword } from '@/lib/utils/password';
 import type { UserRole } from '@/types';
 
 export interface ParsedUser {
@@ -164,8 +164,8 @@ export async function parseUsersExcel(buffer: ArrayBuffer): Promise<UserParseRes
       if (val) extra_info[col.label] = val;
     }
 
-    // 비밀번호
-    const password = phone ? getLast4Digits(phone) : '0000';
+    // 비밀번호 (전화번호 숫자 전체; 없으면 excon00 fallback)
+    const password = getInitialPassword(phone);
 
     users.push({
       row_number: rowNum,

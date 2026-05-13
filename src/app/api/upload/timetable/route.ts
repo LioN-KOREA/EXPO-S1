@@ -2,15 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { parseTimetableExcel } from '@/lib/excel/timetable-parser';
 import { NextRequest, NextResponse } from 'next/server';
-
-/**
- * 전화번호에서 뒤 4자리 추출 (초기 비밀번호용)
- * 최초 로그인 시 must_change_password로 강제 변경됨
- */
-function getLast4Digits(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  return digits.slice(-4) || '0000';
-}
+import { getInitialPassword } from '@/lib/utils/password';
 
 /**
  * 이메일로 기존 계정 찾거나 새로 생성
@@ -37,7 +29,7 @@ async function findOrCreateAccount(
     return;
   }
 
-  const password = getLast4Digits(phone);
+  const password = getInitialPassword(phone);
   const { data: authData, error: authErr } = await admin.auth.admin.createUser({
     email,
     password,

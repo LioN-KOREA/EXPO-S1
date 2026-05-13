@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { readSheetRows } from '@/lib/excel/reader';
-import { getLast4Digits } from '@/lib/utils/password';
+import { getInitialPassword } from '@/lib/utils/password';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
         // 언어 정보 업데이트 (있으면)
         if (language) await admin.from('profiles').update({ language }).eq('id', userId);
       } else {
-        // 계정 생성 (PW = 전화번호 뒤 4자리)
-        const password = getLast4Digits(phone);
+        // 계정 생성 (PW = 전화번호 숫자 전체)
+        const password = getInitialPassword(phone);
         const { data: authData, error: authErr } = await admin.auth.admin.createUser({
           email, password, email_confirm: true,
         });
