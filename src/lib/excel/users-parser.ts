@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import { readSheetRows } from './reader';
 import { isValidCountryCode } from '@/lib/constants/countries';
 import { getLast4Digits } from '@/lib/utils/password';
 import type { UserRole } from '@/types';
@@ -59,10 +59,8 @@ const EXTRA_LABELS = [
   '항공기', '입국 날짜', '입국', '매출액', '매출', 'revenue',
 ];
 
-export function parseUsersExcel(buffer: ArrayBuffer): UserParseResult {
-  const workbook = XLSX.read(buffer, { type: 'array' });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const data: (string | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
+export async function parseUsersExcel(buffer: ArrayBuffer): Promise<UserParseResult> {
+  const data = await readSheetRows(buffer);
 
   if (data.length < 2) throw new Error('최소 2행(헤더+데이터)이 필요합니다');
 

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import { readSheetRows } from './reader';
 
 export interface ParsedTimeSlot {
   date: string;
@@ -123,14 +123,8 @@ function isDateCell(val: string): boolean {
  * 타임테이블 엑셀 파싱 메인 함수
  * 헤더와 시간 패턴을 자동 인식하여 유연하게 파싱
  */
-export function parseTimetableExcel(buffer: ArrayBuffer): TimetableParseResult {
-  const workbook = XLSX.read(buffer, { type: 'array' });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const data: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    defval: null,
-    raw: false,
-  });
+export async function parseTimetableExcel(buffer: ArrayBuffer): Promise<TimetableParseResult> {
+  const data = await readSheetRows(buffer);
 
   if (data.length < 3) {
     throw new Error('엑셀 파일에 최소 3행이 필요합니다');

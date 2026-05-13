@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const buffer = await file.arrayBuffer();
-    const result = parseUsersExcel(buffer);
+    const result = await parseUsersExcel(buffer);
 
     // 파싱 에러가 있으면 업로드 중단
     if (result.errors.length > 0) {

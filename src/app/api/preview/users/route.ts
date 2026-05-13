@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const buffer = await file.arrayBuffer();
-    const result = parseUsersExcel(buffer);
+    const result = await parseUsersExcel(buffer);
 
     // 기존 이메일과 중복 체크
     const admin = createAdminClient();

@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     await admin.from('events').update({ is_uploading: true }).eq('id', eventId);
 
     const buffer = await file.arrayBuffer();
-    const result = parseTimetableExcel(buffer);
+    const result = await parseTimetableExcel(buffer);
 
     // 행 수 제한 (DoS 방지)
     if (result.buyers.length > 5000) {

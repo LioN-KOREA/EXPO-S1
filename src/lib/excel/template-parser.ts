@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import { readSheetRows } from './reader';
 import type { TemplateField, FieldType } from '@/types';
 
 /**
@@ -70,14 +70,8 @@ export interface TemplateParseResult {
  * - 빈 행을 건너뛰고 첫 번째 데이터가 있는 행을 헤더로 인식
  * - 데이터가 없어도 헤더 라벨에서 타입 추론
  */
-export function parseTemplateExcel(buffer: ArrayBuffer): TemplateParseResult {
-  const workbook = XLSX.read(buffer, { type: 'array' });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const data: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, {
-    header: 1,
-    defval: null,
-    raw: false,
-  });
+export async function parseTemplateExcel(buffer: ArrayBuffer): Promise<TemplateParseResult> {
+  const data = await readSheetRows(buffer);
 
   // 빈 행을 건너뛰고 헤더 행 찾기
   let headerRowIndex = -1;

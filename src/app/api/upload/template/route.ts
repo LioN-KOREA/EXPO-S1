@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const buffer = await file.arrayBuffer();
-    const result = parseTemplateExcel(buffer);
+    const result = await parseTemplateExcel(buffer);
 
     // 기존 템플릿 삭제 후 저장
     await admin.from('report_templates').delete().eq('event_id', eventId);

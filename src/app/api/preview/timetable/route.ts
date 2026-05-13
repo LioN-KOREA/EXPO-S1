@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       }
     }
     const buffer = await file.arrayBuffer();
-    const result = parseTimetableExcel(buffer);
+    const result = await parseTimetableExcel(buffer);
 
     // 검증: 오류 체크
     const errors: { row: number; field: string; message: string }[] = [];

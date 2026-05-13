@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
-import * as XLSX from 'xlsx';
+import { readSheetRows } from '@/lib/excel/reader';
 import { getLast4Digits } from '@/lib/utils/password';
 
 export async function POST(request: NextRequest) {
@@ -29,14 +29,12 @@ export async function POST(request: NextRequest) {
   try {
     // 파싱을 먼저 수행 (교체 전에 검증)
     const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data: (string | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: false });
+    const data = await readSheetRows(buffer);
 
     if (data.length < 2) throw new Error('최소 2행(헤더+데이터) 필요');
 
     // 헤더에서 이름/이메일/전화 열 찾기
-    const headers = data[0].map(h => String(h || '').toLowerCase());
+    const headers = (data[0] ?? []).map(h => String(h || '').toLowerCase());
     const nameCol = headers.findIndex(h => h.includes('이름') || h.includes('name'));
     const emailCol = headers.findIndex(h => h.includes('이메일') || h.includes('email') || h.includes('메일'));
     const phoneCol = headers.findIndex(h => h.includes('전화') || h.includes('phone') || h.includes('연락'));
