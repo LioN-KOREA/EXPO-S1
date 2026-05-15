@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle2, RotateCcw, XCircle, MessageSquare, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, RotateCcw, XCircle, MessageSquare, AlertTriangle, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ReportStatus } from '@/types';
 
@@ -32,22 +32,41 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // 전이 규칙:
+    // - excellent: approved → excellent
+    // - under_review: approved/excellent → under_review (승인/우수상담 취소)
+    // - 그 외 (approved/revision_requested/rejected): submitted/under_review → 결정
+    let allowedFrom: ReportStatus[];
+    if (status === 'excellent') {
+      allowedFrom = ['approved'];
+    } else if (status === 'under_review') {
+      allowedFrom = ['approved', 'excellent'];
+    } else {
+      allowedFrom = ['submitted', 'under_review'];
+    }
+
     const { error } = await supabase
       .from('consultation_reports')
       .update({
         report_status: status,
-        submitted: status === 'approved',
+        submitted: status === 'approved' || status === 'excellent',
         admin_comment: requireComment ? comment.trim() : null,
         reviewed_at: new Date().toISOString(),
         reviewed_by: user?.id,
       })
       .eq('id', reportId)
-      .in('report_status', ['submitted', 'under_review']);
+      .in('report_status', allowedFrom);
 
     if (error) {
       toast.error('처리에 실패했습니다');
     } else {
-      const labels: Record<string, string> = { approved: '승인', revision_requested: '수정요청', rejected: '반려' };
+      const labels: Record<string, string> = {
+        approved: '승인',
+        revision_requested: '수정요청',
+        rejected: '반려',
+        excellent: '우수상담 지정',
+        under_review: '승인 취소',
+      };
       toast.success(`${labels[status] || status} 처리되었습니다`);
       setActionType(null);
       setComment('');
@@ -73,12 +92,59 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
 
       {reportStatus === 'approved' && (
         <Card className="border-0 shadow-sm bg-emerald-50/50">
-          <CardContent className="p-4 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            <p className="text-sm text-emerald-700">
-              <span className="font-semibold">승인됨</span>
-              {reviewedAt && ` — ${new Date(reviewedAt).toLocaleString('ko-KR')}`}
-            </p>
+          <CardContent className="p-4 flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <p className="text-sm text-emerald-700">
+                <span className="font-semibold">승인됨</span>
+                {reviewedAt && ` — ${new Date(reviewedAt).toLocaleString('ko-KR')}`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => handleAction('excellent')}
+                disabled={loading}
+                className="gap-1.5 bg-amber-500 hover:bg-amber-600"
+              >
+                <Award className="w-3.5 h-3.5" />
+                {loading ? '처리 중...' : '우수상담으로 지정'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleAction('under_review')}
+                disabled={loading}
+                className="gap-1.5 text-slate-600 border-slate-300"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                승인 취소
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {reportStatus === 'excellent' && (
+        <Card className="border-0 shadow-sm bg-amber-50/60">
+          <CardContent className="p-4 flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Award className="w-4 h-4 text-amber-500" />
+              <p className="text-sm text-amber-700">
+                <span className="font-semibold">우수상담</span>
+                {reviewedAt && ` — ${new Date(reviewedAt).toLocaleString('ko-KR')}`}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleAction('under_review')}
+              disabled={loading}
+              className="gap-1.5 text-slate-600 border-slate-300"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              승인 취소
+            </Button>
           </CardContent>
         </Card>
       )}

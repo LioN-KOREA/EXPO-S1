@@ -14,10 +14,11 @@ import {
   RotateCcw,
   Clock,
   XCircle,
+  Award,
 } from 'lucide-react';
 import Link from 'next/link';
 
-type FilterStatus = 'all' | 'submitted' | 'approved' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
+type FilterStatus = 'all' | 'submitted' | 'approved' | 'excellent' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
 type ViewMode = 'date' | 'booth' | 'time' | 'buyer' | 'seller' | 'interpreter';
 
 interface ConsultationItem {
@@ -29,7 +30,7 @@ interface ConsultationItem {
   date: string;
   start_time: string;
   end_time: string;
-  status: 'submitted' | 'approved' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
+  status: 'submitted' | 'approved' | 'excellent' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
 }
 
 interface ReportsFilterProps {
@@ -39,6 +40,7 @@ interface ReportsFilterProps {
     total: number;
     submitted: number;
     approved: number;
+    excellent: number;
     revisionRequested: number;
     rejected: number;
     inProgress: number;
@@ -50,6 +52,7 @@ const STATUS_TABS: { key: FilterStatus; label: string; icon: typeof FileText; co
   { key: 'all', label: '전체', icon: FileText, color: 'text-slate-400', activeColor: 'bg-card text-foreground shadow-sm' },
   { key: 'submitted', label: '검토중', icon: Clock, color: 'text-blue-600', activeColor: 'bg-card text-blue-700 shadow-sm' },
   { key: 'approved', label: '승인됨', icon: CheckCircle2, color: 'text-emerald-600', activeColor: 'bg-card text-emerald-700 shadow-sm' },
+  { key: 'excellent', label: '우수상담', icon: Award, color: 'text-amber-500', activeColor: 'bg-card text-amber-600 shadow-sm' },
   { key: 'revision_requested', label: '수정요청', icon: RotateCcw, color: 'text-amber-600', activeColor: 'bg-card text-amber-700 shadow-sm' },
   { key: 'rejected', label: '반려', icon: XCircle, color: 'text-red-600', activeColor: 'bg-card text-red-700 shadow-sm' },
   { key: 'in_progress', label: '작성중', icon: FileText, color: 'text-orange-600', activeColor: 'bg-card text-orange-700 shadow-sm' },
@@ -69,6 +72,8 @@ function getStatusBadge(status: ConsultationItem['status']) {
   switch (status) {
     case 'approved':
       return <Badge className="text-xs gap-1 bg-emerald-500"><CheckCircle2 className="w-3 h-3" />승인됨</Badge>;
+    case 'excellent':
+      return <Badge className="text-xs gap-1 bg-amber-500"><Award className="w-3 h-3" />우수상담</Badge>;
     case 'submitted':
       return <Badge variant="outline" className="text-xs gap-1 border-blue-200 text-blue-700 bg-blue-50"><Clock className="w-3 h-3" />검토중</Badge>;
     case 'revision_requested':
@@ -121,11 +126,12 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
 
   // 필터된 상태별 건수
   const filteredCounts = useMemo(() => {
-    const c = { total: 0, submitted: 0, approved: 0, revisionRequested: 0, rejected: 0, inProgress: 0, notStarted: 0 };
+    const c = { total: 0, submitted: 0, approved: 0, excellent: 0, revisionRequested: 0, rejected: 0, inProgress: 0, notStarted: 0 };
     viewFiltered.forEach(i => {
       c.total++;
       if (i.status === 'submitted') c.submitted++;
       else if (i.status === 'approved') c.approved++;
+      else if (i.status === 'excellent') c.excellent++;
       else if (i.status === 'revision_requested') c.revisionRequested++;
       else if (i.status === 'rejected') c.rejected++;
       else if (i.status === 'in_progress') c.inProgress++;
@@ -141,22 +147,23 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
     return statusFiltered.slice(start, start + pageSize);
   }, [statusFiltered, pageSize, currentPage]);
 
-  // 날짜별 그룹핑 (표시용)
+  // 뷰모드 기반 그룹핑 (MEDIUM#5 수정)
   const grouped = useMemo(() => {
     const map = new Map<string, ConsultationItem[]>();
     paginated.forEach(item => {
-      const key = item.date;
+      const key = getItemKey(item, viewMode);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     });
     return map;
-  }, [paginated]);
+  }, [paginated, viewMode]);
 
   function getCount(key: FilterStatus) {
     if (key === 'all') return selectedValue === '_all' ? counts.total : filteredCounts.total;
     const fc = filteredCounts;
     if (key === 'submitted') return fc.submitted;
     if (key === 'approved') return fc.approved;
+    if (key === 'excellent') return fc.excellent;
     if (key === 'revision_requested') return fc.revisionRequested;
     if (key === 'rejected') return fc.rejected;
     if (key === 'in_progress') return fc.inProgress;
@@ -252,7 +259,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
       ) : (
         <div className="space-y-6">
           {Array.from(grouped.entries()).map(([date, dateItems]) => {
-            const dateApproved = dateItems.filter(i => i.status === 'approved').length;
+            const dateApproved = dateItems.filter(i => i.status === 'approved' || i.status === 'excellent').length;
             return (
               <div key={date}>
                 <div className="flex items-center gap-2 mb-3">

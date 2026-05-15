@@ -60,6 +60,7 @@ export default async function AdminReportDetailPage({
     submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
     under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
     approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
+    excellent: { label: '우수상담', variant: 'default', className: 'bg-amber-500' },
     revision_requested: { label: '수정요청', variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },
     rejected: { label: '반려', variant: 'destructive' },
   };
@@ -68,14 +69,6 @@ export default async function AdminReportDetailPage({
 
   return (
     <div>
-      <Link
-        href={`/admin/events/${eventId}/reports`}
-        className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        일지 목록으로
-      </Link>
-
       {/* 상담 정보 헤더 */}
       <Card className="border-0 shadow-sm mb-6">
         <CardContent className="p-5">

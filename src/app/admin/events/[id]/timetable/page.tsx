@@ -163,7 +163,7 @@ export default function TimetablePage() {
       supabase.from('time_slots').select('*').eq('event_id', eventId).order('slot_order'),
       supabase.from('buyers').select('id, company_name, country, booth_number').eq('event_id', eventId),
       supabase.from('sellers').select('id, company_name, company_name_kr, contact_name').eq('event_id', eventId),
-      supabase.from('consultations').select('id, time_slot_id, buyer_id, seller_id, interpreter_id, memo, seller:sellers(company_name, company_name_kr, contact_name)').eq('event_id', eventId),
+      supabase.from('consultations').select('id, time_slot_id, buyer_id, seller_id, interpreter_id, memo, status, buyer_status, seller:sellers(company_name, company_name_kr, contact_name)').eq('event_id', eventId),
       supabase.from('event_interpreters').select('interpreter_id, interpreter:profiles!event_interpreters_interpreter_id_fkey(id, name, email)').eq('event_id', eventId),
     ]);
 
@@ -444,11 +444,22 @@ export default function TimetablePage() {
     const interpName = cons.interpreter_id ? interpreters.find(i => i.id === cons.interpreter_id)?.name : null;
     const buyerInfo = buyers.find(b => b.id === cons.buyer_id);
 
+    const statusBadge = (() => {
+      if (cons.status === 'in_progress') {
+        return <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">상담중</span>;
+      }
+      if (cons.status === 'completed') {
+        return <span className="inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">완료</span>;
+      }
+      return null;
+    })();
+
     return (
       <div
         className={`text-xs space-y-0.5 ${!assignMode ? 'cursor-pointer hover:bg-blue-50/50 rounded p-1 -m-1 transition-colors' : ''}`}
         onClick={() => !assignMode && handleCellClick(cons)}
       >
+        {statusBadge && <div className="mb-1">{statusBadge}</div>}
         {viewMode === 'buyer' ? (
           <>
             <div className="font-medium text-foreground/80 truncate max-w-[140px]">
@@ -500,10 +511,6 @@ export default function TimetablePage() {
 
   return (
     <div>
-      <Link href={`/admin/events/${eventId}`} className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        상담회 상세로
-      </Link>
 
       <div className="flex items-center justify-between mb-6">
         <div>

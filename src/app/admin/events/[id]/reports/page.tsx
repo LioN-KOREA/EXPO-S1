@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Download } from 'lucide-react';
-import Link from 'next/link';
+import { Card, CardContent } from '@/components/ui/card';
+import { Download, FileText, CheckCircle2, Wallet, FileSignature } from 'lucide-react';
 import { ReportsFilter } from '@/components/admin/ReportsFilter';
-import type { ReportStatus } from '@/types';
+import type { ReportStatus, TemplateField } from '@/types';
 import { batchIn } from '@/lib/supabase/batch-query';
 
 export default async function ReportsPage({
@@ -45,10 +45,42 @@ export default async function ReportsPage({
 
   const reportsMap = new Map(reports?.map((r) => [r.consultation_id, r]) ?? []);
 
-  // 5개 상태 집계
-  type ItemStatus = 'submitted' | 'approved' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
+  // 양식 필드 + 금액 자동 감지 (BIS@T P9 패턴)
+  const { data: template } = await supabase
+    .from('report_templates').select('fields').eq('event_id', eventId).single();
+  const fields: TemplateField[] = (template?.fields as TemplateField[]) ?? [];
+
+  const numberFields = fields.filter((f) => f.type === 'number');
+  const consultAmountField = numberFields.find((f) =>
+    /상담|수출/.test(f.label) && !/계약/.test(f.label)
+  ) ?? numberFields[0];
+  const contractAmountField = numberFields.find((f) =>
+    /계약|추진|성사/.test(f.label)
+  );
+
+  function sumField(field: TemplateField | undefined): number {
+    if (!field) return 0;
+    let sum = 0;
+    reports?.forEach((r) => {
+      const val = (r.data as Record<string, unknown>)?.[field.key];
+      const cleaned = String(val ?? '').replace(/,/g, '').trim();
+      if (cleaned && !isNaN(Number(cleaned))) sum += Number(cleaned);
+    });
+    return sum;
+  }
+
+  const totalConsultAmount = sumField(consultAmountField);
+  const totalContractAmount = sumField(contractAmountField);
+
+  function formatKRW(n: number): string {
+    return n.toLocaleString('ko-KR');
+  }
+
+  // 상태 집계 (excellent 포함)
+  type ItemStatus = 'submitted' | 'approved' | 'excellent' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
   let submittedCount = 0;
   let approvedCount = 0;
+  let excellentCount = 0;
   let revisionCount = 0;
   let rejectedCount = 0;
   let inProgressCount = 0;
@@ -67,6 +99,9 @@ export default async function ReportsPage({
       if (rs === 'approved') {
         status = 'approved';
         approvedCount++;
+      } else if (rs === 'excellent') {
+        status = 'excellent';
+        excellentCount++;
       } else if (rs === 'submitted' || rs === 'under_review') {
         status = 'submitted';
         submittedCount++;
@@ -99,16 +134,13 @@ export default async function ReportsPage({
 
   return (
     <div>
-      <Link href={`/admin/events/${eventId}`} className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        상담회 상세로
-      </Link>
 
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-foreground">상담일지 조회</h2>
           <p className="text-slate-500 mt-1">
-            {approvedCount}/{total}건 승인 완료
+            {approvedCount + excellentCount}/{total}건 승인 완료
+            {excellentCount > 0 && <span className="text-amber-600"> · 우수상담 {excellentCount}건</span>}
           </p>
         </div>
         <a href={`/api/export/reports?event_id=${eventId}`}>
@@ -119,6 +151,80 @@ export default async function ReportsPage({
         </a>
       </div>
 
+      {/* KPI 4종 (BIS@T P9 패턴) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                <Wallet className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 truncate">{consultAmountField?.label ?? '수출상담액'}</p>
+                <p className="text-lg font-bold text-foreground truncate">
+                  {formatKRW(totalConsultAmount)}
+                  <span className="text-xs text-slate-400 ml-1">USD</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                <FileSignature className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 truncate">{contractAmountField?.label ?? '계약추진액'}</p>
+                <p className="text-lg font-bold text-foreground truncate">
+                  {formatKRW(totalContractAmount)}
+                  <span className="text-xs text-slate-400 ml-1">USD</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 truncate">총 상담일지</p>
+                <p className="text-lg font-bold text-foreground">
+                  {(submittedCount + approvedCount + excellentCount + revisionCount + rejectedCount)}
+                  <span className="text-sm text-slate-400">/{total}</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 truncate">승인 · 우수 · 미작성</p>
+                <p className="text-lg font-bold text-foreground">
+                  <span className="text-emerald-600">{approvedCount}</span>
+                  <span className="text-sm text-slate-400 mx-1">·</span>
+                  <span className="text-amber-500">{excellentCount}</span>
+                  <span className="text-sm text-slate-400 mx-1">·</span>
+                  <span className="text-slate-500">{notStartedCount}</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <ReportsFilter
         eventId={eventId}
         items={items}
@@ -126,6 +232,7 @@ export default async function ReportsPage({
           total,
           submitted: submittedCount,
           approved: approvedCount,
+          excellent: excellentCount,
           revisionRequested: revisionCount,
           rejected: rejectedCount,
           inProgress: inProgressCount,

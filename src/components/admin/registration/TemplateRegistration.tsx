@@ -53,7 +53,14 @@ export function TemplateRegistration({ eventId }: { eventId: string }) {
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-500 mb-4">엑셀 양식에서 필드명과 타입을 추출합니다. 기존 양식이 있으면 덮어쓰기됩니다.</p>
+          <p className="text-sm text-slate-500 mb-2">엑셀 양식에서 필드명과 타입을 추출합니다. 기존 양식이 있으면 덮어쓰기됩니다.</p>
+          <div className="text-xs text-slate-500 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 rounded-lg p-3 mb-4 space-y-1">
+            <p className="font-semibold text-amber-700 dark:text-amber-400">📋 양식 작성 가이드</p>
+            <p>• <strong>필수 항목</strong>: 헤더 라벨 끝에 <code className="bg-white px-1 rounded">*</code> 추가 (예: <code className="bg-white px-1 rounded">상담 진행 유형*</code>)</p>
+            <p>• <strong>순서</strong>: 엑셀 컬럼 순서대로 멀티스텝 폼에 노출됩니다</p>
+            <p>• <strong>선택지(드롭다운)</strong>: 라벨에 괄호로 옵션 (예: <code className="bg-white px-1 rounded">거래가능성(상,중,하)</code>)</p>
+            <p>• <strong>분기 조건</strong>: 엑셀로는 미지원. 상세 분기는 별도 편집 필요</p>
+          </div>
           <ExcelUploader onUpload={handleUpload} loading={loading} description="상담일지 양식 엑셀 업로드" />
         </CardContent>
       </Card>

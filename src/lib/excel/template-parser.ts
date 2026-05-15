@@ -109,7 +109,15 @@ export async function parseTemplateExcel(buffer: ArrayBuffer): Promise<TemplateP
   // 중복 키 방지
   const usedKeys = new Set<string>();
 
-  const fields: TemplateField[] = headers.map(({ label, colIndex }, i) => {
+  const fields: TemplateField[] = headers.map(({ label: rawLabel, colIndex }, i) => {
+    // 라벨 끝 '*' → required=true (제거 후 라벨)
+    let required = false;
+    let label = rawLabel;
+    if (label.trim().endsWith('*')) {
+      required = true;
+      label = label.replace(/\s*\*+\s*$/, '').trim();
+    }
+
     // 데이터에서 타입 추론
     const columnValues = dataRows.map((row) => row[colIndex]);
     let type = inferTypeFromData(columnValues);
@@ -138,7 +146,8 @@ export async function parseTemplateExcel(buffer: ArrayBuffer): Promise<TemplateP
     if (usedKeys.has(key)) key = `${key}_${i}`;
     usedKeys.add(key);
 
-    return { key, label, type, options, required: false };
+    // 순서는 헤더 컬럼 순서대로 자동 부여 (멀티스텝 폼에서 활용)
+    return { key, label, type, options, required, order: i + 1 };
   });
 
   // 프리뷰 (데이터가 있는 행만, 최대 5개)
