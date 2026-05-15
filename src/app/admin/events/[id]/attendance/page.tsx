@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ArrowLeft, Search, Calendar, Plus, MessageSquare, QrCode } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { QrIssueButton } from './QrIssueButton';
 
 type AccountType = 'INTERPRETER' | 'SELLER';
 type WorkType = 'REGULAR' | 'RESERVE';
@@ -170,7 +171,8 @@ export default function AttendancePage() {
           <h2 className="text-2xl font-bold text-foreground">출석표</h2>
           <p className="text-slate-500 text-sm mt-1">통역사·셀러 출석 상태 관리</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <QrIssueButton eventId={eventId} />
           <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)}>
             <MessageSquare className="w-4 h-4 mr-1" />
             메시지 전송 예약
