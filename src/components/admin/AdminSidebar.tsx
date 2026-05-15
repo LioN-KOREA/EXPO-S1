@@ -10,6 +10,16 @@ import {
   LogOut,
   Menu,
   X,
+  ClipboardCheck,
+  Activity,
+  SlidersHorizontal,
+  Info,
+  Megaphone,
+  ClipboardList,
+  CalendarClock,
+  Languages,
+  FileText,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -23,6 +33,56 @@ const navItems = [
   { href: '/admin/users', label: '사용자 관리', icon: Users },
 ];
 
+// 이벤트 상세 진입 시 노출되는 메뉴 — 카테고리 그룹
+type EventGroup = {
+  title: string;
+  items: { suffix: string; label: string; icon: typeof LayoutDashboard }[];
+};
+
+const eventGroups: EventGroup[] = [
+  {
+    title: '분석',
+    items: [
+      { suffix: '/dashboard', label: '대시보드', icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: '준비',
+    items: [
+      { suffix: '/registration', label: '데이터 업로드', icon: ClipboardList },
+      { suffix: '/timetable', label: '타임테이블', icon: CalendarClock },
+      { suffix: '/interpreters', label: '통역사 배정', icon: Languages },
+      { suffix: '/template', label: '상담일지 양식', icon: FileText },
+      { suffix: '/settings', label: '옵션', icon: SlidersHorizontal },
+    ],
+  },
+  {
+    title: '운영',
+    items: [
+      { suffix: '/attendance', label: '출석표', icon: ClipboardCheck },
+      { suffix: '/operate', label: '현장운영', icon: Activity },
+      { suffix: '/infodesk', label: '인포데스크', icon: Info },
+      { suffix: '/notice', label: '공지사항', icon: Megaphone },
+    ],
+  },
+  {
+    title: '기록',
+    items: [
+      { suffix: '/reports', label: '상담일지', icon: BookOpen },
+    ],
+  },
+];
+
+// /admin/events/[id]/... 형태 경로에서 [id] 추출
+function extractEventId(pathname: string): string | null {
+  const match = pathname.match(/^\/admin\/events\/([^/]+)(?:\/.*)?$/);
+  if (!match) return null;
+  const id = match[1];
+  // 'new' 같은 동적 경로 제외
+  if (id === 'new') return null;
+  return id;
+}
+
 interface AdminSidebarProps {
   userName: string;
   userEmail: string;
@@ -32,6 +92,8 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const eventId = extractEventId(pathname);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -47,7 +109,7 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
       </Link>
 
       {/* 네비게이션 */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href ||
             (item.href !== '/admin' && pathname.startsWith(item.href));
@@ -68,6 +130,40 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
             </Link>
           );
         })}
+
+        {/* 이벤트 상세 진입 시 카테고리별 메뉴 */}
+        {eventId && (
+          <div className="pt-3 mt-3 border-t border-white/[0.06] space-y-3">
+            <p className="px-4 text-[10px] uppercase tracking-wider text-slate-500">현재 상담회</p>
+            {eventGroups.map((group) => (
+              <div key={group.title} className="space-y-0.5">
+                <p className="px-4 mb-1 text-[10px] font-semibold tracking-wider text-slate-600">
+                  {group.title}
+                </p>
+                {group.items.map((sub) => {
+                  const href = `/admin/events/${eventId}${sub.suffix}`;
+                  const isActive = pathname === href || pathname.startsWith(href + '/');
+                  return (
+                    <Link
+                      key={sub.suffix}
+                      href={href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all',
+                        isActive
+                          ? 'bg-white/[0.08] text-white'
+                          : 'text-slate-400 hover:bg-card hover:text-foreground/80'
+                      )}
+                    >
+                      <sub.icon className="w-4 h-4" />
+                      {sub.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
       </nav>
 
       {/* 사용자 정보 + 로그아웃 */}

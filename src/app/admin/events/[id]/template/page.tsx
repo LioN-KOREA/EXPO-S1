@@ -45,10 +45,6 @@ export default function TemplatePage() {
 
   return (
     <div className="max-w-2xl">
-      <Link href={`/admin/events/${eventId}`} className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        상담회 상세로
-      </Link>
 
       <div className="flex items-center justify-between mb-6">
         <div>

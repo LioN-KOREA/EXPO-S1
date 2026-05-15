@@ -16,14 +16,13 @@ export default function RegistrationPage() {
 
   return (
     <div>
-      <Link href={`/admin/events/${eventId}`} className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        상담회 상세로
-      </Link>
 
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground">관리 / 등록</h2>
-        <p className="text-slate-500 text-sm mt-1">타임테이블, 참가자, 통역사, 양식을 등록합니다</p>
+        <h2 className="text-2xl font-bold text-foreground">데이터 업로드</h2>
+        <p className="text-slate-500 text-sm mt-1">
+          엑셀로 타임테이블·참가자·통역사·양식을 일괄 등록합니다. 등록 후 관리는 좌측 메뉴
+          (타임테이블 / 통역사 배정 / 상담일지 양식)에서 진행하세요.
+        </p>
       </div>
 
       <Tabs defaultValue="timetable">
