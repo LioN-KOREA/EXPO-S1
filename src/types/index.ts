@@ -5,7 +5,17 @@
 export type UserRole = 'admin' | 'interpreter' | 'buyer' | 'seller';
 export type EventStatus = 'active' | 'archived';
 export type ConsultationStatus = 'scheduled' | 'in_progress' | 'completed';
-export type ReportStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'revision_requested' | 'rejected';
+export type ReportStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'revision_requested' | 'rejected' | 'excellent';
+
+// 통역사가 IP7 모달에서 변경하는 바이어 현장 상태 (NULL = 상태없음)
+export type BuyerStatus =
+  | 'MET_INTERPRETER'
+  | 'BUS_BOARDED'
+  | 'INDIVIDUAL_MOVE'
+  | 'WAITING'
+  | 'ABSENT'
+  | 'ONSITE_MATCH_AVAILABLE'
+  | 'ONSITE_MATCH_DONE';
 export type TradePossibility = '상' | '중' | '하';
 
 // --- 사용자 ---
@@ -82,6 +92,7 @@ export interface Consultation {
   seller_id: string;
   interpreter_id: string | null;
   status: ConsultationStatus;
+  buyer_status?: BuyerStatus | null; // 통역사 IP7 모달에서 갱신, NULL=상태없음
   // 조인 데이터
   time_slot?: TimeSlot;
   buyer?: Buyer;
@@ -99,6 +110,10 @@ export interface TemplateField {
   type: FieldType;
   options?: string[];   // select 타입일 때
   required: boolean;
+  // 분기 (앞 답이 특정 값일 때만 노출). equals 단일값 또는 in 다중값
+  condition?: { field: string; equals?: unknown; in?: unknown[] };
+  // 멀티스텝 폼 정렬
+  order?: number;
 }
 
 export interface ReportTemplate {

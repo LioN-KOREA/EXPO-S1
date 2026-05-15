@@ -13,10 +13,15 @@ import {
   FileText,
   AlertCircle,
   RotateCcw,
+  Award,
+  MapPin,
+  Calendar,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { ReportStatus } from '@/types';
 import { batchIn } from '@/lib/supabase/batch-query';
+import { QrAttendButton } from '@/components/interpreter/QrAttendButton';
+import { BuyerCardList } from '@/components/interpreter/BuyerCardList';
 
 export default async function InterpreterEventPage({
   params,
@@ -67,22 +72,57 @@ export default async function InterpreterEventPage({
 
   const reportsMap = new Map(reports.map((r: Record<string, unknown>) => [r.consultation_id, r]));
 
-  // 5개 상태 통계
+  // 상태 통계 (excellent 포함)
   const total = consultations?.length ?? 0;
   let approvedCount = 0;
+  let excellentCount = 0;
   let submittedCount = 0;
   let revisionCount = 0;
   let inProgressCount = 0;
   reports?.forEach((r) => {
     const rs = (r.report_status ?? (r.submitted ? 'submitted' : 'draft')) as ReportStatus;
     if (rs === 'approved') approvedCount++;
+    else if (rs === 'excellent') excellentCount++;
     else if (rs === 'submitted' || rs === 'under_review') submittedCount++;
     else if (rs === 'revision_requested') revisionCount++;
     else inProgressCount++;
   });
-  const notStarted = total - approvedCount - submittedCount - revisionCount - inProgressCount;
-  const completedCount = approvedCount + submittedCount; // 제출 이상
-  const rate = total > 0 ? Math.round((approvedCount / total) * 100) : 0;
+  const notStarted = total - approvedCount - excellentCount - submittedCount - revisionCount - inProgressCount;
+  const approvedTotal = approvedCount + excellentCount;
+  const rate = total > 0 ? Math.round((approvedTotal / total) * 100) : 0;
+
+  // 통역사 프로필
+  const { data: profile } = await supabase
+    .from('profiles').select('name').eq('id', user!.id).single();
+
+  // 담당 바이어 unique 추출 (현재 buyer_status 포함)
+  const buyerMap = new Map<string, {
+    id: string;
+    company_name: string;
+    buyer_name: string;
+    country: string;
+    booth_number: string;
+    buyer_status: string | null;
+    consultation_ids: string[];
+  }>();
+  consultations?.forEach((c) => {
+    if (!c.buyer) return;
+    const existing = buyerMap.get(c.buyer.id);
+    if (existing) {
+      existing.consultation_ids.push(c.id);
+    } else {
+      buyerMap.set(c.buyer.id, {
+        id: c.buyer.id,
+        company_name: c.buyer.company_name,
+        buyer_name: c.buyer.buyer_name ?? '',
+        country: c.buyer.country ?? '',
+        booth_number: c.buyer.booth_number ?? '',
+        buyer_status: (c as { buyer_status?: string }).buyer_status ?? null,
+        consultation_ids: [c.id],
+      });
+    }
+  });
+  const buyers = Array.from(buyerMap.values());
 
   // 날짜별 그룹핑
   const grouped = new Map<string, NonNullable<typeof consultations>>();
@@ -99,10 +139,63 @@ export default async function InterpreterEventPage({
         내 상담회 목록
       </Link>
 
+      {/* 인사말 + QR 출석 */}
+      <Card className="border-0 shadow-sm mb-6 bg-gradient-to-br from-rose-500 to-orange-500 text-white">
+        <CardContent className="p-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-lg font-bold">
+                {profile?.name ?? ''} 통역사님
+              </p>
+              <p className="text-sm opacity-90 mt-0.5">성공적인 통역을 응원해요!</p>
+            </div>
+            <QrAttendButton />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 상담회 메타 */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-foreground">{event.name}</h2>
-        <p className="text-sm text-slate-500 mt-1">{event.start_date} ~ {event.end_date}</p>
+        {event.description && (
+          <p className="text-sm text-slate-500 mt-1">{event.description}</p>
+        )}
+        <div className="flex items-center gap-3 mt-2 text-sm text-slate-500 flex-wrap">
+          <span className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" />
+            {event.start_date} ~ {event.end_date}
+          </span>
+        </div>
       </div>
+
+      {/* 담당 바이어 카드 */}
+      {buyers.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <User className="w-4 h-4 text-rose-500" />
+            담당 바이어 ({buyers.length})
+          </h3>
+          <BuyerCardList buyers={buyers} />
+        </div>
+      )}
+
+      {/* 일정 관리 진입 (시작/종료 토글) */}
+      {total > 0 && (
+        <Link
+          href={`/interpreter/events/${eventId}/schedule`}
+          className="block mb-6"
+        >
+          <Card className="border-0 shadow-sm hover:shadow-lg transition-all bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-90">일정 관리</p>
+                <p className="text-lg font-bold mt-0.5">상담 시작 / 종료 + 일지 작성</p>
+              </div>
+              <ChevronRight className="w-6 h-6" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       {/* 진행률 + 요약 통계 */}
       {total > 0 && (
@@ -113,7 +206,7 @@ export default async function InterpreterEventPage({
               <span className={`text-sm font-bold ${
                 rate === 100 ? 'text-emerald-600' : rate >= 50 ? 'text-blue-600' : 'text-slate-500'
               }`}>
-                {approvedCount}/{total} ({rate}%)
+                {approvedTotal}/{total} ({rate}%)
               </span>
             </div>
             <div className="w-full h-2.5 bg-card rounded-full overflow-hidden flex mb-3">
@@ -121,6 +214,12 @@ export default async function InterpreterEventPage({
                 <div
                   className="h-full bg-emerald-400"
                   style={{ width: `${(approvedCount / total) * 100}%` }}
+                />
+              )}
+              {excellentCount > 0 && (
+                <div
+                  className="h-full bg-amber-400"
+                  style={{ width: `${(excellentCount / total) * 100}%` }}
                 />
               )}
               {submittedCount > 0 && (
@@ -147,6 +246,12 @@ export default async function InterpreterEventPage({
                 <span className="flex items-center gap-1.5 text-xs text-emerald-600">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   승인 {approvedCount}
+                </span>
+              )}
+              {excellentCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-amber-500">
+                  <Award className="w-3.5 h-3.5" />
+                  우수상담 {excellentCount}
                 </span>
               )}
               {submittedCount > 0 && (
@@ -207,6 +312,7 @@ export default async function InterpreterEventPage({
 
                   const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
                     approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
+                    excellent: { label: '우수상담', variant: 'default', className: 'bg-amber-500' },
                     submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
                     under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
                     revision_requested: { label: '수정요청', variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },

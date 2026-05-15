@@ -10,6 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 import type { TemplateField } from '@/types';
 
 interface DynamicFormProps {
@@ -17,6 +20,13 @@ interface DynamicFormProps {
   values: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
   disabled?: boolean;
+}
+
+// label/key에서 "세부"/"detail" 포함 textarea 필드는 AI 생성 버튼 노출
+function isAiTarget(field: TemplateField): boolean {
+  if (field.type !== 'textarea') return false;
+  const text = (field.label + ' ' + field.key).toLowerCase();
+  return /세부|상세|detail|description/.test(text);
 }
 
 export function DynamicForm({ fields, values, onChange, disabled = false }: DynamicFormProps) {
@@ -62,14 +72,28 @@ export function DynamicForm({ fields, values, onChange, disabled = false }: Dyna
           )}
 
           {field.type === 'textarea' && (
-            <Textarea
-              id={field.key}
-              value={String(values[field.key] ?? '')}
-              onChange={(e) => onChange(field.key, e.target.value)}
-              disabled={disabled}
-              required={field.required}
-              rows={4}
-            />
+            <>
+              {isAiTarget(field) && !disabled && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toast.info('AI 답변 생성 준비중 (Phase E-3)')}
+                  className="gap-1.5 mb-1.5 border-rose-200 text-rose-600 hover:bg-rose-50"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  AI 답변 생성
+                </Button>
+              )}
+              <Textarea
+                id={field.key}
+                value={String(values[field.key] ?? '')}
+                onChange={(e) => onChange(field.key, e.target.value)}
+                disabled={disabled}
+                required={field.required}
+                rows={4}
+              />
+            </>
           )}
 
           {field.type === 'select' && field.options && (

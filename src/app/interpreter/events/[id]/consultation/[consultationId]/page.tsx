@@ -6,8 +6,9 @@ import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DynamicForm } from '@/components/interpreter/DynamicForm';
-import { ArrowLeft, Save, Send, User, Building2, Clock, CheckCircle2, Loader2, AlertTriangle, MessageSquare } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { MultiStepReportForm } from '@/components/interpreter/MultiStepReportForm';
+import { ArrowLeft, Save, User, Building2, Clock, CheckCircle2, Loader2, AlertTriangle, MessageSquare, Play, Square } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import type { TemplateField, Consultation, ConsultationReport, ReportStatus } from '@/types';
@@ -25,6 +26,8 @@ export default function ConsultationReportPage() {
   const [fields, setFields] = useState<TemplateField[]>([]);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [report, setReport] = useState<ConsultationReport | null>(null);
+  const [submitOpen, setSubmitOpen] = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
 
   // 자동 저장 관련
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -60,12 +63,20 @@ export default function ConsultationReportPage() {
           return;
         }
 
+        // HIGH#3: URL eventId가 실제 consultation.event_id와 일치하는지 검증
+        const actualEventId = (consultationData as { event_id?: string })?.event_id;
+        if (actualEventId && actualEventId !== eventId) {
+          setError('URL 이벤트 ID가 일치하지 않습니다.');
+          setLoading(false);
+          return;
+        }
+
         setConsultation(consultationData as Consultation);
 
         const { data: template, error: templateError } = await supabase
           .from('report_templates')
           .select('fields')
-          .eq('event_id', eventId)
+          .eq('event_id', actualEventId ?? eventId)
           .single();
 
         if (templateError && templateError.code !== 'PGRST116') {
@@ -104,9 +115,9 @@ export default function ConsultationReportPage() {
     const currentReport = reportRef.current;
     const currentFormData = formDataRef.current;
 
-    // 제출/승인된 일지는 자동저장 안 함
+    // 제출/승인/우수상담된 일지는 자동저장 안 함
     const status = currentReport?.report_status;
-    if (status === 'submitted' || status === 'under_review' || status === 'approved') return;
+    if (status === 'submitted' || status === 'under_review' || status === 'approved' || status === 'excellent') return;
 
 
     setAutoSaveStatus('saving');
@@ -125,30 +136,26 @@ export default function ConsultationReportPage() {
     };
 
     let error;
+    let updatedRow: ConsultationReport | null = null;
     if (currentReport) {
-      // 낙관적 락: 현재 알고 있는 version으로 조건부 업데이트
-      const { error: updateError, count } = await supabase
+      // 낙관적 락: select로 결과 반환받아 업데이트 성공 여부 명확화 (HIGH#1 수정)
+      const { data, error: updateError } = await supabase
         .from('consultation_reports')
         .update(payload)
         .eq('id', currentReport.id)
-        .eq('version', currentReport.version || 1);
+        .eq('version', currentReport.version || 1)
+        .select('*')
+        .maybeSingle();
 
-      if (count === 0 && !updateError) {
-        // 다른 디바이스에서 먼저 수정됨
+      if (updateError) {
+        error = updateError;
+      } else if (!data) {
+        // 행 매칭 0 = 버전 충돌 또는 RLS 거부
         setAutoSaveStatus('error');
-        toast.error('다른 곳에서 수정되었습니다. 페이지를 새로고침해주세요.');
+        toast.error('다른 곳에서 수정되었거나 권한이 없습니다. 새로고침해주세요.');
         return;
-      }
-      error = updateError;
-
-      // 버전 갱신 (트리거가 증가시킴)
-      if (!error) {
-        const { data: refreshed } = await supabase
-          .from('consultation_reports')
-          .select('*')
-          .eq('id', currentReport.id)
-          .single();
-        if (refreshed) setReport(refreshed as ConsultationReport);
+      } else {
+        updatedRow = data as ConsultationReport;
       }
     } else {
       const { error: insertError, data: newReport } = await supabase
@@ -157,33 +164,40 @@ export default function ConsultationReportPage() {
         .select('*')
         .single();
       error = insertError;
-      if (newReport) setReport(newReport as ConsultationReport);
+      if (newReport) updatedRow = newReport as ConsultationReport;
     }
 
     if (error) {
       setAutoSaveStatus('error');
     } else {
+      if (updatedRow) setReport(updatedRow);
       setAutoSaveStatus('saved');
       setLastSavedAt(new Date());
-      // 상담 상태도 업데이트
-      await supabase
-        .from('consultations')
-        .update({ status: 'in_progress' })
-        .eq('id', consultationId);
+      // 상담 상태 업데이트 — scheduled에서만 in_progress로 (HIGH#2 수정: completed 다운그레이드 방지)
+      if (consultation?.status === 'scheduled' || !consultation?.status) {
+        const { error: csErr } = await supabase
+          .from('consultations')
+          .update({ status: 'in_progress' })
+          .eq('id', consultationId)
+          .eq('status', 'scheduled');
+        if (!csErr) {
+          setConsultation((prev) => prev ? { ...prev, status: 'in_progress' } : prev);
+        }
+      }
     }
-  }, [consultationId]);
+  }, [consultationId, consultation?.status]);
 
-  // formData 변경 시 3초 debounce 자동 저장
+  // formData 변경 시 1초 debounce 자동 저장
   useEffect(() => {
     if (isInitialLoad.current) return;
     const rs = report?.report_status;
-    if (rs === 'submitted' || rs === 'under_review' || rs === 'approved') return;
+    if (rs === 'submitted' || rs === 'under_review' || rs === 'approved' || rs === 'excellent') return;
 
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
 
     autoSaveTimer.current = setTimeout(() => {
       executeAutoSave();
-    }, 3000);
+    }, 1000);
 
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
@@ -196,6 +210,22 @@ export default function ConsultationReportPage() {
     if (autoSaveStatus === 'saved' || autoSaveStatus === 'error') {
       setAutoSaveStatus('idle');
     }
+  }
+
+  async function handleConsultationStatusChange(next: 'in_progress' | 'completed') {
+    setStatusBusy(true);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('consultations')
+      .update({ status: next })
+      .eq('id', consultationId);
+    if (error) {
+      toast.error('상태 변경 실패: ' + error.message);
+    } else {
+      toast.success(next === 'in_progress' ? '상담을 시작했어요' : '상담이 끝났어요');
+      setConsultation((prev) => prev ? { ...prev, status: next } : prev);
+    }
+    setStatusBusy(false);
   }
 
   async function handleSave(submit = false) {
@@ -226,18 +256,22 @@ export default function ConsultationReportPage() {
     let error;
 
     if (report) {
-      const { error: updateError, count } = await supabase
+      // HIGH#1: select 반환받아 행 매칭 확인
+      const { data, error: updateError } = await supabase
         .from('consultation_reports')
         .update(payload)
         .eq('id', report.id)
-        .eq('version', (report as unknown as { version: number }).version || 1);
+        .eq('version', (report as unknown as { version: number }).version || 1)
+        .select('id')
+        .maybeSingle();
 
-      if (count === 0 && !updateError) {
-        toast.error('다른 곳에서 수정되었습니다. 페이지를 새로고침해주세요.');
+      if (updateError) {
+        error = updateError;
+      } else if (!data) {
+        toast.error('다른 곳에서 수정되었거나 권한이 없습니다. 새로고침해주세요.');
         setSaving(false);
         return;
       }
-      error = updateError;
     } else {
       ({ error } = await supabase
         .from('consultation_reports')
@@ -303,14 +337,16 @@ export default function ConsultationReportPage() {
   const reportStatus: ReportStatus = report?.report_status ?? (report?.submitted ? 'submitted' : 'draft');
   // 편집 가능: draft, revision_requested, rejected
   const isEditable = !report || reportStatus === 'draft' || reportStatus === 'revision_requested' || reportStatus === 'rejected';
-  // 읽기 전용: submitted, under_review, approved
+  // 읽기 전용: submitted, under_review, approved, excellent
   const isReadOnly = !isEditable;
+  const isApproved = reportStatus === 'approved' || reportStatus === 'excellent';
 
   const statusConfig: Record<ReportStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
     draft: { label: report ? '작성중' : '미작성', variant: 'secondary' },
     submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
     under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
     approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
+    excellent: { label: '우수상담', variant: 'default', className: 'bg-amber-500' },
     revision_requested: { label: '수정요청', variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },
     rejected: { label: '반려', variant: 'destructive' },
   };
@@ -348,7 +384,7 @@ export default function ConsultationReportPage() {
       {/* 상담 정보 헤더 */}
       <Card className="border-0 shadow-sm mb-6">
         <CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <div className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
               <Clock className="w-3 h-3" />
               {consultation.time_slot?.start_time} - {consultation.time_slot?.end_time}
@@ -356,6 +392,38 @@ export default function ConsultationReportPage() {
             <Badge variant={currentStatus.variant} className={`text-xs ${currentStatus.className || ''}`}>
               {currentStatus.label}
             </Badge>
+            {/* 상담 진행 상태 */}
+            {!isReadOnly && consultation.status !== 'completed' && (
+              <div className="ml-auto flex gap-2">
+                {consultation.status !== 'in_progress' ? (
+                  <Button
+                    size="sm"
+                    onClick={() => handleConsultationStatusChange('in_progress')}
+                    disabled={statusBusy}
+                    className="bg-blue-500 hover:bg-blue-600 gap-1.5"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    상담을 시작해요
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={() => handleConsultationStatusChange('completed')}
+                    disabled={statusBusy}
+                    className="bg-emerald-500 hover:bg-emerald-600 gap-1.5"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    상담이 끝났어요
+                  </Button>
+                )}
+              </div>
+            )}
+            {consultation.status === 'completed' && (
+              <span className="ml-auto text-xs font-medium text-emerald-600 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                상담 종료됨
+              </span>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -380,6 +448,13 @@ export default function ConsultationReportPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 안내 */}
+      {isEditable && (
+        <p className="text-xs text-slate-500 mb-3 px-1">
+          ✓ 바이어/셀러 정보는 위 카드에 표시됩니다. 양식에는 상담 내용·금액·만족도·현장 특이사항만 작성해주세요.
+        </p>
+      )}
 
       {/* 상담일지 폼 */}
       <Card className="border-0 shadow-sm">
@@ -415,36 +490,30 @@ export default function ConsultationReportPage() {
             </p>
           ) : (
             <>
-              <DynamicForm
+              <MultiStepReportForm
                 fields={fields}
                 values={formData}
                 onChange={handleFieldChange}
                 disabled={isReadOnly}
+                onSubmit={() => setSubmitOpen(true)}
+                submitting={saving}
+                submitLabel={reportStatus === 'revision_requested' ? '재제출' : '제출'}
               />
 
               {isEditable && (
-                <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={() => handleSave(false)}
-                      disabled={saving}
-                      className="gap-2"
-                    >
-                      <Save className="w-4 h-4" />
-                      {saving ? '저장 중...' : '임시 저장'}
-                    </Button>
-                    <Button
-                      onClick={() => handleSave(true)}
-                      disabled={saving}
-                      className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
-                    >
-                      <Send className="w-4 h-4" />
-                      {saving ? '제출 중...' : reportStatus === 'revision_requested' ? '재제출' : '제출'}
-                    </Button>
-                  </div>
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSave(false)}
+                    disabled={saving}
+                    className="gap-2"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {saving ? '저장 중...' : '임시 저장'}
+                  </Button>
                   <p className="text-[11px] text-slate-500 hidden sm:block">
-                    입력 내용은 자동으로 임시 저장됩니다
+                    입력 내용은 1초마다 자동 저장됩니다
                   </p>
                 </div>
               )}
@@ -452,6 +521,35 @@ export default function ConsultationReportPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 제출 확인 모달 */}
+      <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>상담일지를 제출할까요?</DialogTitle>
+            <DialogDescription>
+              제출한 상담일지는 다시 열람할 수 없어요.<br />
+              단, 수정이 필요한 경우 관리자가 반려할 수 있어요.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setSubmitOpen(false)} disabled={saving}>
+              취소
+            </Button>
+            <Button
+              onClick={async () => {
+                setSubmitOpen(false);
+                await handleSave(true);
+              }}
+              disabled={saving}
+              className="bg-emerald-500 hover:bg-emerald-600"
+            >
+              {saving ? '제출 중...' : '제출하기'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
