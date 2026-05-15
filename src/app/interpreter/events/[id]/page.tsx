@@ -149,7 +149,7 @@ export default async function InterpreterEventPage({
               </p>
               <p className="text-sm opacity-90 mt-0.5">성공적인 통역을 응원해요!</p>
             </div>
-            <QrAttendButton />
+            <QrAttendButton eventId={eventId} />
           </div>
         </CardContent>
       </Card>
