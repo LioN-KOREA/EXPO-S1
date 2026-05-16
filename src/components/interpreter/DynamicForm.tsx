@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n/context';
 import type { TemplateField } from '@/types';
 
 interface DynamicFormProps {
@@ -30,6 +31,7 @@ function isAiTarget(field: TemplateField): boolean {
 }
 
 export function DynamicForm({ fields, values, onChange, disabled = false }: DynamicFormProps) {
+  const { t } = useI18n();
   return (
     <div className="space-y-4">
       {fields.map((field) => (
@@ -78,11 +80,11 @@ export function DynamicForm({ fields, values, onChange, disabled = false }: Dyna
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.info('AI 답변 생성 준비중 (Phase E-3)')}
+                  onClick={() => toast.info(t.interpreter.aiGeneratePreparing)}
                   className="gap-1.5 mb-1.5 border-rose-200 text-rose-600 hover:bg-rose-50"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  AI 답변 생성
+                  {t.interpreter.aiGenerate}
                 </Button>
               )}
               <Textarea
@@ -103,7 +105,7 @@ export function DynamicForm({ fields, values, onChange, disabled = false }: Dyna
               disabled={disabled}
             >
               <SelectTrigger>
-                <SelectValue placeholder="선택하세요" />
+                <SelectValue placeholder={t.interpreter.selectPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {field.options.map((option) => (

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Building2, MapPin } from 'lucide-react';
+import { useI18n } from '@/lib/i18n/context';
 import { BuyerStatusModal } from './BuyerStatusModal';
 
 interface Buyer {
@@ -20,24 +21,29 @@ interface Props {
   buyers: Buyer[];
 }
 
-export const BUYER_STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  MET_INTERPRETER: { label: '통역사와만남', color: 'bg-rose-500' },
-  BUS_BOARDED: { label: '버스탑승', color: 'bg-emerald-500' },
-  INDIVIDUAL_MOVE: { label: '개별이동', color: 'bg-blue-500' },
-  WAITING: { label: '대기중', color: 'bg-slate-400' },
-  ABSENT: { label: '불참/부재', color: 'bg-red-500' },
-  ONSITE_MATCH_AVAILABLE: { label: '현장매칭가능', color: 'bg-amber-400' },
-  ONSITE_MATCH_DONE: { label: '현장매칭완료', color: 'bg-emerald-600' },
+export const BUYER_STATUS_COLOR: Record<string, string> = {
+  MET_INTERPRETER: 'bg-rose-500',
+  BUS_BOARDED: 'bg-emerald-500',
+  INDIVIDUAL_MOVE: 'bg-blue-500',
+  WAITING: 'bg-slate-400',
+  ABSENT: 'bg-red-500',
+  ONSITE_MATCH_AVAILABLE: 'bg-amber-400',
+  ONSITE_MATCH_DONE: 'bg-emerald-600',
 };
 
 export function BuyerCardList({ buyers }: Props) {
+  const { t } = useI18n();
   const [openBuyer, setOpenBuyer] = useState<Buyer | null>(null);
 
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {buyers.map((b) => {
-          const statusInfo = b.buyer_status ? BUYER_STATUS_LABEL[b.buyer_status] : null;
+          const statusKey = b.buyer_status;
+          const statusColor = statusKey ? BUYER_STATUS_COLOR[statusKey] : null;
+          const statusLabel = statusKey
+            ? (t.buyerStatus[statusKey as keyof typeof t.buyerStatus] ?? statusKey)
+            : null;
           return (
             <Card
               key={b.id}
@@ -52,7 +58,7 @@ export function BuyerCardList({ buyers }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-foreground truncate">{b.company_name}</p>
                     {b.buyer_name && (
-                      <p className="text-xs text-slate-500 truncate">담당: {b.buyer_name}</p>
+                      <p className="text-xs text-slate-500 truncate">{t.interpreter.inChargePrefix}{b.buyer_name}</p>
                     )}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       {b.country && (
@@ -62,14 +68,14 @@ export function BuyerCardList({ buyers }: Props) {
                         </span>
                       )}
                       {b.booth_number && (
-                        <span className="text-xs text-slate-500">부스 {b.booth_number}</span>
+                        <span className="text-xs text-slate-500">{t.interpreter.boothPrefix}{b.booth_number}</span>
                       )}
-                      {statusInfo ? (
-                        <Badge className={`text-xs ${statusInfo.color} text-white border-0`}>
-                          {statusInfo.label}
+                      {statusLabel && statusColor ? (
+                        <Badge className={`text-xs ${statusColor} text-white border-0`}>
+                          {statusLabel}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs">상태없음</Badge>
+                        <Badge variant="outline" className="text-xs">{t.interpreter.noStatus}</Badge>
                       )}
                     </div>
                   </div>

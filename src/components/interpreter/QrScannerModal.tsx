@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2, XCircle, QrCode } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n/context';
 
 interface Props {
   open: boolean;
@@ -26,6 +27,7 @@ interface Html5Qrcode {
 }
 
 export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
+  const { t, locale } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [status, setStatus] = useState<'idle' | 'scanning' | 'processing' | 'done' | 'error'>('idle');
@@ -62,7 +64,7 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
       } catch (err) {
         if (cancelled) return;
         setStatus('error');
-        setMessage(err instanceof Error ? err.message : '카메라를 시작할 수 없습니다');
+        setMessage(err instanceof Error ? err.message : t.interpreter.cameraStartFailed);
       }
     }
 
@@ -79,12 +81,12 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
 
         // eventId 일치 확인 (옵션)
         if (eventId && scannedEventId !== eventId) {
-          throw new Error('QR이 이 상담회와 일치하지 않습니다');
+          throw new Error(t.interpreter.qrEventMismatch);
         }
 
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error('로그인이 필요합니다');
+        if (!user) throw new Error(t.interpreter.loginRequired);
 
         const today = new Date().toISOString().slice(0, 10);
         const nowIso = new Date().toISOString();
@@ -104,15 +106,15 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
 
         // 상태 로그 (옵션, 실패해도 진행)
         setStatus('done');
-        setMessage(`출석 시간: ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
-        toast.success('출석이 확인되었습니다');
+        setMessage(`${t.interpreter.qrAttendTimePrefix}${new Date().toLocaleTimeString(locale === 'en' ? 'en-US' : 'ko-KR', { hour: '2-digit', minute: '2-digit' })}`);
+        toast.success(t.interpreter.qrSuccess);
         onSuccess?.({ eventId: scannedEventId, checkedInAt: nowIso });
 
         await scannerRef.current?.stop();
       } catch (err) {
         setStatus('error');
-        setMessage(err instanceof Error ? err.message : 'QR 처리 실패');
-        toast.error(err instanceof Error ? err.message : 'QR 처리 실패');
+        setMessage(err instanceof Error ? err.message : t.interpreter.qrProcessFailed);
+        toast.error(err instanceof Error ? err.message : t.interpreter.qrProcessFailed);
       }
     }
 
@@ -134,10 +136,10 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode className="w-5 h-5 text-rose-500" />
-            QR코드 출석
+            {t.interpreter.qrAttendTitle}
           </DialogTitle>
           <DialogDescription>
-            현장에 비치된 QR코드를 카메라에 비춰주세요.
+            {t.interpreter.qrInstruction}
           </DialogDescription>
         </DialogHeader>
 
@@ -146,26 +148,26 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
           {status === 'idle' && (
             <div className="absolute inset-0 flex items-center justify-center text-white text-sm">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              카메라 준비 중...
+              {t.interpreter.cameraPreparing}
             </div>
           )}
           {status === 'processing' && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/70 text-white text-sm">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              출석 처리 중...
+              {t.interpreter.attendanceProcessing}
             </div>
           )}
           {status === 'done' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/90 text-white">
               <CheckCircle2 className="w-12 h-12 mb-2" />
-              <p className="font-bold">출석 완료</p>
+              <p className="font-bold">{t.interpreter.attendanceDone}</p>
               <p className="text-xs mt-1">{message}</p>
             </div>
           )}
           {status === 'error' && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/90 text-white p-4 text-center">
               <XCircle className="w-12 h-12 mb-2" />
-              <p className="font-bold">실패</p>
+              <p className="font-bold">{t.interpreter.failed}</p>
               <p className="text-xs mt-1">{message}</p>
             </div>
           )}
@@ -173,7 +175,7 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            {status === 'done' ? '닫기' : '취소'}
+            {status === 'done' ? t.common.close : t.common.cancel}
           </Button>
         </DialogFooter>
       </DialogContent>

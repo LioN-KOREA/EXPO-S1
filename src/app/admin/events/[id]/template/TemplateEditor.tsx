@@ -12,9 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowUp, ArrowDown, Trash2, Plus, Save, FileText } from 'lucide-react';
+import { ArrowUp, ArrowDown, Trash2, Plus, Save, FileText, Eye } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { MultiStepReportForm } from '@/components/interpreter/MultiStepReportForm';
 import type { TemplateField, FieldType } from '@/types';
 
 const typeOptions: { value: FieldType; label: string }[] = [
@@ -33,6 +41,18 @@ interface Props {
 export function TemplateEditor({ eventId, initialFields }: Props) {
   const [fields, setFields] = useState<TemplateField[]>(initialFields);
   const [saving, setSaving] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewValues, setPreviewValues] = useState<Record<string, unknown>>({});
+
+  function openPreview() {
+    setPreviewValues({});
+    setPreviewOpen(true);
+  }
+
+  function handlePreviewSubmit() {
+    toast.success('미리보기입니다. 실제 제출되지 않습니다');
+    setPreviewOpen(false);
+  }
 
   function update(index: number, patch: Partial<TemplateField>) {
     setFields((prev) => prev.map((f, i) => i === index ? { ...f, ...patch } : f));
@@ -96,6 +116,7 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
   const fieldKeys = useMemo(() => fields.map((f) => f.key), [fields]);
 
   return (
+    <>
     <Card className="border-0 shadow-sm">
       <CardHeader>
         <div className="flex items-center justify-between">
@@ -104,6 +125,16 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
             <Button size="sm" variant="outline" onClick={addField} className="gap-1.5">
               <Plus className="w-3.5 h-3.5" />
               필드 추가
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={openPreview}
+              disabled={fields.length === 0}
+              className="gap-1.5"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              미리보기
             </Button>
             <Button size="sm" onClick={save} disabled={saving} className="gap-1.5">
               <Save className="w-3.5 h-3.5" />
@@ -227,5 +258,26 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
         ))}
       </CardContent>
     </Card>
+
+    <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>양식 미리보기 (통역사 시점)</DialogTitle>
+          <DialogDescription>
+            저장하지 않은 라이브 편집 상태로 통역사 화면을 미리 확인합니다. 제출해도 실제 데이터로 저장되지 않습니다.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="pt-2">
+          <MultiStepReportForm
+            fields={fields}
+            values={previewValues}
+            onChange={(key, value) => setPreviewValues((prev) => ({ ...prev, [key]: value }))}
+            onSubmit={handlePreviewSubmit}
+            submitLabel="미리보기 완료"
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

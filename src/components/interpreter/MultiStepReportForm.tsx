@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Sparkles, ClipboardCheck, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n/context';
 import type { TemplateField } from '@/types';
 
 interface Props {
@@ -51,8 +52,10 @@ export function MultiStepReportForm({
   disabled = false,
   onSubmit,
   submitting = false,
-  submitLabel = '제출',
+  submitLabel,
 }: Props) {
+  const { t } = useI18n();
+  const resolvedSubmitLabel = submitLabel ?? t.interpreter.submit;
   const [step, setStep] = useState(0);
 
   // 순서 정렬 + 표시 가능한 필드만 추출
@@ -76,7 +79,7 @@ export function MultiStepReportForm({
     if (current?.required) {
       const v = values[current.key];
       if (v === undefined || v === null || v === '') {
-        toast.error('필수 항목입니다');
+        toast.error(t.interpreter.requiredField);
         return;
       }
     }
@@ -88,7 +91,7 @@ export function MultiStepReportForm({
         return v === undefined || v === null || v === '';
       });
       if (missing) {
-        toast.error(`필수 항목 누락: ${missing.label}`);
+        toast.error(`${t.interpreter.requiredFieldMissingPrefix}${missing.label}`);
         return;
       }
       onSubmit();
@@ -106,11 +109,11 @@ export function MultiStepReportForm({
   }
 
   if (visible.length === 0) {
-    return <p className="text-sm text-slate-500">표시할 질문이 없습니다.</p>;
+    return <p className="text-sm text-slate-500">{t.interpreter.noVisibleFields}</p>;
   }
 
   function formatValue(field: TemplateField, val: unknown): string {
-    if (val === undefined || val === null || val === '') return '(미입력)';
+    if (val === undefined || val === null || val === '') return t.interpreter.notFilled;
     if (field.type === 'number' && typeof val === 'number') {
       return val.toLocaleString('ko-KR');
     }
@@ -123,7 +126,7 @@ export function MultiStepReportForm({
       <div>
         <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
           <span>
-            {isReviewStep ? '검토' : `${safeStep + 1} / ${visible.length}`}
+            {isReviewStep ? t.interpreter.reviewStep : `${safeStep + 1} / ${visible.length}`}
           </span>
           <span>{Math.round(progress)}%</span>
         </div>
@@ -140,10 +143,10 @@ export function MultiStepReportForm({
         <div className="min-h-[200px]">
           <div className="flex items-center gap-2 mb-3">
             <ClipboardCheck className="w-5 h-5 text-emerald-500" />
-            <h3 className="text-base font-semibold">제출 전 검토</h3>
+            <h3 className="text-base font-semibold">{t.interpreter.reviewTitle}</h3>
           </div>
           <p className="text-xs text-slate-500 mb-4">
-            아래 답변을 확인하세요. 항목 클릭 시 해당 단계로 이동합니다.
+            {t.interpreter.reviewDesc}
           </p>
           <div className="space-y-2">
             {visible.map((f, i) => (
@@ -224,11 +227,11 @@ export function MultiStepReportForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.info('AI 답변 생성 준비중 (Phase E-3)')}
+                  onClick={() => toast.info(t.interpreter.aiGeneratePreparing)}
                   className="gap-1.5 mb-2 border-rose-200 text-rose-600 hover:bg-rose-50"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  AI 답변 생성
+                  {t.interpreter.aiGenerate}
                 </Button>
               )}
               <Textarea
@@ -279,7 +282,7 @@ export function MultiStepReportForm({
             className="gap-1.5"
           >
             <ChevronLeft className="w-4 h-4" />
-            이전
+            {t.interpreter.prev}
           </Button>
           <Button
             type="button"
@@ -291,7 +294,7 @@ export function MultiStepReportForm({
                 : ''
             }`}
           >
-            {isLast ? (submitting ? '제출 중...' : submitLabel) : '다음'}
+            {isLast ? (submitting ? t.interpreter.submitting : resolvedSubmitLabel) : t.interpreter.next}
             {!isLast && <ChevronRight className="w-4 h-4" />}
           </Button>
         </div>

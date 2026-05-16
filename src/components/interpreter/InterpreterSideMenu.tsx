@@ -18,6 +18,7 @@ import {
   User,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n/context';
 
 interface InterpreterSideMenuProps {
   userName: string;
@@ -34,6 +35,7 @@ export function InterpreterSideMenu({
   totalCount = 0,
   unreadNotices = 0,
 }: InterpreterSideMenuProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const router = useRouter();
 
@@ -50,7 +52,7 @@ export function InterpreterSideMenu({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
-        aria-label="메뉴 열기"
+        aria-label={t.common.menu}
         className="relative inline-flex items-center justify-center h-9 w-9 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] transition-colors"
       >
         <Menu className="w-5 h-5" />
@@ -66,7 +68,7 @@ export function InterpreterSideMenu({
                 <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-rose-500 font-semibold">통역사</p>
+                <p className="text-xs text-rose-500 font-semibold">{t.roles.interpreter}</p>
                 <p className="text-base font-bold text-foreground truncate">{userName}</p>
                 {userEmail && <p className="text-xs text-slate-500 truncate">{userEmail}</p>}
               </div>
@@ -78,18 +80,18 @@ export function InterpreterSideMenu({
           {/* QR 영역 */}
           <div className="grid grid-cols-2 gap-3 p-4 border-b">
             <button
-              onClick={() => { close(); toast.info('QR코드 스캔 준비중 (Phase E-2)'); }}
+              onClick={() => { close(); toast.info(t.interpreter.qrScanPreparing); }}
               className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card hover:bg-muted transition-colors"
             >
               <ScanLine className="w-6 h-6 text-rose-500" />
-              <span className="text-xs font-medium">QR코드 스캔</span>
+              <span className="text-xs font-medium">{t.interpreter.qrScan}</span>
             </button>
             <button
-              onClick={() => { close(); toast.info('내 QR코드 준비중 (Phase E-2)'); }}
+              onClick={() => { close(); toast.info(t.interpreter.myQrPreparing); }}
               className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card hover:bg-muted transition-colors"
             >
               <QrCode className="w-6 h-6 text-rose-500" />
-              <span className="text-xs font-medium">내 QR코드</span>
+              <span className="text-xs font-medium">{t.interpreter.myQr}</span>
             </button>
           </div>
 
@@ -98,7 +100,7 @@ export function InterpreterSideMenu({
             <div className="flex items-center justify-between px-3 py-3 rounded-xl bg-muted">
               <div className="flex items-center gap-3">
                 <FileText className="w-5 h-5 text-slate-500" />
-                <span className="text-sm font-medium">제출된 상담일지</span>
+                <span className="text-sm font-medium">{t.interpreter.submittedReports}</span>
               </div>
               <span className="text-sm font-bold text-rose-500">
                 {submittedCount}/{totalCount}
@@ -115,7 +117,7 @@ export function InterpreterSideMenu({
             >
               <div className="flex items-center gap-3">
                 <Megaphone className="w-5 h-5 text-slate-500" />
-                <span className="text-sm font-medium">공지사항</span>
+                <span className="text-sm font-medium">{t.interpreter.noticesTitle}</span>
               </div>
               {unreadNotices > 0 && (
                 <span className="text-xs font-bold bg-red-500 text-white rounded-full px-2 py-0.5">
@@ -130,7 +132,7 @@ export function InterpreterSideMenu({
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors"
             >
               <BookOpen className="w-5 h-5 text-slate-500" />
-              <span className="text-sm font-medium">무역 용어집</span>
+              <span className="text-sm font-medium">{t.interpreter.glossaryTitle}</span>
             </Link>
 
             <Link
@@ -139,7 +141,7 @@ export function InterpreterSideMenu({
               className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors"
             >
               <CalendarDays className="w-5 h-5 text-slate-500" />
-              <span className="text-sm font-medium">다른 상담회 보기</span>
+              <span className="text-sm font-medium">{t.interpreter.otherEvent}</span>
             </Link>
           </nav>
         </div>
@@ -152,7 +154,7 @@ export function InterpreterSideMenu({
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4" />
-            로그아웃
+            {t.common.logout}
           </Button>
         </div>
       </SheetContent>

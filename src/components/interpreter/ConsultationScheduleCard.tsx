@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, User, Building2, Play, CheckCircle2, FileText, Award } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n/context';
 import type { ReportStatus } from '@/types';
 
 interface ScheduleCardProps {
@@ -36,6 +37,7 @@ export function ConsultationScheduleCard({
   sellerName,
   reportStatus,
 }: ScheduleCardProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -51,9 +53,9 @@ export function ConsultationScheduleCard({
       .update({ status: next })
       .eq('id', consultationId);
     if (error) {
-      toast.error('상태 변경 실패: ' + error.message);
+      toast.error(t.interpreter.statusChangeFailedPrefix + error.message);
     } else {
-      toast.success(next === 'in_progress' ? '상담을 시작했어요' : '상담이 끝났어요');
+      toast.success(next === 'in_progress' ? t.interpreter.consultStarted : t.interpreter.consultFinishedToast);
       router.refresh();
     }
     setLoading(false);
@@ -61,14 +63,14 @@ export function ConsultationScheduleCard({
 
   const statusBadge = (() => {
     if (reportStatus === 'excellent') {
-      return <Badge className="bg-amber-500 gap-1"><Award className="w-3 h-3" />우수상담</Badge>;
+      return <Badge className="bg-amber-500 gap-1"><Award className="w-3 h-3" />{t.interpreter.excellent}</Badge>;
     }
     if (reportStatus === 'approved') {
-      return <Badge className="bg-emerald-500 gap-1"><CheckCircle2 className="w-3 h-3" />상담일지 승인</Badge>;
+      return <Badge className="bg-emerald-500 gap-1"><CheckCircle2 className="w-3 h-3" />{t.interpreter.reportApproved}</Badge>;
     }
-    if (isCompleted) return <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">상담완료</Badge>;
-    if (isInProgress) return <Badge className="bg-blue-500">상담중</Badge>;
-    return <Badge variant="outline" className="border-slate-200">상담전</Badge>;
+    if (isCompleted) return <Badge variant="outline" className="border-emerald-200 text-emerald-700 bg-emerald-50">{t.interpreter.consultDone}</Badge>;
+    if (isInProgress) return <Badge className="bg-blue-500">{t.interpreter.consultIn}</Badge>;
+    return <Badge variant="outline" className="border-slate-200">{t.interpreter.consultBefore}</Badge>;
   })();
 
   return (
@@ -115,7 +117,7 @@ export function ConsultationScheduleCard({
                   className="flex-1 min-w-[100px] bg-blue-500 hover:bg-blue-600 gap-1.5"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  상담을 시작해요
+                  {t.interpreter.startConsult}
                 </Button>
               ) : (
                 <Button
@@ -125,7 +127,7 @@ export function ConsultationScheduleCard({
                   className="flex-1 min-w-[100px] bg-emerald-500 hover:bg-emerald-600 gap-1.5"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  상담이 끝났어요
+                  {t.interpreter.endConsult}
                 </Button>
               )}
             </>
@@ -135,7 +137,7 @@ export function ConsultationScheduleCard({
             className="flex-1 min-w-[100px] inline-flex items-center justify-center gap-1 h-7 px-2.5 text-[0.8rem] font-medium rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground transition-colors"
           >
             <FileText className="w-3.5 h-3.5" />
-            {isApproved ? '상담일지 보기' : '상담일지 작성하기'}
+            {isApproved ? t.interpreter.viewReport : t.interpreter.writeReport}
           </Link>
         </div>
       </CardContent>

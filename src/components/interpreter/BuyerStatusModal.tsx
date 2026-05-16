@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Building2, MapPin } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import { BUYER_STATUS_LABEL } from './BuyerCardList';
+import { useI18n } from '@/lib/i18n/context';
+import { BUYER_STATUS_COLOR } from './BuyerCardList';
 
 interface Buyer {
   id: string;
@@ -35,13 +36,14 @@ const STATUS_OPTIONS = [
 ];
 
 export function BuyerStatusModal({ buyer, onClose }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const [selected, setSelected] = useState<string | null>(buyer.buyer_status);
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
     if (!selected) {
-      toast.error('상태를 선택해주세요');
+      toast.error(t.interpreter.selectStatusFirst);
       return;
     }
     setLoading(true);
@@ -53,9 +55,9 @@ export function BuyerStatusModal({ buyer, onClose }: Props) {
       .in('id', buyer.consultation_ids);
 
     if (error) {
-      toast.error('저장 실패: ' + error.message);
+      toast.error(t.common.saveFailedPrefix + error.message);
     } else {
-      toast.success('상태가 저장되었습니다');
+      toast.success(t.interpreter.statusSaved);
       router.refresh();
       onClose();
     }
@@ -66,7 +68,7 @@ export function BuyerStatusModal({ buyer, onClose }: Props) {
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>바이어 상태 변경</DialogTitle>
+          <DialogTitle>{t.interpreter.buyerStatusModalTitle}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -78,7 +80,7 @@ export function BuyerStatusModal({ buyer, onClose }: Props) {
             <div className="flex-1 min-w-0">
               <p className="font-bold text-foreground truncate">{buyer.company_name}</p>
               {buyer.buyer_name && (
-                <p className="text-xs text-slate-500">담당: {buyer.buyer_name}</p>
+                <p className="text-xs text-slate-500">{t.interpreter.inChargePrefix}{buyer.buyer_name}</p>
               )}
               <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 flex-wrap">
                 {buyer.country && (
@@ -87,17 +89,18 @@ export function BuyerStatusModal({ buyer, onClose }: Props) {
                     {buyer.country}
                   </span>
                 )}
-                {buyer.booth_number && <span>부스 {buyer.booth_number}</span>}
+                {buyer.booth_number && <span>{t.interpreter.boothPrefix}{buyer.booth_number}</span>}
               </div>
             </div>
           </div>
 
           {/* 상태 라디오 */}
           <div>
-            <p className="text-sm font-medium text-foreground mb-2">현재 상태</p>
+            <p className="text-sm font-medium text-foreground mb-2">{t.interpreter.buyerStatusCurrent}</p>
             <div className="grid grid-cols-2 gap-2">
               {STATUS_OPTIONS.map((key) => {
-                const info = BUYER_STATUS_LABEL[key];
+                const color = BUYER_STATUS_COLOR[key];
+                const label = t.buyerStatus[key as keyof typeof t.buyerStatus] ?? key;
                 const isActive = selected === key;
                 return (
                   <button
@@ -106,11 +109,11 @@ export function BuyerStatusModal({ buyer, onClose }: Props) {
                     onClick={() => setSelected(key)}
                     className={`px-3 py-2.5 text-sm rounded-xl border-2 transition-all text-left ${
                       isActive
-                        ? `${info.color} text-white border-transparent`
+                        ? `${color} text-white border-transparent`
                         : 'border-slate-200 dark:border-slate-700 hover:border-rose-300 text-foreground'
                     }`}
                   >
-                    {info.label}
+                    {label}
                   </button>
                 );
               })}
@@ -120,10 +123,10 @@ export function BuyerStatusModal({ buyer, onClose }: Props) {
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose} disabled={loading}>
-            취소
+            {t.common.cancel}
           </Button>
           <Button onClick={handleSave} disabled={loading || !selected}>
-            {loading ? '저장 중...' : '저장하기'}
+            {loading ? t.interpreter.saving : t.interpreter.saveAction}
           </Button>
         </DialogFooter>
       </DialogContent>

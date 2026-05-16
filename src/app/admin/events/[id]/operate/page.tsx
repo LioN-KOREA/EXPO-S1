@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, RefreshCw, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n/context';
 
 const REFRESH_INTERVAL_MS = 10_000;
 
@@ -49,17 +50,8 @@ const CONS_STATUS_COLOR: Record<string, string> = {
   completed: 'bg-emerald-100 text-emerald-700',
 };
 
-const BUYER_STATUS_LABEL: Record<string, string> = {
-  MET_INTERPRETER: '통역사 만남',
-  BUS_BOARDED: '셔틀탑승',
-  INDIVIDUAL_MOVE: '개별이동',
-  WAITING: '대기중',
-  ABSENT: '불참',
-  ONSITE_MATCH_AVAILABLE: '현장매칭가능',
-  ONSITE_MATCH_DONE: '현장매칭완료',
-};
-
 export default function OperatePage() {
+  const { t } = useI18n();
   const params = useParams();
   const eventId = params.id as string;
   const supabase = useMemo(() => createClient(), []);
@@ -238,7 +230,7 @@ export default function OperatePage() {
                               </Badge>
                               {c.buyer_status && (
                                 <Badge variant="outline" className="text-[9px] px-1 py-0 border-0 bg-white/60">
-                                  {BUYER_STATUS_LABEL[c.buyer_status] ?? c.buyer_status}
+                                  {t.buyerStatus[c.buyer_status as keyof typeof t.buyerStatus] ?? c.buyer_status}
                                 </Badge>
                               )}
                             </div>
