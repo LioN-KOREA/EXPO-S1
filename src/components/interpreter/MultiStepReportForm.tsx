@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, ClipboardCheck, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import type { TemplateField } from '@/types';
 
@@ -62,11 +62,14 @@ export function MultiStepReportForm({
   );
   const visible = useMemo(() => sorted.filter((f) => isVisible(f, values)), [sorted, values]);
 
+  // 검토 step = 마지막 + 1 (visible.length 위치)
+  const totalSteps = visible.length + 1; // 양식 step + 검토 step
   // step 범위 보정
-  const safeStep = Math.min(step, Math.max(0, visible.length - 1));
-  const current = visible[safeStep];
-  const progress = visible.length > 0 ? ((safeStep + 1) / visible.length) * 100 : 0;
-  const isLast = safeStep === visible.length - 1;
+  const safeStep = Math.min(step, Math.max(0, totalSteps - 1));
+  const isReviewStep = safeStep === visible.length;
+  const current = isReviewStep ? null : visible[safeStep];
+  const progress = totalSteps > 0 ? ((safeStep + 1) / totalSteps) * 100 : 0;
+  const isLast = safeStep === totalSteps - 1;
   const isFirst = safeStep === 0;
 
   function handleNext() {
@@ -78,6 +81,16 @@ export function MultiStepReportForm({
       }
     }
     if (isLast) {
+      // 검토 step에서 다음(=제출) 클릭 — 모든 필수 검증
+      const missing = visible.find((f) => {
+        if (!f.required) return false;
+        const v = values[f.key];
+        return v === undefined || v === null || v === '';
+      });
+      if (missing) {
+        toast.error(`필수 항목 누락: ${missing.label}`);
+        return;
+      }
       onSubmit();
     } else {
       setStep((s) => s + 1);
@@ -88,8 +101,20 @@ export function MultiStepReportForm({
     if (!isFirst) setStep((s) => s - 1);
   }
 
-  if (!current) {
+  function jumpToStep(index: number) {
+    setStep(index);
+  }
+
+  if (visible.length === 0) {
     return <p className="text-sm text-slate-500">표시할 질문이 없습니다.</p>;
+  }
+
+  function formatValue(field: TemplateField, val: unknown): string {
+    if (val === undefined || val === null || val === '') return '(미입력)';
+    if (field.type === 'number' && typeof val === 'number') {
+      return val.toLocaleString('ko-KR');
+    }
+    return String(val);
   }
 
   return (
@@ -97,7 +122,9 @@ export function MultiStepReportForm({
       {/* 진척도 바 */}
       <div>
         <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
-          <span>{safeStep + 1} / {visible.length}</span>
+          <span>
+            {isReviewStep ? '검토' : `${safeStep + 1} / ${visible.length}`}
+          </span>
           <span>{Math.round(progress)}%</span>
         </div>
         <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -108,7 +135,46 @@ export function MultiStepReportForm({
         </div>
       </div>
 
+      {/* 검토 step */}
+      {isReviewStep && (
+        <div className="min-h-[200px]">
+          <div className="flex items-center gap-2 mb-3">
+            <ClipboardCheck className="w-5 h-5 text-emerald-500" />
+            <h3 className="text-base font-semibold">제출 전 검토</h3>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            아래 답변을 확인하세요. 항목 클릭 시 해당 단계로 이동합니다.
+          </p>
+          <div className="space-y-2">
+            {visible.map((f, i) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => jumpToStep(i)}
+                className="w-full text-left p-3 rounded-lg border bg-card hover:bg-muted transition-colors group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-slate-500 mb-0.5">
+                      {i + 1}. {f.label}
+                      {f.required && <span className="text-red-500 ml-1">*</span>}
+                    </p>
+                    <p className={`text-sm break-words ${
+                      values[f.key] === undefined || values[f.key] === '' ? 'text-red-500 italic' : 'text-foreground font-medium'
+                    }`}>
+                      {formatValue(f, values[f.key])}
+                    </p>
+                  </div>
+                  <Pencil className="w-3.5 h-3.5 text-slate-400 group-hover:text-rose-500 shrink-0 mt-0.5" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 현재 질문 */}
+      {!isReviewStep && current && (
       <div className="min-h-[200px]">
         <Label htmlFor={current.key} className="text-base font-semibold">
           {current.label}
@@ -200,6 +266,7 @@ export function MultiStepReportForm({
           )}
         </div>
       </div>
+      )}
 
       {/* 이전/다음 */}
       {!disabled && (

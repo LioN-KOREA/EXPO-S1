@@ -128,3 +128,7 @@
     @apply font-sans;
   }
 }
+/* 키오스크 모드: admin toast/dev tools 숨김 */
+body.kiosk-mode [data-sonner-toaster] {
+  display: none !important;
+}
