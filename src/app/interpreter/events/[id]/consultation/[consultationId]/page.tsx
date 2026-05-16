@@ -11,11 +11,13 @@ import { MultiStepReportForm } from '@/components/interpreter/MultiStepReportFor
 import { ArrowLeft, Save, User, Building2, Clock, CheckCircle2, Loader2, AlertTriangle, MessageSquare, Play, Square } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n/context';
 import type { TemplateField, Consultation, ConsultationReport, ReportStatus } from '@/types';
 
 export default function ConsultationReportPage() {
   const params = useParams();
   const router = useRouter();
+  const { t, locale } = useI18n();
   const eventId = params.id as string;
   const consultationId = params.consultationId as string;
 
@@ -58,7 +60,7 @@ export default function ConsultationReportPage() {
           .single();
 
         if (consultationError) {
-          setError('상담 정보를 불러올 수 없습니다.');
+          setError(t.interpreter.loadError);
           setLoading(false);
           return;
         }
@@ -66,7 +68,7 @@ export default function ConsultationReportPage() {
         // HIGH#3: URL eventId가 실제 consultation.event_id와 일치하는지 검증
         const actualEventId = (consultationData as { event_id?: string })?.event_id;
         if (actualEventId && actualEventId !== eventId) {
-          setError('URL 이벤트 ID가 일치하지 않습니다.');
+          setError(t.interpreter.urlEventMismatch);
           setLoading(false);
           return;
         }
@@ -80,7 +82,7 @@ export default function ConsultationReportPage() {
           .single();
 
         if (templateError && templateError.code !== 'PGRST116') {
-          setError('상담일지 양식을 불러올 수 없습니다.');
+          setError(t.interpreter.templateError);
           setLoading(false);
           return;
         }
@@ -100,7 +102,7 @@ export default function ConsultationReportPage() {
           setFormData((existingReport.data as Record<string, unknown>) ?? {});
         }
       } catch {
-        setError('데이터를 불러오는 중 오류가 발생했습니다.');
+        setError(t.interpreter.genericError);
       } finally {
         setLoading(false);
         // 초기 로드 후 잠시 대기 (자동저장 트리거 방지)
@@ -108,7 +110,7 @@ export default function ConsultationReportPage() {
       }
     }
     load();
-  }, [eventId, consultationId]);
+  }, [eventId, consultationId, t]);
 
   // 자동 저장 실행
   const executeAutoSave = useCallback(async () => {
@@ -152,7 +154,7 @@ export default function ConsultationReportPage() {
       } else if (!data) {
         // 행 매칭 0 = 버전 충돌 또는 RLS 거부
         setAutoSaveStatus('error');
-        toast.error('다른 곳에서 수정되었거나 권한이 없습니다. 새로고침해주세요.');
+        toast.error(t.interpreter.concurrentEditError);
         return;
       } else {
         updatedRow = data as ConsultationReport;
@@ -185,7 +187,7 @@ export default function ConsultationReportPage() {
         }
       }
     }
-  }, [consultationId, consultation?.status]);
+  }, [consultationId, consultation?.status, t]);
 
   // formData 변경 시 1초 debounce 자동 저장
   useEffect(() => {
@@ -220,9 +222,9 @@ export default function ConsultationReportPage() {
       .update({ status: next })
       .eq('id', consultationId);
     if (error) {
-      toast.error('상태 변경 실패: ' + error.message);
+      toast.error(t.interpreter.statusChangeFailedPrefix + error.message);
     } else {
-      toast.success(next === 'in_progress' ? '상담을 시작했어요' : '상담이 끝났어요');
+      toast.success(next === 'in_progress' ? t.interpreter.consultStarted : t.interpreter.consultFinishedToast);
       setConsultation((prev) => prev ? { ...prev, status: next } : prev);
     }
     setStatusBusy(false);
@@ -237,7 +239,7 @@ export default function ConsultationReportPage() {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      toast.error('로그인이 필요합니다');
+      toast.error(t.interpreter.loginRequired);
       setSaving(false);
       return;
     }
@@ -268,7 +270,7 @@ export default function ConsultationReportPage() {
       if (updateError) {
         error = updateError;
       } else if (!data) {
-        toast.error('다른 곳에서 수정되었거나 권한이 없습니다. 새로고침해주세요.');
+        toast.error(t.interpreter.concurrentEditError);
         setSaving(false);
         return;
       }
@@ -279,7 +281,7 @@ export default function ConsultationReportPage() {
     }
 
     if (error) {
-      toast.error('저장에 실패했습니다');
+      toast.error(t.interpreter.saveFailed);
       setSaving(false);
       return;
     }
@@ -289,7 +291,7 @@ export default function ConsultationReportPage() {
       .update({ status: submit ? 'completed' : 'in_progress' })
       .eq('id', consultationId);
 
-    toast.success(submit ? '상담일지가 제출되었습니다' : '임시 저장되었습니다');
+    toast.success(submit ? t.interpreter.submittedToast : t.interpreter.savedToast);
 
     if (submit) {
       router.push(`/interpreter/events/${eventId}`);
@@ -310,7 +312,7 @@ export default function ConsultationReportPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <p className="text-slate-500">로딩 중...</p>
+        <p className="text-slate-500">{t.common.loading}</p>
       </div>
     );
   }
@@ -320,7 +322,7 @@ export default function ConsultationReportPage() {
       <div className="text-center py-12">
         <p className="text-red-500">{error}</p>
         <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
-          다시 시도
+          {t.interpreter.retry}
         </Button>
       </div>
     );
@@ -329,7 +331,7 @@ export default function ConsultationReportPage() {
   if (!consultation) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-500">상담 정보를 찾을 수 없습니다</p>
+        <p className="text-slate-500">{t.interpreter.notFound}</p>
       </div>
     );
   }
@@ -339,16 +341,15 @@ export default function ConsultationReportPage() {
   const isEditable = !report || reportStatus === 'draft' || reportStatus === 'revision_requested' || reportStatus === 'rejected';
   // 읽기 전용: submitted, under_review, approved, excellent
   const isReadOnly = !isEditable;
-  const isApproved = reportStatus === 'approved' || reportStatus === 'excellent';
 
   const statusConfig: Record<ReportStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
-    draft: { label: report ? '작성중' : '미작성', variant: 'secondary' },
-    submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
-    under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
-    approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
-    excellent: { label: '우수상담', variant: 'default', className: 'bg-amber-500' },
-    revision_requested: { label: '수정요청', variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },
-    rejected: { label: '반려', variant: 'destructive' },
+    draft: { label: report ? t.interpreter.statusDraft : t.interpreter.notStarted, variant: 'secondary' },
+    submitted: { label: t.interpreter.statusUnderReview, variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+    under_review: { label: t.interpreter.statusUnderReview, variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+    approved: { label: t.interpreter.statusApprovedDone, variant: 'default', className: 'bg-emerald-500' },
+    excellent: { label: t.interpreter.excellent, variant: 'default', className: 'bg-amber-500' },
+    revision_requested: { label: t.interpreter.statusRevisionRequested, variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },
+    rejected: { label: t.interpreter.statusRejected, variant: 'destructive' },
   };
 
   const currentStatus = statusConfig[reportStatus];
@@ -360,7 +361,7 @@ export default function ConsultationReportPage() {
         className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4"
       >
         <ArrowLeft className="w-4 h-4 mr-1" />
-        일정표로 돌아가기
+        {t.interpreter.backToList}
       </Link>
 
       {/* 수정요청 알림 */}
@@ -370,7 +371,7 @@ export default function ConsultationReportPage() {
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-red-700">관리자 수정요청</p>
+                <p className="text-sm font-medium text-red-700">{t.interpreter.adminRevisionTitle}</p>
                 <div className="flex items-start gap-1.5 mt-1">
                   <MessageSquare className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
                   <p className="text-sm text-red-600">{report.admin_comment}</p>
@@ -403,7 +404,7 @@ export default function ConsultationReportPage() {
                     className="bg-blue-500 hover:bg-blue-600 gap-1.5"
                   >
                     <Play className="w-3.5 h-3.5" />
-                    상담을 시작해요
+                    {t.interpreter.startConsult}
                   </Button>
                 ) : (
                   <Button
@@ -413,7 +414,7 @@ export default function ConsultationReportPage() {
                     className="bg-emerald-500 hover:bg-emerald-600 gap-1.5"
                   >
                     <Square className="w-3.5 h-3.5" />
-                    상담이 끝났어요
+                    {t.interpreter.endConsult}
                   </Button>
                 )}
               </div>
@@ -421,7 +422,7 @@ export default function ConsultationReportPage() {
             {consultation.status === 'completed' && (
               <span className="ml-auto text-xs font-medium text-emerald-600 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                상담 종료됨
+                {t.interpreter.consultEnded}
               </span>
             )}
           </div>
@@ -430,7 +431,7 @@ export default function ConsultationReportPage() {
             <div className="flex items-start gap-2">
               <User className="w-4 h-4 text-slate-500 mt-0.5" />
               <div>
-                <p className="text-xs text-slate-500">바이어</p>
+                <p className="text-xs text-slate-500">{t.seller.buyerLabel}</p>
                 <p className="text-sm font-medium text-foreground">{consultation.buyer?.company_name}</p>
                 <p className="text-xs text-slate-500">{consultation.buyer?.country}</p>
               </div>
@@ -438,7 +439,7 @@ export default function ConsultationReportPage() {
             <div className="flex items-start gap-2">
               <Building2 className="w-4 h-4 text-slate-500 mt-0.5" />
               <div>
-                <p className="text-xs text-slate-500">셀러 (참가업체)</p>
+                <p className="text-xs text-slate-500">{t.seller.sellerLabel}</p>
                 <p className="text-sm font-medium text-foreground">
                   {consultation.seller?.company_name_kr || consultation.seller?.company_name}
                 </p>
@@ -452,7 +453,7 @@ export default function ConsultationReportPage() {
       {/* 안내 */}
       {isEditable && (
         <p className="text-xs text-slate-500 mb-3 px-1">
-          ✓ 바이어/셀러 정보는 위 카드에 표시됩니다. 양식에는 상담 내용·금액·만족도·현장 특이사항만 작성해주세요.
+          {t.interpreter.reportInfoNotice}
         </p>
       )}
 
@@ -460,24 +461,24 @@ export default function ConsultationReportPage() {
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">상담일지 작성</CardTitle>
+            <CardTitle className="text-lg">{t.interpreter.reportTitle}</CardTitle>
             {/* 자동 저장 상태 표시 */}
             {isEditable && fields.length > 0 && (
               <div className="flex items-center gap-1.5 text-xs">
                 {autoSaveStatus === 'saving' && (
                   <span className="flex items-center gap-1 text-slate-500">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    자동 저장 중...
+                    {t.interpreter.autoSaving}
                   </span>
                 )}
                 {autoSaveStatus === 'saved' && lastSavedAt && (
                   <span className="flex items-center gap-1 text-emerald-500">
                     <CheckCircle2 className="w-3 h-3" />
-                    {lastSavedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })} 저장됨
+                    {t.interpreter.autoSaved.replace('{time}', lastSavedAt.toLocaleTimeString(locale === 'en' ? 'en-US' : 'ko-KR', { hour: '2-digit', minute: '2-digit' }))}
                   </span>
                 )}
                 {autoSaveStatus === 'error' && (
-                  <span className="text-red-400">자동 저장 실패</span>
+                  <span className="text-red-400">{t.interpreter.autoSaveFailed}</span>
                 )}
               </div>
             )}
@@ -486,7 +487,7 @@ export default function ConsultationReportPage() {
         <CardContent>
           {fields.length === 0 ? (
             <p className="text-sm text-slate-500">
-              상담일지 양식이 설정되지 않았습니다. 관리자에게 문의하세요.
+              {t.interpreter.noForm}
             </p>
           ) : (
             <>
@@ -497,7 +498,7 @@ export default function ConsultationReportPage() {
                 disabled={isReadOnly}
                 onSubmit={() => setSubmitOpen(true)}
                 submitting={saving}
-                submitLabel={reportStatus === 'revision_requested' ? '재제출' : '제출'}
+                submitLabel={reportStatus === 'revision_requested' ? t.interpreter.resubmit : t.interpreter.submit}
               />
 
               {isEditable && (
@@ -510,10 +511,10 @@ export default function ConsultationReportPage() {
                     className="gap-2"
                   >
                     <Save className="w-3.5 h-3.5" />
-                    {saving ? '저장 중...' : '임시 저장'}
+                    {saving ? t.interpreter.saving : t.interpreter.tempSave}
                   </Button>
                   <p className="text-[11px] text-slate-500 hidden sm:block">
-                    입력 내용은 1초마다 자동 저장됩니다
+                    {t.interpreter.autoSaveInterval}
                   </p>
                 </div>
               )}
@@ -526,15 +527,14 @@ export default function ConsultationReportPage() {
       <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>상담일지를 제출할까요?</DialogTitle>
+            <DialogTitle>{t.interpreter.reportSubmitTitle}</DialogTitle>
             <DialogDescription>
-              제출한 상담일지는 다시 열람할 수 없어요.<br />
-              단, 수정이 필요한 경우 관리자가 반려할 수 있어요.
+              {t.interpreter.reportSubmitDesc}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setSubmitOpen(false)} disabled={saving}>
-              취소
+              {t.common.cancel}
             </Button>
             <Button
               onClick={async () => {
@@ -544,7 +544,7 @@ export default function ConsultationReportPage() {
               disabled={saving}
               className="bg-emerald-500 hover:bg-emerald-600"
             >
-              {saving ? '제출 중...' : '제출하기'}
+              {saving ? t.interpreter.submitting : t.interpreter.submitConfirm}
             </Button>
           </DialogFooter>
         </DialogContent>
