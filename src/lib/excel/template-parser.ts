@@ -1,5 +1,6 @@
 import { readSheetRows } from './reader';
 import type { TemplateField, FieldType } from '@/types';
+import { inferAutoSourceFromLabel, isAdminLabel } from '@/lib/template/auto-source';
 
 /**
  * 헤더 라벨에서 필드 타입 추론 (라벨 기반 힌트)
@@ -146,8 +147,16 @@ export async function parseTemplateExcel(buffer: ArrayBuffer): Promise<TemplateP
     if (usedKeys.has(key)) key = `${key}_${i}`;
     usedKeys.add(key);
 
+    // 작성 주체 자동 추론
+    const autoSource = inferAutoSourceFromLabel(label);
+    const source: TemplateField['source'] = autoSource
+      ? 'auto'
+      : isAdminLabel(label)
+        ? 'admin'
+        : 'interpreter';
+
     // 순서는 헤더 컬럼 순서대로 자동 부여 (멀티스텝 폼에서 활용)
-    return { key, label, type, options, required, order: i + 1 };
+    return { key, label, type, options, required, order: i + 1, source, autoSource };
   });
 
   // 프리뷰 (데이터가 있는 행만, 최대 5개)

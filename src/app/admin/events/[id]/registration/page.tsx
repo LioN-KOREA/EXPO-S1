@@ -26,28 +26,30 @@ export default function RegistrationPage() {
       </div>
 
       <Tabs defaultValue="timetable">
-        <TabsList className="mb-6">
-          <TabsTrigger value="timetable" className="gap-1.5">
-            <Upload className="w-3.5 h-3.5" />
-            타임테이블
-          </TabsTrigger>
-          <TabsTrigger value="participants" className="gap-1.5">
-            <Users className="w-3.5 h-3.5" />
-            바이어 / 셀러
-          </TabsTrigger>
-          <TabsTrigger value="interpreters" className="gap-1.5">
-            <UserPlus className="w-3.5 h-3.5" />
-            통역사
-          </TabsTrigger>
-          <TabsTrigger value="template" className="gap-1.5">
-            <FileText className="w-3.5 h-3.5" />
-            상담일지 양식
-          </TabsTrigger>
-          <TabsTrigger value="bulk-users" className="gap-1.5">
-            <UsersRound className="w-3.5 h-3.5" />
-            사용자 통합등록
-          </TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 sm:mx-0 px-4 sm:px-0 mb-6 overflow-x-auto">
+          <TabsList className="w-max sm:w-auto">
+            <TabsTrigger value="timetable" className="gap-1.5 whitespace-nowrap">
+              <Upload className="w-3.5 h-3.5" />
+              타임테이블
+            </TabsTrigger>
+            <TabsTrigger value="participants" className="gap-1.5 whitespace-nowrap">
+              <Users className="w-3.5 h-3.5" />
+              바이어 / 셀러
+            </TabsTrigger>
+            <TabsTrigger value="interpreters" className="gap-1.5 whitespace-nowrap">
+              <UserPlus className="w-3.5 h-3.5" />
+              통역사
+            </TabsTrigger>
+            <TabsTrigger value="template" className="gap-1.5 whitespace-nowrap">
+              <FileText className="w-3.5 h-3.5" />
+              상담일지 양식
+            </TabsTrigger>
+            <TabsTrigger value="bulk-users" className="gap-1.5 whitespace-nowrap">
+              <UsersRound className="w-3.5 h-3.5" />
+              사용자 통합등록
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="timetable">
           <TimetableRegistration eventId={eventId} />

@@ -120,24 +120,26 @@ export function UserBulkUploadDialog({ onComplete }: { onComplete: () => void })
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetState(); }}>
       <DialogTrigger
-        render={<Button variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50" />}
+        render={<Button variant="outline" className="w-full sm:w-auto border-blue-200 text-blue-700 hover:bg-blue-50" />}
       >
         <Upload className="w-4 h-4 mr-2" />
         엑셀 일괄 등록
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>사용자 엑셀 일괄 등록</DialogTitle>
         </DialogHeader>
 
         {!preview ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <p className="text-sm text-slate-500">
                 엑셀 파일로 사용자를 일괄 등록합니다. 유형, 이름, 이메일, 연락처는 필수입니다.
                 <br />초기 비밀번호: 전화번호에서 국가코드·area code 제외한 subscriber number(예: 010-1234-5678 → 12345678, (212) 555-1234 → 5551234). 첫 로그인 시 변경 필요.
               </p>
-              <TemplateDownloadButton type="users" label="양식 다운로드" />
+              <div className="sm:shrink-0">
+                <TemplateDownloadButton type="users" label="양식 다운로드" />
+              </div>
             </div>
             <ExcelUploader onUpload={handleUpload} loading={loading} description="사용자 목록 엑셀 파일을 업로드하세요" />
           </div>
@@ -204,49 +206,51 @@ export function UserBulkUploadDialog({ onComplete }: { onComplete: () => void })
 
             {/* 사용자 테이블 */}
             <div className="border rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-muted sticky top-0">
-                  <tr>
-                    <th className="px-2 py-2 text-left font-medium text-slate-500">행</th>
-                    <th className="px-2 py-2 text-left font-medium text-slate-500">유형</th>
-                    <th className="px-2 py-2 text-left font-medium text-slate-500">이름</th>
-                    <th className="px-2 py-2 text-left font-medium text-slate-500">이메일</th>
-                    <th className="px-2 py-2 text-left font-medium text-slate-500">회사명</th>
-                    <th className="px-2 py-2 text-left font-medium text-slate-500">국가</th>
-                    <th className="px-2 py-2 text-left font-medium text-slate-500">연락처</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {preview.map((u, i) => {
-                    const isDuplicate = duplicates.includes(u.email);
-                    return (
-                      <tr key={i} className={isDuplicate ? 'bg-amber-50/50 opacity-60' : i % 2 === 0 ? 'bg-card' : 'bg-muted'}>
-                        <td className="px-2 py-1.5 text-slate-400">{u.row_number}</td>
-                        <td className="px-2 py-1.5">
-                          <Badge className={`text-[10px] border-0 ${ROLE_COLORS[u.role] || ''}`}>
-                            {ROLE_LABELS[u.role] || u.role}
-                          </Badge>
-                        </td>
-                        <td className="px-2 py-1.5 font-medium text-foreground">{u.name}</td>
-                        <td className="px-2 py-1.5 text-slate-500">{u.email}</td>
-                        <td className="px-2 py-1.5 text-slate-500">{u.company_name || '-'}</td>
-                        <td className="px-2 py-1.5 text-slate-500">{u.country ? getCountryName(u.country) : '-'}</td>
-                        <td className="px-2 py-1.5 text-slate-500">{u.phone || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-xs">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="px-2 py-2 text-left font-medium text-slate-500">행</th>
+                      <th className="px-2 py-2 text-left font-medium text-slate-500">유형</th>
+                      <th className="px-2 py-2 text-left font-medium text-slate-500">이름</th>
+                      <th className="px-2 py-2 text-left font-medium text-slate-500">이메일</th>
+                      <th className="px-2 py-2 text-left font-medium text-slate-500">회사명</th>
+                      <th className="px-2 py-2 text-left font-medium text-slate-500">국가</th>
+                      <th className="px-2 py-2 text-left font-medium text-slate-500">연락처</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {preview.map((u, i) => {
+                      const isDuplicate = duplicates.includes(u.email);
+                      return (
+                        <tr key={i} className={isDuplicate ? 'bg-amber-50/50 opacity-60' : i % 2 === 0 ? 'bg-card' : 'bg-muted'}>
+                          <td className="px-2 py-1.5 text-slate-400">{u.row_number}</td>
+                          <td className="px-2 py-1.5">
+                            <Badge className={`text-[10px] border-0 ${ROLE_COLORS[u.role] || ''}`}>
+                              {ROLE_LABELS[u.role] || u.role}
+                            </Badge>
+                          </td>
+                          <td className="px-2 py-1.5 font-medium text-foreground whitespace-nowrap">{u.name}</td>
+                          <td className="px-2 py-1.5 text-slate-500 whitespace-nowrap">{u.email}</td>
+                          <td className="px-2 py-1.5 text-slate-500 whitespace-nowrap">{u.company_name || '-'}</td>
+                          <td className="px-2 py-1.5 text-slate-500 whitespace-nowrap">{u.country ? getCountryName(u.country) : '-'}</td>
+                          <td className="px-2 py-1.5 text-slate-500 whitespace-nowrap">{u.phone || '-'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* 버튼 */}
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => resetState()}>취소</Button>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => resetState()} className="w-full sm:w-auto">취소</Button>
               <Button
                 size="sm"
                 onClick={handleConfirmUpload}
                 disabled={confirming || (summary?.total || 0) - duplicates.length === 0}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600"
               >
                 {confirming ? '등록 중...' : `${(summary?.total || 0) - duplicates.length}명 등록`}
               </Button>

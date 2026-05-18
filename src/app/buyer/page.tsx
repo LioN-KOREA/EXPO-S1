@@ -104,11 +104,11 @@ export default function BuyerDashboard() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-foreground">{t.buyer.mySchedule}</h2>
-          <div className="flex items-center gap-3 mt-1">
-            <span className="text-slate-500 text-sm">{buyerInfo?.company_name || profile.name}</span>
+      <div className="flex items-start justify-between gap-3 mb-6">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground">{t.buyer.mySchedule}</h2>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1">
+            <span className="text-slate-500 text-sm truncate max-w-full">{buyerInfo?.company_name || profile.name}</span>
             {buyerInfo?.country && (
               <span className="flex items-center gap-1 text-xs text-slate-500">
                 <MapPin className="w-3 h-3" />
@@ -117,35 +117,37 @@ export default function BuyerDashboard() {
             )}
           </div>
         </div>
-        <LanguageToggle />
+        <div className="shrink-0">
+          <LanguageToggle />
+        </div>
       </div>
 
       {totalCount > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 sm:p-4 text-center">
               <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center mx-auto mb-2">
                 <TrendingUp className="w-5 h-5 text-blue-500" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{totalCount}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{totalCount}</p>
               <p className="text-xs text-slate-500 mt-0.5">{t.buyer.totalConsultations}</p>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 sm:p-4 text-center">
               <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center mx-auto mb-2">
                 <Building2 className="w-5 h-5 text-indigo-500" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{uniqueSellers.size}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{uniqueSellers.size}</p>
               <p className="text-xs text-slate-500 mt-0.5">{t.buyer.companies}</p>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 sm:p-4 text-center">
               <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center mx-auto mb-2">
                 <CalendarDays className="w-5 h-5 text-purple-500" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{grouped.size}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{grouped.size}</p>
               <p className="text-xs text-slate-500 mt-0.5">{t.buyer.consultationDays}</p>
             </CardContent>
           </Card>
@@ -181,12 +183,12 @@ export default function BuyerDashboard() {
                           <span className="text-xs font-bold text-white">{idx + 1}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <div className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
+                            <div className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md shrink-0">
                               <Clock className="w-3 h-3" />
                               {c.time_slot?.start_time} - {c.time_slot?.end_time}
                             </div>
-                            {c.event && <span className="text-xs text-slate-500 truncate">{c.event.name}</span>}
+                            {c.event && <span className="text-xs text-slate-500 truncate min-w-0">{c.event.name}</span>}
                           </div>
                           <div className="flex items-center gap-2">
                             <Building2 className="w-4 h-4 text-slate-500 shrink-0" />
@@ -194,7 +196,7 @@ export default function BuyerDashboard() {
                               {c.seller?.company_name_kr || c.seller?.company_name}
                             </span>
                           </div>
-                          <div className="flex items-center gap-3 mt-1 ml-6">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 ml-6">
                             {c.seller?.contact_name && (
                               <span className="text-xs text-slate-500">{t.buyer.contact}: {c.seller.contact_name}</span>
                             )}

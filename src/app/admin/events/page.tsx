@@ -70,13 +70,13 @@ export default function EventsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">상담회 관리</h2>
-          <p className="text-slate-500 mt-1">수출상담회를 생성하고 관리하세요</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">상담회 관리</h2>
+          <p className="text-slate-500 mt-1 text-sm">수출상담회를 생성하고 관리하세요</p>
         </div>
-        <Link href="/admin/events/new">
-          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
+        <Link href="/admin/events/new" className="sm:shrink-0">
+          <Button className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
             <Plus className="w-4 h-4 mr-2" />
             상담회 생성
           </Button>
@@ -98,11 +98,11 @@ export default function EventsPage() {
           {events.map((event) => (
             <Link key={event.id} href={`/admin/events/${event.id}`}>
               <Card className="border-0 shadow-sm hover:shadow-lg transition-all cursor-pointer group mb-3">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-foreground">{event.name}</h3>
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-foreground break-keep">{event.name}</h3>
                         <Badge
                           variant={event.status === 'active' ? 'default' : 'secondary'}
                           className="text-xs"
@@ -111,16 +111,16 @@ export default function EventsPage() {
                         </Badge>
                       </div>
                       {event.description && (
-                        <p className="text-sm text-slate-500 mb-2">{event.description}</p>
+                        <p className="text-sm text-slate-500 mb-2 line-clamp-2">{event.description}</p>
                       )}
                       <div className="flex items-center gap-4 text-xs text-slate-500">
                         <span className="flex items-center gap-1">
-                          <CalendarDays className="w-3 h-3" />
-                          {event.start_date} ~ {event.end_date}
+                          <CalendarDays className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{event.start_date} ~ {event.end_date}</span>
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-slate-500 transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-slate-500 transition-colors shrink-0" />
                   </div>
                 </CardContent>
               </Card>
@@ -147,13 +147,13 @@ export default function EventsPage() {
               deletedEvents.map((event) => (
                 <Card key={event.id} className="border-0 shadow-sm bg-muted opacity-70">
                   <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-slate-500 line-through">{event.name}</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <h3 className="font-medium text-slate-500 line-through break-keep">{event.name}</h3>
                           <Badge variant="secondary" className="text-[10px]">삭제됨</Badge>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-500">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                           <span>{event.start_date} ~ {event.end_date}</span>
                           <span>삭제: {new Date(event.deleted_at!).toLocaleDateString('ko-KR')}</span>
                         </div>
@@ -163,7 +163,7 @@ export default function EventsPage() {
                         size="sm"
                         onClick={() => handleRestore(event.id)}
                         disabled={restoring === event.id}
-                        className="text-xs gap-1"
+                        className="text-xs gap-1 self-start sm:self-auto sm:shrink-0"
                       >
                         <RotateCcw className="w-3 h-3" />
                         {restoring === event.id ? '복구 중...' : '복구'}

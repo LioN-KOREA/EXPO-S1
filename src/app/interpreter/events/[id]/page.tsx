@@ -22,6 +22,7 @@ import type { ReportStatus } from '@/types';
 import { batchIn } from '@/lib/supabase/batch-query';
 import { QrAttendButton } from '@/components/interpreter/QrAttendButton';
 import { BuyerCardList } from '@/components/interpreter/BuyerCardList';
+import { PendingReportsPopup } from '@/components/interpreter/PendingReportsPopup';
 import { getServerDictionary } from '@/lib/i18n/server';
 import { tmpl } from '@/lib/i18n/dictionaries';
 
@@ -81,6 +82,7 @@ export default async function InterpreterEventPage({
   let excellentCount = 0;
   let submittedCount = 0;
   let revisionCount = 0;
+  let rejectedCount = 0;
   let inProgressCount = 0;
   reports?.forEach((r) => {
     const rs = (r.report_status ?? (r.submitted ? 'submitted' : 'draft')) as ReportStatus;
@@ -88,11 +90,26 @@ export default async function InterpreterEventPage({
     else if (rs === 'excellent') excellentCount++;
     else if (rs === 'submitted' || rs === 'under_review') submittedCount++;
     else if (rs === 'revision_requested') revisionCount++;
+    else if (rs === 'rejected') rejectedCount++;
     else inProgressCount++;
   });
-  const notStarted = total - approvedCount - excellentCount - submittedCount - revisionCount - inProgressCount;
+  const notStarted = total - approvedCount - excellentCount - submittedCount - revisionCount - rejectedCount - inProgressCount;
   const approvedTotal = approvedCount + excellentCount;
   const rate = total > 0 ? Math.round((approvedTotal / total) * 100) : 0;
+
+  // 잔여 일지 = 미작성 + 작성중 + 수정요청 + 반려
+  const pendingCount = notStarted + inProgressCount + revisionCount + rejectedCount;
+  // 잔여 일지 중 첫 항목 (날짜순 정렬 기반)
+  let firstPendingConsultationId: string | undefined;
+  for (const c of consultations ?? []) {
+    const r = reportsMap.get(c.id) as { report_status?: ReportStatus; submitted?: boolean } | undefined;
+    const rs: ReportStatus = (r?.report_status ?? (r?.submitted ? 'submitted' : 'draft'));
+    const isPending = !r || rs === 'draft' || rs === 'revision_requested' || rs === 'rejected';
+    if (isPending) {
+      firstPendingConsultationId = c.id as string;
+      break;
+    }
+  }
 
   // 통역사 프로필
   const { data: profile } = await supabase
@@ -137,6 +154,13 @@ export default async function InterpreterEventPage({
 
   return (
     <div>
+      {/* 잔여 일지 팝업 (매 진입, 잔여>0일 때만 표시) */}
+      <PendingReportsPopup
+        pendingCount={pendingCount}
+        eventId={eventId}
+        firstPendingConsultationId={firstPendingConsultationId}
+      />
+
       <Link href="/interpreter" className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">
         <ArrowLeft className="w-4 h-4 mr-1" />
         {t.interpreter.myEventListBack}
@@ -237,6 +261,12 @@ export default async function InterpreterEventPage({
                   style={{ width: `${(revisionCount / total) * 100}%` }}
                 />
               )}
+              {rejectedCount > 0 && (
+                <div
+                  className="h-full bg-red-500"
+                  style={{ width: `${(rejectedCount / total) * 100}%` }}
+                />
+              )}
               {inProgressCount > 0 && (
                 <div
                   className="h-full bg-amber-400"
@@ -267,6 +297,12 @@ export default async function InterpreterEventPage({
                 <span className="flex items-center gap-1.5 text-xs text-red-600">
                   <RotateCcw className="w-3.5 h-3.5" />
                   {tmpl(t.interpreter.countRevision, { count: revisionCount })}
+                </span>
+              )}
+              {rejectedCount > 0 && (
+                <span className="flex items-center gap-1.5 text-xs text-red-700">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  {tmpl(t.interpreter.countRejected, { count: rejectedCount })}
                 </span>
               )}
               {inProgressCount > 0 && (
@@ -331,10 +367,10 @@ export default async function InterpreterEventPage({
                     >
                       <Card className="border-0 shadow-sm hover:shadow-lg transition-all cursor-pointer group mb-2">
                         <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               {/* 시간 + 상태 */}
-                              <div className="flex items-center gap-2 mb-2">
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
                                 <div className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
                                   <Clock className="w-3 h-3" />
                                   {consultation.time_slot?.start_time} - {consultation.time_slot?.end_time}

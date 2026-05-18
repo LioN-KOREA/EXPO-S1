@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Globe } from 'lucide-react';
 import { dictionaries, type Locale } from '@/lib/i18n/dictionaries';
 
+const EyeOpen = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+const EyeClosed = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
+
 export default function ChangePasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -38,17 +41,14 @@ export default function ChangePasswordPage() {
     }
   }
 
-  const EyeOpen = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
-  const EyeClosed = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>;
-
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: '#06070b' }}>
-      <div className="fixed inset-0 pointer-events-none">
+    <div className="min-h-screen flex items-center justify-center relative overflow-x-hidden overflow-y-auto" style={{ background: '#06070b' }}>
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-[20%] left-[5%] w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.07) 0%, transparent 65%)', animation: 'drift1 8s ease-in-out infinite' }} />
         <div className="absolute -bottom-[10%] right-[5%] w-[280px] h-[280px] sm:w-[450px] sm:h-[450px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(234,88,12,0.06) 0%, transparent 65%)', animation: 'drift2 10s ease-in-out infinite' }} />
       </div>
 
-      <button onClick={() => setLocale(locale === 'ko' ? 'en' : 'ko')} className="absolute top-6 right-6 z-10 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs text-slate-500 border border-white/[0.08] bg-white/[0.03] hover:text-slate-300 transition-all">
+      <button onClick={() => setLocale(locale === 'ko' ? 'en' : 'ko')} className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs text-slate-500 border border-white/[0.08] bg-white/[0.03] hover:text-slate-300 transition-all">
         <Globe className="w-3.5 h-3.5" />{locale === 'ko' ? 'English' : '한국어'}
       </button>
 
@@ -63,7 +63,7 @@ export default function ChangePasswordPage() {
           <p className="text-[13px] text-slate-500 font-light">{t.changePassword.subtitle}</p>
         </div>
 
-        <div className="relative rounded-3xl p-8" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+        <div className="relative rounded-3xl p-6 sm:p-8" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
           <div className="absolute inset-[-1px] rounded-3xl pointer-events-none" style={{ padding: '1px', background: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.1))', WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }} />
 
           <form onSubmit={handleSubmit} className="relative">

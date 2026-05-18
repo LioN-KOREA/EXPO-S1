@@ -114,7 +114,7 @@ export function BuyerSellerRegistration({ eventId }: { eventId: string }) {
           <Card className="border-0 shadow-sm">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><UserPlus className="w-4 h-4" />바이어 추가</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 <div>
                   <Label className="text-xs">회사명 *</Label>
                   <Input value={buyerForm.company_name} onChange={e => setBuyerForm(f => ({ ...f, company_name: e.target.value }))} placeholder="회사명" className="mt-1 h-9 text-sm" />
@@ -154,8 +154,8 @@ export function BuyerSellerRegistration({ eventId }: { eventId: string }) {
               {loadingData ? <p className="text-sm text-slate-500">로딩 중...</p> : buyers.length === 0 ? (
                 <p className="text-sm text-slate-500">등록된 바이어가 없습니다</p>
               ) : (
-                <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                  <table className="w-full text-xs">
+                <div className="border rounded-lg max-h-[400px] overflow-auto">
+                  <table className="w-full text-xs min-w-[560px]">
                     <thead className="bg-muted sticky top-0">
                       <tr>
                         <th className="px-3 py-2 text-left font-medium text-slate-500">회사명</th>
@@ -196,7 +196,7 @@ export function BuyerSellerRegistration({ eventId }: { eventId: string }) {
           <Card className="border-0 shadow-sm">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4" />셀러 추가</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 <div>
                   <Label className="text-xs">회사명(영문) *</Label>
                   <Input value={sellerForm.company_name} onChange={e => setSellerForm(f => ({ ...f, company_name: e.target.value }))} placeholder="Company Name" className="mt-1 h-9 text-sm" />
@@ -213,7 +213,7 @@ export function BuyerSellerRegistration({ eventId }: { eventId: string }) {
                   <Label className="text-xs">전화번호</Label>
                   <Input value={sellerForm.contact_phone} onChange={e => setSellerForm(f => ({ ...f, contact_phone: e.target.value }))} placeholder="전화번호" className="mt-1 h-9 text-sm" />
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <Label className="text-xs">이메일</Label>
                   <Input value={sellerForm.email} onChange={e => setSellerForm(f => ({ ...f, email: e.target.value }))} placeholder="이메일" className="mt-1 h-9 text-sm" />
                 </div>
@@ -232,8 +232,8 @@ export function BuyerSellerRegistration({ eventId }: { eventId: string }) {
               {loadingData ? <p className="text-sm text-slate-500">로딩 중...</p> : sellers.length === 0 ? (
                 <p className="text-sm text-slate-500">등록된 셀러가 없습니다</p>
               ) : (
-                <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-                  <table className="w-full text-xs">
+                <div className="border rounded-lg max-h-[400px] overflow-auto">
+                  <table className="w-full text-xs min-w-[520px]">
                     <thead className="bg-muted sticky top-0">
                       <tr>
                         <th className="px-3 py-2 text-left font-medium text-slate-500">회사명(한글)</th>

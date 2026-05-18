@@ -50,19 +50,19 @@ export function OverallDashboardClient({ eventStats, totalConsultations, totalAp
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex justify-end">
         <div className="flex gap-1 bg-muted rounded-lg p-1">
-          <Button variant={viewMode === 'chart' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('chart')} className="gap-1.5 h-7 text-xs">
+          <Button variant={viewMode === 'chart' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('chart')} className="gap-1.5 h-9 sm:h-7 text-xs">
             <BarChart3 className="w-3.5 h-3.5" />차트
           </Button>
-          <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('table')} className="gap-1.5 h-7 text-xs">
+          <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('table')} className="gap-1.5 h-9 sm:h-7 text-xs">
             <Table2 className="w-3.5 h-3.5" />테이블
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* 전체 일지 현황 */}
         <Card className="border-0 shadow-sm">
           <CardHeader><CardTitle className="text-base">전체 상담일지 현황</CardTitle></CardHeader>
@@ -120,41 +120,43 @@ export function OverallDashboardClient({ eventStats, totalConsultations, totalAp
               </div>
             ) : (
               <div className="border rounded-lg overflow-hidden">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium">상담회</th>
-                      <th className="px-3 py-2 text-right font-medium">상담</th>
-                      <th className="px-3 py-2 text-right font-medium">승인</th>
-                      <th className="px-3 py-2 text-right font-medium">검토중</th>
-                      <th className="px-3 py-2 text-right font-medium">진행률</th>
-                      <th className="px-3 py-2 w-8"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {eventStats.map((e, i) => (
-                      <tr key={e.id} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-foreground font-medium truncate max-w-[150px]">{e.name}</span>
-                            <Badge variant={e.status === 'active' ? 'default' : 'secondary'} className="text-[9px]">
-                              {e.status === 'active' ? '진행' : '종료'}
-                            </Badge>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-right">{e.consultationCount}</td>
-                        <td className="px-3 py-2 text-right text-emerald-600">{e.approvedCount}</td>
-                        <td className="px-3 py-2 text-right text-blue-600">{e.submittedCount}</td>
-                        <td className="px-3 py-2 text-right font-medium">{e.rate}%</td>
-                        <td className="px-2 py-2">
-                          <Link href={`/admin/events/${e.id}/dashboard`}>
-                            <ChevronRight className="w-4 h-4 text-muted-foreground hover:text-foreground" />
-                          </Link>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[480px] text-xs">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium">상담회</th>
+                        <th className="px-3 py-2 text-right font-medium">상담</th>
+                        <th className="px-3 py-2 text-right font-medium">승인</th>
+                        <th className="px-3 py-2 text-right font-medium">검토중</th>
+                        <th className="px-3 py-2 text-right font-medium">진행률</th>
+                        <th className="px-3 py-2 w-8"></th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y">
+                      {eventStats.map((e, i) => (
+                        <tr key={e.id} className={i % 2 === 0 ? 'bg-card' : 'bg-muted/30'}>
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-foreground font-medium truncate max-w-[120px] sm:max-w-[150px]">{e.name}</span>
+                              <Badge variant={e.status === 'active' ? 'default' : 'secondary'} className="text-[9px]">
+                                {e.status === 'active' ? '진행' : '종료'}
+                              </Badge>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right">{e.consultationCount}</td>
+                          <td className="px-3 py-2 text-right text-emerald-600">{e.approvedCount}</td>
+                          <td className="px-3 py-2 text-right text-blue-600">{e.submittedCount}</td>
+                          <td className="px-3 py-2 text-right font-medium">{e.rate}%</td>
+                          <td className="px-2 py-2">
+                            <Link href={`/admin/events/${e.id}/dashboard`}>
+                              <ChevronRight className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </CardContent>

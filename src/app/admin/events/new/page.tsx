@@ -56,7 +56,7 @@ export default function NewEventPage() {
           <ArrowLeft className="w-4 h-4 mr-1" />
           상담회 목록으로
         </Link>
-        <h2 className="text-2xl font-bold text-foreground">새 상담회 생성</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">새 상담회 생성</h2>
       </div>
 
       <Card className="border-0 shadow-sm">
@@ -85,7 +85,7 @@ export default function NewEventPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="start_date">시작일 *</Label>
                 <Input id="start_date" name="start_date" type="date" required />
@@ -96,16 +96,16 @@ export default function NewEventPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button
                 type="submit"
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                 disabled={loading}
               >
                 {loading ? '생성 중...' : '상담회 생성'}
               </Button>
-              <Link href="/admin/events">
-                <Button type="button" variant="outline">취소</Button>
+              <Link href="/admin/events" className="w-full sm:w-auto">
+                <Button type="button" variant="outline" className="w-full sm:w-auto">취소</Button>
               </Link>
             </div>
           </form>

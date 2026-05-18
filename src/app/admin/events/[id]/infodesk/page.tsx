@@ -68,14 +68,14 @@ export default async function InfodeskPage({
 
       <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">인포데스크</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">인포데스크</h2>
           <p className="text-slate-500 text-sm mt-1">
             현장 인포데스크용 검색 화면 ·
             노출 대상: {target === 'all' ? '바이어 + 셀러' : target === 'buyer' ? '바이어' : '셀러'}
           </p>
         </div>
-        <Link href={`/admin/events/${eventId}/infodesk/kiosk`}>
-          <Button className="gap-1.5 bg-rose-500 hover:bg-rose-600">
+        <Link href={`/admin/events/${eventId}/infodesk/kiosk`} className="block w-full sm:w-auto">
+          <Button className="gap-1.5 bg-rose-500 hover:bg-rose-600 w-full sm:w-auto">
             <Maximize2 className="w-4 h-4" />
             키오스크 모드
           </Button>

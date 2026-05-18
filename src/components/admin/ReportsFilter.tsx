@@ -25,12 +25,14 @@ interface ConsultationItem {
   id: string;
   buyer_name: string;
   seller_name: string;
+  seller_contact_name: string;
   interpreter_name: string;
   booth_number: string;
   date: string;
   start_time: string;
   end_time: string;
   status: 'submitted' | 'approved' | 'excellent' | 'revision_requested' | 'rejected' | 'in_progress' | 'not_started';
+  hasDataAlert?: boolean;
 }
 
 interface ReportsFilterProps {
@@ -173,9 +175,9 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
   return (
     <div>
       {/* 뷰 모드 + 드롭다운 필터 */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-3 mb-4 flex-wrap">
         <Select value={viewMode} onValueChange={(v) => { if (v) { setViewMode(v as ViewMode); setSelectedValue('_all'); setCurrentPage(1); } }}>
-          <SelectTrigger className="w-[120px] h-9 text-sm">
+          <SelectTrigger className="w-[110px] sm:w-[120px] h-9 text-sm">
             <SelectValue>
               {VIEW_MODES.find(m => m.key === viewMode)?.label ?? viewMode}
             </SelectValue>
@@ -188,7 +190,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
         </Select>
 
         <Select value={selectedValue} onValueChange={(v) => { if (v) { setSelectedValue(v); setCurrentPage(1); setFilter('all'); } }}>
-          <SelectTrigger className="w-[200px] h-9 text-sm">
+          <SelectTrigger className="w-[160px] sm:w-[200px] h-9 text-sm">
             <SelectValue>
               {selectedValue === '_all'
                 ? `전체${VIEW_MODES.find(m => m.key === viewMode)?.label?.replace('별', '') ?? ''}`
@@ -278,22 +280,31 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
                     const isClickable = item.status !== 'not_started';
                     const content = (
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="text-sm font-medium text-foreground truncate">{item.buyer_name}</span>
                               <span className="text-xs text-slate-400">x</span>
                               <span className="text-sm text-muted-foreground truncate">{item.seller_name}</span>
+                              {item.seller_contact_name && (
+                                <span className="text-xs text-slate-500">({item.seller_contact_name})</span>
+                              )}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-slate-400">
+                            <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
                               <span>{item.start_time} - {item.end_time}</span>
                               {item.booth_number && <span>부스 {item.booth_number}</span>}
                               <span>통역: {item.interpreter_name}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                            {item.hasDataAlert && (
+                              <Badge className="text-xs gap-1 bg-amber-100 text-amber-700 border-0">
+                                <AlertCircle className="w-3 h-3" />
+                                데이터 확인 필요
+                              </Badge>
+                            )}
                             {getStatusBadge(item.status)}
-                            {isClickable && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                            {isClickable && <ChevronRight className="w-4 h-4 text-muted-foreground hidden sm:block" />}
                           </div>
                         </div>
                       </CardContent>
@@ -302,7 +313,7 @@ export function ReportsFilter({ eventId, items, counts }: ReportsFilterProps) {
                     return (
                       <Card key={item.id} className={`border-0 shadow-sm ${isClickable ? 'hover:shadow-md transition-shadow' : ''}`}>
                         {isClickable ? (
-                          <Link href={`/admin/events/${eventId}/reports/${item.id}`}>{content}</Link>
+                          <Link href={`/admin/events/${eventId}/reports/${item.id}`} className="block">{content}</Link>
                         ) : content}
                       </Card>
                     );

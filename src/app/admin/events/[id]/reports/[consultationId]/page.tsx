@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Clock, User, Building2, UserCheck } from 'lucide-react';
-import Link from 'next/link';
+import { Clock, User, Building2, UserCheck, Sparkles } from 'lucide-react';
 import { redirect } from 'next/navigation';
-import type { TemplateField, ReportStatus } from '@/types';
+import type { TemplateField, ReportStatus, Consultation } from '@/types';
 import { ReportActions } from '@/components/admin/ReportActions';
+import { AdminFieldsEditor } from '@/components/admin/AdminFieldsEditor';
+import { DataAlertCard } from '@/components/admin/DataAlertCard';
+import { buildAutoValues, AUTO_SOURCE_OPTIONS } from '@/lib/template/auto-source';
 
 export default async function AdminReportDetailPage({
   params,
@@ -31,14 +33,26 @@ export default async function AdminReportDetailPage({
 
   if (!consultation) redirect(`/admin/events/${eventId}/reports`);
 
-  // 상담일지 조회
+  // 상담일지 조회 (없을 수 있음 — 데이터 알림 처리를 위해 redirect 안 함)
   const { data: report } = await supabase
     .from('consultation_reports')
     .select('*')
     .eq('consultation_id', consultationId)
-    .single();
+    .maybeSingle();
 
-  if (!report) redirect(`/admin/events/${eventId}/reports`);
+  // 데이터 알림 (가장 최근 1건)
+  const { data: dataAlert } = await supabase
+    .from('consultation_data_alerts')
+    .select('id, missing_keys, note, status, created_at, resolved_at')
+    .eq('consultation_id', consultationId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // 일지도 알림도 없으면 목록으로 돌려보냄
+  if (!report && !dataAlert) {
+    redirect(`/admin/events/${eventId}/reports`);
+  }
 
   // 양식 필드 조회
   const { data: template } = await supabase
@@ -48,12 +62,26 @@ export default async function AdminReportDetailPage({
     .single();
 
   const fields: TemplateField[] = (template?.fields as TemplateField[]) ?? [];
-  const reportData = (report.data ?? {}) as Record<string, unknown>;
+  const reportData = (report?.data ?? {}) as Record<string, unknown>;
   const ts = consultation.time_slot as Record<string, string> | null;
   const buyer = consultation.buyer as Record<string, string> | null;
   const seller = consultation.seller as Record<string, string> | null;
   const interpreter = consultation.interpreter as Record<string, string> | null;
-  const reportStatus = (report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as ReportStatus;
+  const reportStatus: ReportStatus | null = report
+    ? ((report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as ReportStatus)
+    : null;
+
+  // 작성 주체별 필드 분리
+  const interpreterFields = fields.filter((f) => (f.source ?? 'interpreter') === 'interpreter');
+  const autoFields = fields.filter((f) => f.source === 'auto' && f.autoSource);
+  const adminFields = fields.filter((f) => f.source === 'admin');
+  const autoValues = buildAutoValues(consultation as Pick<Consultation, 'time_slot' | 'buyer' | 'seller'>, fields);
+
+  // autoSource key → 한글 라벨 매핑
+  const keyLabelMap: Record<string, string> = {};
+  AUTO_SOURCE_OPTIONS.forEach((o) => { keyLabelMap[o.value] = o.label; });
+  // 템플릿 필드 라벨도 (missing_keys가 autoSource 키인지 field.key인지 따라)
+  fields.forEach((f) => { if (f.autoSource) keyLabelMap[f.autoSource] = f.label; keyLabelMap[f.key] = f.label; });
 
   const statusLabels: Record<ReportStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
     draft: { label: '작성중', variant: 'secondary' },
@@ -65,7 +93,7 @@ export default async function AdminReportDetailPage({
     rejected: { label: '반려', variant: 'destructive' },
   };
 
-  const currentStatus = statusLabels[reportStatus];
+  const currentStatus = reportStatus ? statusLabels[reportStatus] : null;
 
   return (
     <div>
@@ -77,9 +105,13 @@ export default async function AdminReportDetailPage({
               <Clock className="w-3 h-3" />
               {ts?.date} {ts?.start_time} - {ts?.end_time}
             </div>
-            <Badge variant={currentStatus.variant} className={`text-xs ${currentStatus.className || ''}`}>
-              {currentStatus.label}
-            </Badge>
+            {currentStatus ? (
+              <Badge variant={currentStatus.variant} className={`text-xs ${currentStatus.className || ''}`}>
+                {currentStatus.label}
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">미작성</Badge>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -113,27 +145,70 @@ export default async function AdminReportDetailPage({
         </CardContent>
       </Card>
 
-      {/* 상태 안내 + 승인/반려 액션 */}
-      <div className="mb-6">
-        <ReportActions
-          reportId={report.id}
-          reportStatus={reportStatus}
-          adminComment={report.admin_comment}
-          reviewedAt={report.reviewed_at}
+      {/* 데이터 확인 요청 알림 */}
+      {dataAlert && (
+        <DataAlertCard
+          alert={dataAlert as { id: string; missing_keys: string[]; note: string | null; status: 'pending' | 'resolved'; created_at: string; resolved_at: string | null }}
+          keyLabelMap={keyLabelMap}
         />
-      </div>
+      )}
 
-      {/* 상담일지 내용 */}
+      {/* 상태 안내 + 승인/반려 액션 (일지가 있을 때만) */}
+      {report && reportStatus && (
+        <div className="mb-6">
+          <ReportActions
+            reportId={report.id}
+            reportStatus={reportStatus}
+            adminComment={report.admin_comment}
+            reviewedAt={report.reviewed_at}
+          />
+        </div>
+      )}
+
+      {/* 자동 채움 필드 */}
+      {autoFields.length > 0 && (
+        <Card className="border-0 shadow-sm mb-6 bg-emerald-50/50 border-emerald-100">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-600" />
+              자동 채움 필드
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {autoFields.map((f) => (
+                <div key={f.key}>
+                  <p className="text-xs font-medium text-slate-500 mb-1">{f.label}</p>
+                  <p className="text-sm text-foreground">{autoValues[f.key] ?? '-'}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 관리자 입력 필드 (일지가 있을 때만) */}
+      {report && (
+        <AdminFieldsEditor
+          reportId={report.id}
+          reportVersion={(report as { version?: number }).version ?? 1}
+          initialData={reportData}
+          adminFields={adminFields}
+        />
+      )}
+
+      {/* 통역사 작성 내용 (일지가 있을 때만) */}
+      {report && (
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg">상담일지 내용</CardTitle>
+          <CardTitle className="text-lg">통역사 작성 내용</CardTitle>
         </CardHeader>
         <CardContent>
-          {fields.length === 0 ? (
-            <p className="text-sm text-slate-500">양식 정보를 불러올 수 없습니다.</p>
+          {interpreterFields.length === 0 ? (
+            <p className="text-sm text-slate-500">통역사 작성 필드가 없습니다.</p>
           ) : (
             <div className="space-y-4">
-              {fields.map((field) => {
+              {interpreterFields.map((field) => {
                 const value = reportData[field.key];
                 const displayValue = value != null && value !== ''
                   ? (field.type === 'number' && !isNaN(Number(value)) ? Number(value).toLocaleString() : String(value))
@@ -161,6 +236,7 @@ export default async function AdminReportDetailPage({
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

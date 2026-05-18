@@ -190,13 +190,13 @@ export default async function EventDashboardPage({
   return (
     <div>
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">{event.name} - 대시보드</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground break-words">{event.name} - 대시보드</h2>
           <p className="text-slate-500 text-sm mt-1">{event.start_date} ~ {event.end_date}</p>
         </div>
-        <a href={`/api/export/dashboard?event_id=${eventId}`}>
-          <Button variant="outline" className="gap-2">
+        <a href={`/api/export/dashboard?event_id=${eventId}`} className="block sm:inline-block sm:self-auto">
+          <Button variant="outline" className="gap-2 w-full sm:w-auto">
             <Download className="w-4 h-4" />
             엑셀 다운로드
           </Button>

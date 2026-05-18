@@ -23,7 +23,8 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { MultiStepReportForm } from '@/components/interpreter/MultiStepReportForm';
-import type { TemplateField, FieldType } from '@/types';
+import type { TemplateField, FieldType, FieldSource, AutoSourceKey } from '@/types';
+import { AUTO_SOURCE_OPTIONS, inferAutoSourceFromLabel, isAdminLabel } from '@/lib/template/auto-source';
 
 const typeOptions: { value: FieldType; label: string }[] = [
   { value: 'text', label: '텍스트' },
@@ -31,6 +32,12 @@ const typeOptions: { value: FieldType; label: string }[] = [
   { value: 'textarea', label: '장문' },
   { value: 'select', label: '선택' },
   { value: 'date', label: '날짜' },
+];
+
+const sourceOptions: { value: FieldSource; label: string; hint: string }[] = [
+  { value: 'interpreter', label: '통역사 작성', hint: '통역사가 폼에서 직접 입력' },
+  { value: 'auto', label: '자동 채움', hint: '상담 정보에서 자동 입력 (통역사 폼 숨김)' },
+  { value: 'admin', label: '관리자 작성', hint: '관리자만 일지 보기에서 입력 (통역사 폼 숨김)' },
 ];
 
 interface Props {
@@ -81,15 +88,49 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
       type: 'text',
       required: false,
       order: prev.length + 1,
+      source: 'interpreter',
     }]);
   }
 
+  // 라벨 변경 시 source 자동 추론.
+  // 사용자가 한 번이라도 source 드롭다운으로 명시한 경우(=sourceLocked) 추론 적용 안 함.
+  function updateLabel(index: number, label: string) {
+    setFields((prev) => prev.map((f, i) => {
+      if (i !== index) return f;
+      if (f.sourceLocked) {
+        return { ...f, label };
+      }
+      const autoSource = inferAutoSourceFromLabel(label);
+      const inferredSource: FieldSource = autoSource
+        ? 'auto'
+        : isAdminLabel(label)
+          ? 'admin'
+          : 'interpreter';
+      const nextAutoSource = inferredSource === 'auto' ? autoSource : undefined;
+      return { ...f, label, source: inferredSource, autoSource: nextAutoSource };
+    }));
+  }
+
   async function save() {
+    // autoSource 미지정 'auto' 필드 검증: 통역사 폼에서 영구 숨김+결손 알림 무시 되는 데드락 방지
+    const invalidAuto = fields
+      .map((f, i) => ({ field: f, order: i + 1 }))
+      .filter(({ field }) => field.source === 'auto' && !field.autoSource);
+    if (invalidAuto.length > 0) {
+      const labels = invalidAuto
+        .map(({ field, order }) => `${order}. ${field.label || '(라벨 없음)'}`)
+        .join(', ');
+      toast.error(`'자동 채움' 필드는 매핑 소스를 선택해야 합니다: ${labels}`);
+      return;
+    }
+
     setSaving(true);
     const supabase = createClient();
     const cleanFields = fields.map((f, i) => ({
       ...f,
       order: i + 1,
+      source: f.source ?? 'interpreter',
+      autoSource: f.source === 'auto' ? f.autoSource : undefined,
       // 조건 정리: field/equals/in 셋 다 없으면 condition 제거
       condition: (() => {
         if (!f.condition?.field) return undefined;
@@ -119,10 +160,10 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
     <>
     <Card className="border-0 shadow-sm">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <CardTitle className="text-lg">양식 편집 ({fields.length}개)</CardTitle>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={addField} className="gap-1.5">
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={addField} className="gap-1.5 flex-1 sm:flex-initial">
               <Plus className="w-3.5 h-3.5" />
               필드 추가
             </Button>
@@ -131,12 +172,12 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
               variant="outline"
               onClick={openPreview}
               disabled={fields.length === 0}
-              className="gap-1.5"
+              className="gap-1.5 flex-1 sm:flex-initial"
             >
               <Eye className="w-3.5 h-3.5" />
               미리보기
             </Button>
-            <Button size="sm" onClick={save} disabled={saving} className="gap-1.5">
+            <Button size="sm" onClick={save} disabled={saving} className="gap-1.5 flex-1 sm:flex-initial">
               <Save className="w-3.5 h-3.5" />
               {saving ? '저장 중...' : '저장'}
             </Button>
@@ -152,17 +193,19 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
         )}
         {fields.map((field, i) => (
           <div key={field.key + i} className="border rounded-lg p-3 space-y-2 bg-muted/30">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 w-6 text-center">{i + 1}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-500 w-6 text-center shrink-0">{i + 1}</span>
               <Input
                 value={field.label}
-                onChange={(e) => update(i, { label: e.target.value })}
+                onChange={(e) => updateLabel(i, e.target.value)}
                 placeholder="필드 라벨"
-                className="flex-1 h-8 text-sm font-medium"
+                className="flex-1 min-w-[140px] h-8 text-sm font-medium"
               />
               <Select value={field.type} onValueChange={(v) => { if (v) update(i, { type: v as FieldType }); }}>
                 <SelectTrigger className="w-[100px] h-8 text-xs">
-                  <SelectValue />
+                  <SelectValue>
+                    {typeOptions.find((o) => o.value === field.type)?.label ?? field.type}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {typeOptions.map((o) => (
@@ -179,20 +222,22 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
                 />
                 필수
               </label>
-              <Button size="icon" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0} className="h-7 w-7">
-                <ArrowUp className="w-3.5 h-3.5" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => move(i, 1)} disabled={i === fields.length - 1} className="h-7 w-7">
-                <ArrowDown className="w-3.5 h-3.5" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={() => remove(i)} className="h-7 w-7 text-red-500 hover:text-red-600">
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+              <div className="flex items-center gap-1 ml-auto">
+                <Button size="icon" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0} className="h-9 w-9 sm:h-7 sm:w-7">
+                  <ArrowUp className="w-3.5 h-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => move(i, 1)} disabled={i === fields.length - 1} className="h-9 w-9 sm:h-7 sm:w-7">
+                  <ArrowDown className="w-3.5 h-3.5" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => remove(i)} className="h-9 w-9 sm:h-7 sm:w-7 text-red-500 hover:text-red-600">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
             </div>
 
             {/* 옵션 (select 전용) */}
             {field.type === 'select' && (
-              <div className="flex items-center gap-2 pl-8">
+              <div className="flex items-center gap-2 pl-2 sm:pl-8">
                 <span className="text-xs text-slate-500 shrink-0">옵션:</span>
                 <Input
                   value={field.options?.join(',') ?? ''}
@@ -203,8 +248,70 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
               </div>
             )}
 
+            {/* 작성 주체 */}
+            <div className="flex items-center gap-2 pl-2 sm:pl-8 flex-wrap">
+              <span className="text-xs text-slate-500 shrink-0">작성:</span>
+              <Select
+                value={field.source ?? 'interpreter'}
+                onValueChange={(v) => {
+                  if (!v) return;
+                  const next = v as FieldSource;
+                  update(i, {
+                    source: next,
+                    autoSource: next === 'auto' ? (field.autoSource ?? inferAutoSourceFromLabel(field.label)) : undefined,
+                    sourceLocked: true,
+                  });
+                }}
+              >
+                <SelectTrigger className="w-[120px] h-7 text-xs">
+                  <SelectValue>
+                    {sourceOptions.find((o) => o.value === (field.source ?? 'interpreter'))?.label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {field.source === 'auto' && (
+                <>
+                  <span className="text-xs text-slate-500">매핑:</span>
+                  <Select
+                    value={field.autoSource ?? '_pick'}
+                    onValueChange={(v) => {
+                      if (!v || v === '_pick') return;
+                      update(i, { autoSource: v as AutoSourceKey, sourceLocked: true });
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px] h-7 text-xs">
+                      <SelectValue placeholder="자동 채움 소스 선택">
+                        {AUTO_SOURCE_OPTIONS.find((o) => o.value === field.autoSource)?.label ?? '자동 채움 소스 선택'}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_pick" disabled>자동 채움 소스 선택</SelectItem>
+                      {AUTO_SOURCE_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+              {field.source && field.source !== 'interpreter' && (
+                <Badge variant="outline" className="text-[10px]">
+                  통역사 폼 숨김
+                </Badge>
+              )}
+              {field.source === 'auto' && !field.autoSource && (
+                <Badge variant="outline" className="text-[10px] border-red-300 bg-red-50 text-red-600">
+                  매핑 소스 필요
+                </Badge>
+              )}
+            </div>
+
             {/* 분기 조건 */}
-            <div className="flex items-center gap-2 pl-8 flex-wrap">
+            <div className="flex items-center gap-2 pl-2 sm:pl-8 flex-wrap">
               <span className="text-xs text-slate-500 shrink-0">조건:</span>
               <Select
                 value={field.condition?.field ?? '_none'}
@@ -215,7 +322,11 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
                 }}
               >
                 <SelectTrigger className="w-[140px] h-7 text-xs">
-                  <SelectValue placeholder="조건 없음" />
+                  <SelectValue placeholder="조건 없음">
+                    {field.condition?.field
+                      ? (fields.find((f) => f.key === field.condition!.field)?.label ?? field.condition.field)
+                      : '조건 없음'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_none">조건 없음</SelectItem>
@@ -249,7 +360,7 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
                     className="h-7 text-xs flex-1 min-w-[120px]"
                   />
                   <Badge variant="outline" className="text-[10px]">
-                    {Array.isArray(field.condition.in) ? `in (${field.condition.in.length})` : 'equals'}
+                    {Array.isArray(field.condition.in) ? `다중값 (${field.condition.in.length}개)` : '같음'}
                   </Badge>
                 </>
               )}
@@ -260,7 +371,7 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
     </Card>
 
     <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>양식 미리보기 (통역사 시점)</DialogTitle>
           <DialogDescription>

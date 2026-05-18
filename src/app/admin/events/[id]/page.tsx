@@ -201,22 +201,24 @@ export default async function EventDetailPage({
   return (
     <div>
       {/* 상담회 헤더 */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h2 className="text-2xl font-bold text-foreground">{event.name}</h2>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-6 sm:mb-8">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground break-keep">{event.name}</h2>
             <Badge variant={event.status === 'active' ? 'default' : 'secondary'}>
               {event.status === 'active' ? '진행중' : '종료'}
             </Badge>
           </div>
           {event.description && (
-            <p className="text-slate-500 mb-2">{event.description}</p>
+            <p className="text-sm sm:text-base text-slate-500 mb-2">{event.description}</p>
           )}
           <p className="text-sm text-slate-500">
             {event.start_date} ~ {event.end_date}
           </p>
         </div>
-        <DeleteEventButton eventId={id} />
+        <div className="sm:shrink-0">
+          <DeleteEventButton eventId={id} />
+        </div>
       </div>
 
       {/* 카테고리별 메뉴 그리드 (접기/펼치기) */}
@@ -237,23 +239,23 @@ export default async function EventDetailPage({
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
-              <h3 className="text-xl font-bold text-foreground">{group.title}</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-foreground">{group.title}</h3>
               <span className="text-sm text-slate-400">({group.items.length})</span>
             </summary>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {group.items.map((item) => (
                 <Link key={item.title} href={item.href}>
                   <Card className="border-0 shadow-sm hover:shadow-lg transition-all cursor-pointer group h-full">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shrink-0`}>
-                          <item.icon className="w-6 h-6 text-white" />
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="flex items-start gap-3 sm:gap-4">
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center shrink-0`}>
+                          <item.icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                         </div>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-foreground group-hover:text-blue-600 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-foreground group-hover:text-blue-600 transition-colors break-keep">
                             {item.title}
                           </h4>
-                          <p className="text-sm text-slate-500 mt-1">{item.description}</p>
+                          <p className="text-sm text-slate-500 mt-1 break-keep">{item.description}</p>
                           {item.countLabel && (
                             <p className="text-xs text-slate-500 mt-2">
                               {item.count} {item.countLabel}

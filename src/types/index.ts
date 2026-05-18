@@ -104,6 +104,27 @@ export interface Consultation {
 // --- 상담일지 양식 필드 ---
 export type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'date';
 
+// 작성 주체
+// - interpreter (기본): 통역사가 폼에서 작성
+// - auto: 시스템이 consultation/buyer/seller/time_slot에서 자동으로 채움 (autoSource 키 사용)
+// - admin: 관리자만 일지 보기 화면에서 입력
+export type FieldSource = 'interpreter' | 'auto' | 'admin';
+
+// 자동 채움 매핑 키 (consultation 컨텍스트에서 추출)
+export type AutoSourceKey =
+  | 'time_slot.date'
+  | 'time_slot.start_time'
+  | 'time_slot.end_time'
+  | 'buyer.company_name'
+  | 'buyer.buyer_name'
+  | 'buyer.country'
+  | 'buyer.booth_number'
+  | 'seller.company_name'
+  | 'seller.company_name_kr'
+  | 'seller.contact_name'
+  | 'seller.contact_phone'
+  | 'seller.email';
+
 export interface TemplateField {
   key: string;
   label: string;
@@ -114,6 +135,12 @@ export interface TemplateField {
   condition?: { field: string; equals?: unknown; in?: unknown[] };
   // 멀티스텝 폼 정렬
   order?: number;
+  // 작성 주체. 미지정 시 'interpreter'로 fallback (기존 데이터 호환)
+  source?: FieldSource;
+  // source='auto'일 때 어디서 값을 끌어올지
+  autoSource?: AutoSourceKey;
+  // true면 라벨 변경 시 source 자동 추론을 건너뛴다 (사용자가 명시적으로 선택)
+  sourceLocked?: boolean;
 }
 
 export interface ReportTemplate {

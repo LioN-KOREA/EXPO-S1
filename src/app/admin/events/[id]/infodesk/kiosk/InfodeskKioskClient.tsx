@@ -75,10 +75,10 @@ export function InfodeskKioskClient({ entries, eventName, eventId, target }: Pro
     <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 overflow-y-auto">
       {/* 헤더 */}
       <header className="sticky top-0 z-10 bg-rose-500 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold">{eventName}</h1>
-            <p className="text-sm text-rose-100 mt-0.5">현장 인포데스크</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold truncate">{eventName}</h1>
+            <p className="text-xs sm:text-sm text-rose-100 mt-0.5">현장 인포데스크</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -104,16 +104,16 @@ export function InfodeskKioskClient({ entries, eventName, eventId, target }: Pro
       </header>
 
       {/* 검색 + 필터 */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="bg-card rounded-2xl shadow-lg p-6 mb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="bg-card rounded-2xl shadow-lg p-4 sm:p-6 mb-6">
           <div className="relative mb-4">
-            <Search className="w-7 h-7 absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-5 h-5 sm:w-7 sm:h-7 absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="회사명·담당자·부스번호·연락처 검색"
-              className="h-16 text-xl pl-16 pr-6 rounded-xl border-2"
+              className="h-12 sm:h-16 text-base sm:text-xl pl-10 sm:pl-16 pr-3 sm:pr-6 rounded-xl border-2"
             />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -185,15 +185,15 @@ export function InfodeskKioskClient({ entries, eventName, eventId, target }: Pro
       {/* 상세 모달 — 풀스크린 카드 */}
       {selected && (
         <div
-          className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-6"
+          className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4 sm:p-6"
           onClick={() => setSelected(null)}
         >
           <div
-            className="bg-card rounded-3xl shadow-2xl max-w-2xl w-full p-8"
+            className="bg-card rounded-2xl sm:rounded-3xl shadow-2xl max-w-2xl w-full p-5 sm:p-8 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between mb-6">
-              <div>
+            <div className="flex items-start justify-between gap-3 mb-5 sm:mb-6">
+              <div className="min-w-0">
                 <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                   selected.kind === 'buyer'
                     ? 'bg-blue-100 text-blue-700'
@@ -201,7 +201,7 @@ export function InfodeskKioskClient({ entries, eventName, eventId, target }: Pro
                 }`}>
                   {selected.kind === 'buyer' ? '바이어' : '셀러'}
                 </span>
-                <h2 className="text-3xl font-bold mt-3">{selected.company}</h2>
+                <h2 className="text-xl sm:text-3xl font-bold mt-3 break-words">{selected.company}</h2>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelected(null)}>
                 <X className="w-6 h-6" />

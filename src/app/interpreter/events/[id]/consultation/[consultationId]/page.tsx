@@ -8,11 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { MultiStepReportForm } from '@/components/interpreter/MultiStepReportForm';
+import { MissingAutoFieldsAlert } from '@/components/interpreter/MissingAutoFieldsAlert';
 import { ArrowLeft, Save, User, Building2, Clock, CheckCircle2, Loader2, AlertTriangle, MessageSquare, Play, Square } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import type { TemplateField, Consultation, ConsultationReport, ReportStatus } from '@/types';
+import { buildAutoValues } from '@/lib/template/auto-source';
 
 export default function ConsultationReportPage() {
   const params = useParams();
@@ -38,10 +40,14 @@ export default function ConsultationReportPage() {
   const isInitialLoad = useRef(true);
   const reportRef = useRef(report);
   const formDataRef = useRef(formData);
+  const consultationRef = useRef(consultation);
+  const fieldsRef = useRef(fields);
 
   // ref 동기화
   useEffect(() => { reportRef.current = report; }, [report]);
   useEffect(() => { formDataRef.current = formData; }, [formData]);
+  useEffect(() => { consultationRef.current = consultation; }, [consultation]);
+  useEffect(() => { fieldsRef.current = fields; }, [fields]);
 
   useEffect(() => {
     async function load() {
@@ -87,8 +93,9 @@ export default function ConsultationReportPage() {
           return;
         }
 
-        if (template?.fields) {
-          setFields(template.fields as TemplateField[]);
+        const templateFields = (template?.fields ?? []) as TemplateField[];
+        if (templateFields.length > 0) {
+          setFields(templateFields);
         }
 
         const { data: existingReport } = await supabase
@@ -97,9 +104,23 @@ export default function ConsultationReportPage() {
           .eq('consultation_id', consultationId)
           .single();
 
+        // auto 필드 값을 formData에 미리 주입하여 조건 분기가 첫 렌더부터 정확히 동작하도록 한다
+        const autoValues = consultationData
+          ? buildAutoValues(
+              consultationData as Pick<Consultation, 'time_slot' | 'buyer' | 'seller'>,
+              templateFields,
+            )
+          : {};
+
         if (existingReport) {
           setReport(existingReport as ConsultationReport);
-          setFormData((existingReport.data as Record<string, unknown>) ?? {});
+          setFormData({
+            ...autoValues,
+            ...((existingReport.data as Record<string, unknown>) ?? {}),
+            ...autoValues, // 항상 최신 consultation 값 우선 (스케줄 변경 반영)
+          });
+        } else {
+          setFormData(autoValues);
         }
       } catch {
         setError(t.interpreter.genericError);
@@ -127,10 +148,16 @@ export default function ConsultationReportPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setAutoSaveStatus('error'); return; }
 
+    const currentConsultation = consultationRef.current;
+    const currentFields = fieldsRef.current;
+    const autoValues = currentConsultation
+      ? buildAutoValues(currentConsultation, currentFields)
+      : {};
+
     const payload = {
       consultation_id: consultationId,
       interpreter_id: user.id,
-      data: currentFormData,
+      data: { ...currentFormData, ...autoValues },
       submitted: false,
       submitted_at: null,
       report_status: 'draft' as ReportStatus,
@@ -244,10 +271,11 @@ export default function ConsultationReportPage() {
       return;
     }
 
+    const autoValues = consultation ? buildAutoValues(consultation, fields) : {};
     const payload = {
       consultation_id: consultationId,
       interpreter_id: user.id,
-      data: formData,
+      data: { ...formData, ...autoValues },
       submitted: submit,
       submitted_at: submit ? new Date().toISOString() : null,
       report_status: (submit ? 'submitted' : 'draft') as ReportStatus,
@@ -450,6 +478,25 @@ export default function ConsultationReportPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 결손 자동 필드 알림 */}
+      {(() => {
+        const autoFields = fields.filter((f) => f.source === 'auto' && f.autoSource);
+        if (autoFields.length === 0) return null;
+        const autoValues = consultation ? buildAutoValues(consultation, fields) : {};
+        const missing = autoFields.filter((f) => {
+          const v = autoValues[f.key];
+          return v == null || String(v).trim() === '';
+        });
+        if (missing.length === 0) return null;
+        return (
+          <MissingAutoFieldsAlert
+            consultationId={consultationId}
+            eventId={eventId}
+            missingFields={missing}
+          />
+        );
+      })()}
 
       {/* 안내 */}
       {isEditable && (

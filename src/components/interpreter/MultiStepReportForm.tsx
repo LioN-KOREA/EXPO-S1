@@ -58,9 +58,11 @@ export function MultiStepReportForm({
   const resolvedSubmitLabel = submitLabel ?? t.interpreter.submit;
   const [step, setStep] = useState(0);
 
-  // 순서 정렬 + 표시 가능한 필드만 추출
+  // 순서 정렬 + 통역사가 작성하는 필드만 (auto/admin 제외) + 조건 분기 필터
   const sorted = useMemo(
-    () => [...fields].sort((a, b) => (a.order ?? 999) - (b.order ?? 999)),
+    () => [...fields]
+      .filter((f) => (f.source ?? 'interpreter') === 'interpreter')
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999)),
     [fields]
   );
   const visible = useMemo(() => sorted.filter((f) => isVisible(f, values)), [sorted, values]);
@@ -279,7 +281,7 @@ export function MultiStepReportForm({
             variant="outline"
             onClick={handlePrev}
             disabled={isFirst || submitting}
-            className="gap-1.5"
+            className="gap-1.5 min-w-[88px] h-10"
           >
             <ChevronLeft className="w-4 h-4" />
             {t.interpreter.prev}
@@ -288,7 +290,7 @@ export function MultiStepReportForm({
             type="button"
             onClick={handleNext}
             disabled={submitting}
-            className={`flex-1 gap-1.5 ${
+            className={`flex-1 gap-1.5 h-10 ${
               isLast
                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
                 : ''

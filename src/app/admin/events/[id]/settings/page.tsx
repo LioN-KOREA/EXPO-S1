@@ -72,12 +72,12 @@ export default function EventSettingsPage() {
   return (
     <div>
 
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">옵션</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">옵션</h2>
           <p className="text-slate-500 text-sm mt-1">상담회 기능 활성화 옵션을 설정합니다</p>
         </div>
-        <Button onClick={save} disabled={saving || !options}>
+        <Button onClick={save} disabled={saving || !options} className="w-full sm:w-auto">
           <Save className="w-4 h-4 mr-1" />
           {saving ? '저장 중…' : '저장'}
         </Button>

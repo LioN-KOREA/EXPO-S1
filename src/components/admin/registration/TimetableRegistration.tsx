@@ -90,7 +90,7 @@ export function TimetableRegistration({ eventId }: { eventId: string }) {
       <Card className="border-0 shadow-sm">
         <CardHeader><CardTitle className="text-lg">상담 스케줄 엑셀 업로드</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
             <p className="text-sm text-slate-500">엑셀 업로드 시 바이어/셀러 계정이 자동 생성됩니다. 기존 데이터가 있으면 덮어쓰기됩니다.</p>
             <TemplateDownloadButton type="timetable" />
           </div>
@@ -101,18 +101,18 @@ export function TimetableRegistration({ eventId }: { eventId: string }) {
       {preview && (
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="text-lg">업로드 미리보기</CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={cancelPreview}>취소</Button>
-                <Button size="sm" onClick={handleConfirmUpload} disabled={confirming} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                <Button variant="outline" size="sm" onClick={cancelPreview} className="flex-1 sm:flex-initial">취소</Button>
+                <Button size="sm" onClick={handleConfirmUpload} disabled={confirming} className="bg-gradient-to-r from-blue-600 to-indigo-600 flex-1 sm:flex-initial">
                   {confirming ? '저장 중...' : '확인 후 저장'}
                 </Button>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <div className="bg-blue-50 rounded-lg p-3 text-center">
                 <p className="text-xl font-bold text-blue-700">{previewSummary?.slots ?? 0}</p>
                 <p className="text-xs text-blue-600">타임슬롯</p>
@@ -169,8 +169,8 @@ export function TimetableRegistration({ eventId }: { eventId: string }) {
 
             <div className="mb-4">
               <h4 className="text-sm font-semibold text-muted-foreground mb-2">바이어 목록</h4>
-              <div className="border rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
-                <table className="w-full text-xs">
+              <div className="border rounded-lg max-h-[300px] overflow-auto">
+                <table className="w-full text-xs min-w-[520px]">
                   <thead className="bg-muted sticky top-0">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium text-slate-500">#</th>

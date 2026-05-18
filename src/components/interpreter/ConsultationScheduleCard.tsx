@@ -134,7 +134,7 @@ export function ConsultationScheduleCard({
           )}
           <Link
             href={`/interpreter/events/${eventId}/consultation/${consultationId}`}
-            className="flex-1 min-w-[100px] inline-flex items-center justify-center gap-1 h-7 px-2.5 text-[0.8rem] font-medium rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground transition-colors"
+            className="flex-1 min-w-[100px] inline-flex items-center justify-center gap-1 h-9 px-3 text-sm font-medium rounded-lg border border-border bg-background hover:bg-muted hover:text-foreground transition-colors"
           >
             <FileText className="w-3.5 h-3.5" />
             {isApproved ? t.interpreter.viewReport : t.interpreter.writeReport}

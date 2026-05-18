@@ -87,7 +87,7 @@ export default function VariantBPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white" style={{ fontFamily: "'Pretendard', -apple-system, sans-serif" }}>
+    <div className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: "'Pretendard', -apple-system, sans-serif" }}>
       {/* Dot grid background */}
       <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{
         backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)',
@@ -96,33 +96,33 @@ export default function VariantBPage() {
 
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
               <Globe2 className="w-4 h-4 text-white" />
             </div>
             <span className="font-bold text-slate-900 tracking-tight">수출상담회</span>
           </div>
-          <a href="#login" className="px-5 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition">
+          <a href="#login" className="px-4 sm:px-5 py-2 bg-black text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition">
             로그인
           </a>
         </div>
       </nav>
 
       {/* Hero - Split */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+      <section className="pt-28 sm:pt-32 pb-16 sm:pb-20 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
           {/* Left text */}
           <div>
             <Reveal>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-full mb-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-full mb-5 sm:mb-6">
                 <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-xs text-slate-600 font-medium">운영 중인 상담회에 최적화</span>
               </div>
             </Reveal>
 
             <Reveal delay={100}>
-              <h1 className="text-5xl lg:text-6xl font-bold text-black leading-[1.1] tracking-tight mb-6" style={{ letterSpacing: '-0.03em' }}>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-black leading-[1.1] tracking-tight mb-5 sm:mb-6" style={{ letterSpacing: '-0.03em' }}>
                 상담회 운영의
                 <br />
                 새로운 기준.
@@ -130,7 +130,7 @@ export default function VariantBPage() {
             </Reveal>
 
             <Reveal delay={200}>
-              <p className="text-xl text-slate-500 leading-relaxed mb-8" style={{ fontWeight: 300 }}>
+              <p className="text-lg sm:text-xl text-slate-500 leading-relaxed mb-6 sm:mb-8" style={{ fontWeight: 300 }}>
                 엑셀 업로드부터 일지 다운로드까지.
                 <br />
                 수출상담회의 모든 과정을 하나로.
@@ -138,8 +138,8 @@ export default function VariantBPage() {
             </Reveal>
 
             <Reveal delay={300}>
-              <div className="flex items-center gap-4">
-                <a href="#login" className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-slate-800 transition">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <a href="#login" className="inline-flex items-center justify-center sm:justify-start gap-2 px-6 py-3 bg-black text-white font-medium rounded-lg hover:bg-slate-800 transition">
                   시작하기 <ArrowRight className="w-4 h-4" />
                 </a>
                 <span className="text-sm text-slate-400">설치 불필요 · 즉시 사용</span>
@@ -185,9 +185,9 @@ export default function VariantBPage() {
                   </div>
                   <div className="bg-white rounded-lg p-3 border border-slate-100 space-y-2">
                     {['ABC Corp × 삼성전자', 'XYZ Ltd × LG화학', 'DEF Inc × 현대모비스'].map((item, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <span className="text-xs text-slate-700">{item}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${i === 0 ? 'bg-emerald-50 text-emerald-600' : i === 1 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
+                      <div key={i} className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-700 truncate min-w-0 flex-1">{item}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${i === 0 ? 'bg-emerald-50 text-emerald-600' : i === 1 ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
                           {i === 0 ? '제출완료' : i === 1 ? '작성중' : '미작성'}
                         </span>
                       </div>
@@ -201,12 +201,12 @@ export default function VariantBPage() {
       </section>
 
       {/* Stats */}
-      <section className="py-16 px-6 border-y border-slate-100">
-        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+      <section className="py-12 sm:py-16 px-4 sm:px-6 border-y border-slate-100">
+        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
           {stats.map((s, i) => (
             <Reveal key={s.label} delay={i * 100}>
               <div className="text-center">
-                <p className="text-3xl font-bold text-black tracking-tight" style={{ letterSpacing: '-0.02em' }}>{s.value}</p>
+                <p className="text-2xl sm:text-3xl font-bold text-black tracking-tight" style={{ letterSpacing: '-0.02em' }}>{s.value}</p>
                 <p className="text-sm text-slate-400 mt-1">{s.label}</p>
               </div>
             </Reveal>
@@ -215,18 +215,18 @@ export default function VariantBPage() {
       </section>
 
       {/* Features */}
-      <section className="py-24 px-6">
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <Reveal>
-            <h2 className="text-3xl font-bold text-black tracking-tight mb-12" style={{ letterSpacing: '-0.02em' }}>
+            <h2 className="text-2xl sm:text-3xl font-bold text-black tracking-tight mb-8 sm:mb-12" style={{ letterSpacing: '-0.02em' }}>
               핵심 기능
             </h2>
           </Reveal>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
             {features.map((f, i) => (
               <Reveal key={f.title} delay={i * 100}>
-                <div className="group p-6 border border-slate-100 rounded-xl hover:border-slate-200 hover:bg-slate-50/50 transition-all">
+                <div className="group p-5 sm:p-6 border border-slate-100 rounded-xl hover:border-slate-200 hover:bg-slate-50/50 transition-all">
                   <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-black group-hover:text-white transition-colors">
                     <f.icon className="w-5 h-5" />
                   </div>
@@ -240,7 +240,7 @@ export default function VariantBPage() {
       </section>
 
       {/* Login */}
-      <section id="login" className="py-24 px-6 bg-slate-50 border-t border-slate-100">
+      <section id="login" className="py-16 sm:py-24 px-4 sm:px-6 bg-slate-50 border-t border-slate-100">
         <div className="max-w-sm mx-auto">
           <Reveal>
             <div className="text-center mb-8">
@@ -299,8 +299,8 @@ export default function VariantBPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-slate-100">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <footer className="py-8 px-4 sm:px-6 border-t border-slate-100">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
               <Globe2 className="w-3 h-3 text-white" />

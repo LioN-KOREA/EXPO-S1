@@ -119,7 +119,7 @@ export function InfodeskClient({ entries }: { entries: InfodeskEntry[] }) {
       </div>
 
       <Dialog open={!!selected} onOpenChange={(o) => { if (!o) setSelected(null); }}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Badge variant={selected?.kind === 'buyer' ? 'default' : 'secondary'}>

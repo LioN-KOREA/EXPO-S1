@@ -88,37 +88,37 @@ export default async function SellerDashboard() {
     <div>
       {/* 환영 헤더 */}
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-foreground">내 상담 현황</h2>
-        <p className="text-slate-500 text-sm mt-1">{companyDisplay}</p>
+        <h2 className="text-lg sm:text-xl font-bold text-foreground">내 상담 현황</h2>
+        <p className="text-slate-500 text-sm mt-1 truncate">{companyDisplay}</p>
       </div>
 
       {/* 요약 통계 */}
       {totalCount > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 sm:p-4 text-center">
               <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center mx-auto mb-2">
                 <TrendingUp className="w-5 h-5 text-blue-500" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{totalCount}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{totalCount}</p>
               <p className="text-xs text-slate-500 mt-0.5">총 상담</p>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 sm:p-4 text-center">
               <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center mx-auto mb-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{submittedCount}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{submittedCount}</p>
               <p className="text-xs text-slate-500 mt-0.5">일지 완료</p>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-4 text-center">
+            <CardContent className="p-3 sm:p-4 text-center">
               <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center mx-auto mb-2">
                 <CalendarDays className="w-5 h-5 text-purple-500" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{grouped.size}</p>
+              <p className="text-xl sm:text-2xl font-bold text-foreground">{grouped.size}</p>
               <p className="text-xs text-slate-500 mt-0.5">상담 일수</p>
             </CardContent>
           </Card>
@@ -159,25 +159,25 @@ export default async function SellerDashboard() {
                   return (
                     <Card key={c.id} className={`border-0 shadow-sm ${hasReport ? 'hover:shadow-lg transition-shadow' : ''}`}>
                       <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
+                              <div className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-md shrink-0">
                                 <Clock className="w-3 h-3" />
                                 {ts?.start_time} - {ts?.end_time}
                               </div>
-                              {event && <span className="text-xs text-slate-500 truncate">{event.name}</span>}
+                              {event && <span className="text-xs text-slate-500 truncate min-w-0">{event.name}</span>}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <User className="w-4 h-4 text-slate-500 shrink-0" />
-                              <span className="text-sm font-medium text-foreground truncate">{buyer?.company_name}</span>
+                              <span className="text-sm font-medium text-foreground truncate max-w-full">{buyer?.company_name}</span>
                               <span className="text-xs text-slate-500 shrink-0">({buyer?.country})</span>
                             </div>
                             {interp && (
-                              <p className="text-xs text-slate-500 mt-1 ml-6">통역: {interp.name}</p>
+                              <p className="text-xs text-slate-500 mt-1 ml-6 truncate">통역: {interp.name}</p>
                             )}
                           </div>
-                          <div className="ml-3 shrink-0">
+                          <div className="shrink-0">
                             {hasReport ? (
                               <Badge className="text-xs bg-emerald-100 text-emerald-700 border-0">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />

@@ -40,7 +40,7 @@ export function DeleteEventButton({ eventId }: { eventId: string }) {
       size="sm"
       onClick={handleDelete}
       disabled={loading}
-      className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+      className="w-full sm:w-auto h-10 sm:h-7 text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
     >
       <Trash2 className="w-4 h-4 mr-1" />
       {loading ? '삭제 중...' : '삭제'}

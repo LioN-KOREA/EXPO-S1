@@ -45,6 +45,14 @@ export default async function ReportsPage({
 
   const reportsMap = new Map(reports?.map((r) => [r.consultation_id, r]) ?? []);
 
+  // 데이터 알림 (통역사의 자동 채움 결손 신고)
+  const { data: alertsData } = await supabase
+    .from('consultation_data_alerts')
+    .select('consultation_id, status')
+    .eq('event_id', eventId)
+    .eq('status', 'pending');
+  const pendingAlertSet = new Set((alertsData ?? []).map((a) => a.consultation_id as string));
+
   // 양식 필드 + 금액 자동 감지 (BIS@T P9 패턴)
   const { data: template } = await supabase
     .from('report_templates').select('fields').eq('event_id', eventId).single();
@@ -121,12 +129,14 @@ export default async function ReportsPage({
       id: c.id,
       buyer_name: c.buyer?.company_name ?? '',
       seller_name: c.seller?.company_name_kr || c.seller?.company_name || '',
+      seller_contact_name: c.seller?.contact_name ?? '',
       interpreter_name: c.interpreter?.name ?? '',
       booth_number: c.buyer?.booth_number ?? '',
       date: c.time_slot?.date || '날짜 미정',
       start_time: c.time_slot?.start_time ?? '',
       end_time: c.time_slot?.end_time ?? '',
       status,
+      hasDataAlert: pendingAlertSet.has(c.id as string),
     };
   });
 
@@ -135,16 +145,16 @@ export default async function ReportsPage({
   return (
     <div>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">상담일지 조회</h2>
-          <p className="text-slate-500 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">상담일지 조회</h2>
+          <p className="text-slate-500 mt-1 text-sm">
             {approvedCount + excellentCount}/{total}건 승인 완료
             {excellentCount > 0 && <span className="text-amber-600"> · 우수상담 {excellentCount}건</span>}
           </p>
         </div>
-        <a href={`/api/export/reports?event_id=${eventId}`}>
-          <Button variant="outline" className="gap-2">
+        <a href={`/api/export/reports?event_id=${eventId}`} className="block sm:inline-block sm:self-auto">
+          <Button variant="outline" className="gap-2 w-full sm:w-auto">
             <Download className="w-4 h-4" />
             엑셀 다운로드
           </Button>

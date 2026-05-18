@@ -89,26 +89,26 @@ export default function VariantAPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white" style={{ fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+    <div className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif" }}>
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-[#0f1729] via-[#1a2744] to-[#0d2137] min-h-screen flex items-center">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 -left-20 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-full blur-3xl" />
+          <div className="absolute -top-20 -right-20 sm:-top-40 sm:-right-40 w-64 h-64 sm:w-96 sm:h-96 bg-blue-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 -left-10 sm:-left-20 w-48 h-48 sm:w-72 sm:h-72 bg-indigo-500/10 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[600px] sm:h-[600px] lg:w-[800px] lg:h-[800px] bg-gradient-to-r from-blue-600/5 to-purple-600/5 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-0 w-full">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-16 sm:py-20 lg:py-0 w-full">
+          <div className="grid lg:grid-cols-2 gap-10 sm:gap-16 items-center">
             {/* Left - Content */}
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-8">
+              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm mb-6 sm:mb-8">
                 <Shield className="w-4 h-4 text-blue-400" />
-                <span className="text-sm text-blue-200 font-medium">엔터프라이즈급 보안</span>
+                <span className="text-xs sm:text-sm text-blue-200 font-medium">엔터프라이즈급 보안</span>
               </div>
 
-              <h1 className="text-4xl lg:text-6xl font-bold text-white leading-tight mb-6 tracking-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-white leading-tight mb-5 sm:mb-6 tracking-tight">
                 수출상담회를
                 <br />
                 <span className="bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-400 bg-clip-text text-transparent">
@@ -118,20 +118,20 @@ export default function VariantAPage() {
                 운영하세요
               </h1>
 
-              <p className="text-lg text-slate-300 leading-relaxed mb-8 max-w-lg" style={{ fontWeight: 300 }}>
+              <p className="text-base sm:text-lg text-slate-300 leading-relaxed mb-6 sm:mb-8 max-w-lg" style={{ fontWeight: 300 }}>
                 바이어-셀러 매칭, 통역사 배정, 상담일지 관리까지.
                 <br />
                 하나의 플랫폼으로 상담회 전체를 관리합니다.
               </p>
 
-              <p className="text-sm text-slate-500 uppercase tracking-wider mb-10">
+              <p className="text-xs sm:text-sm text-slate-500 uppercase tracking-wider mb-8 sm:mb-10">
                 Export Consultation Management System
               </p>
 
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                 <a
                   href="#login"
-                  className="inline-flex items-center gap-2 px-7 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
+                  className="inline-flex items-center justify-center sm:justify-start gap-2 px-6 sm:px-7 py-3 sm:py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
                 >
                   시작하기
                   <ArrowRight className="w-4 h-4" />
@@ -186,28 +186,28 @@ export default function VariantAPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 px-6 bg-slate-50/50">
+      <section className="py-16 sm:py-24 px-4 sm:px-6 bg-slate-50/50">
         <div className="max-w-6xl mx-auto">
           <RevealSection>
-            <div className="text-center mb-16">
-              <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight mb-4">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight mb-4">
                 상담회 운영, 이제 더 쉽게
               </h2>
-              <p className="text-lg text-slate-500 max-w-2xl mx-auto" style={{ fontWeight: 300 }}>
+              <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto" style={{ fontWeight: 300 }}>
                 엑셀과 종이 대신, 체계적인 디지털 플랫폼으로 운영 효율을 높이세요.
               </p>
             </div>
           </RevealSection>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
             {features.map((f, i) => (
               <RevealSection key={f.title} delay={i * 100}>
-                <div className="group relative bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl hover:shadow-blue-100/50 transition-all duration-300 border border-slate-100">
+                <div className="group relative bg-white rounded-2xl p-6 sm:p-8 shadow-sm hover:shadow-xl hover:shadow-blue-100/50 transition-all duration-300 border border-slate-100">
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
                     <f.icon className="w-6 h-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">{f.title}</h3>
-                  <p className="text-slate-500 leading-relaxed" style={{ fontWeight: 300 }}>{f.desc}</p>
+                  <h3 className="text-lg sm:text-xl font-semibold text-slate-900 mb-2">{f.title}</h3>
+                  <p className="text-sm sm:text-base text-slate-500 leading-relaxed" style={{ fontWeight: 300 }}>{f.desc}</p>
                 </div>
               </RevealSection>
             ))}
@@ -216,21 +216,21 @@ export default function VariantAPage() {
       </section>
 
       {/* How it works */}
-      <section className="py-24 px-6">
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <RevealSection>
-            <div className="text-center mb-16">
-              <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight mb-4">
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight mb-4">
                 4단계로 완성하는 상담회
               </h2>
             </div>
           </RevealSection>
 
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
             {steps.map((step, i) => (
               <RevealSection key={step.num} delay={i * 150}>
                 <div className="text-center">
-                  <div className="text-5xl font-bold text-slate-100 mb-4">{step.num}</div>
+                  <div className="text-4xl sm:text-5xl font-bold text-slate-100 mb-3 sm:mb-4">{step.num}</div>
                   <h4 className="text-lg font-semibold text-slate-900 mb-2">{step.title}</h4>
                   <p className="text-sm text-slate-500" style={{ fontWeight: 300 }}>{step.desc}</p>
                 </div>
@@ -241,7 +241,7 @@ export default function VariantAPage() {
       </section>
 
       {/* Login Section */}
-      <section id="login" className="py-24 px-6 bg-gradient-to-br from-[#0f1729] via-[#1a2744] to-[#0d2137]">
+      <section id="login" className="py-16 sm:py-24 px-4 sm:px-6 bg-gradient-to-br from-[#0f1729] via-[#1a2744] to-[#0d2137]">
         <div className="max-w-md mx-auto">
           <RevealSection>
             <div className="text-center mb-8">
@@ -250,7 +250,7 @@ export default function VariantAPage() {
               <p className="text-slate-400 text-sm">계정 정보를 입력하여 시작하세요</p>
             </div>
 
-            <form onSubmit={handleLogin} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8">
+            <form onSubmit={handleLogin} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 sm:p-8">
               <div className="space-y-4">
                 <div>
                   <label className="text-sm text-slate-300 mb-1.5 block">이메일</label>
@@ -305,8 +305,8 @@ export default function VariantAPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-6 bg-[#0a0f1a] border-t border-white/5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <footer className="py-8 px-4 sm:px-6 bg-[#0a0f1a] border-t border-white/5">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
           <div className="flex items-center gap-2">
             <Globe2 className="w-5 h-5 text-blue-400" />
             <span className="text-sm text-slate-400 font-medium">수출상담회 관리 시스템</span>

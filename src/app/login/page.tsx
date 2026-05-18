@@ -55,9 +55,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: '#06070b' }}>
+    <div className="min-h-screen flex items-center justify-center relative overflow-x-hidden overflow-y-auto" style={{ background: '#06070b' }}>
       {/* Background glow */}
-      <div className="fixed inset-0 pointer-events-none">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-[20%] left-[5%] w-[300px] h-[300px] sm:w-[500px] sm:h-[500px] rounded-full opacity-100" style={{ background: 'radial-gradient(circle, rgba(56,120,246,0.09) 0%, transparent 65%)', animation: 'drift1 8s ease-in-out infinite' }} />
         <div className="absolute -bottom-[10%] right-[5%] w-[280px] h-[280px] sm:w-[450px] sm:h-[450px] rounded-full opacity-100" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.07) 0%, transparent 65%)', animation: 'drift2 10s ease-in-out infinite' }} />
       </div>
@@ -68,7 +68,7 @@ export default function LoginPage() {
       {/* Language toggle */}
       <button
         onClick={() => setLocale(locale === 'ko' ? 'en' : 'ko')}
-        className="absolute top-6 right-6 z-10 flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs text-slate-500 border border-white/[0.08] bg-white/[0.03] hover:text-slate-300 hover:border-white/[0.15] transition-all"
+        className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-lg text-xs text-slate-500 border border-white/[0.08] bg-white/[0.03] hover:text-slate-300 hover:border-white/[0.15] transition-all"
       >
         <Globe className="w-3.5 h-3.5" />
         {locale === 'ko' ? 'English' : '한국어'}
@@ -95,7 +95,7 @@ export default function LoginPage() {
         </div>
 
         {/* Login form card */}
-        <div className="relative rounded-3xl p-8" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+        <div className="relative rounded-3xl p-6 sm:p-8" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01))', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
           {/* Gradient border glow */}
           <div className="absolute inset-[-1px] rounded-3xl pointer-events-none" style={{ padding: '1px', background: 'linear-gradient(135deg, rgba(96,165,250,0.15), rgba(139,92,246,0.1), rgba(192,132,252,0.08))', WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', WebkitMaskComposite: 'xor', maskComposite: 'exclude' }} />
 

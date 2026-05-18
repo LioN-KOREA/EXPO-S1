@@ -110,7 +110,7 @@ export function UserBulkRegistration() {
     <div className="space-y-6">
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-lg">바이어 / 셀러 / 통역사 통합 등록</CardTitle>
             <TemplateDownloadButton type="users" label="양식 다운로드" />
           </div>
@@ -130,15 +130,15 @@ export function UserBulkRegistration() {
       {preview && (
         <Card className="border-0 shadow-sm">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="text-lg">업로드 미리보기</CardTitle>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={resetState}>취소</Button>
+                <Button variant="outline" size="sm" onClick={resetState} className="flex-1 sm:flex-initial">취소</Button>
                 <Button
                   size="sm"
                   onClick={handleConfirmUpload}
                   disabled={confirming || (summary?.total || 0) - duplicates.length === 0}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 flex-1 sm:flex-initial"
                 >
                   {confirming ? '등록 중...' : `${(summary?.total || 0) - duplicates.length}명 등록`}
                 </Button>
@@ -206,8 +206,8 @@ export function UserBulkRegistration() {
             )}
 
             {/* 사용자 테이블 */}
-            <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-              <table className="w-full text-xs">
+            <div className="border rounded-lg max-h-[400px] overflow-auto">
+              <table className="w-full text-xs min-w-[640px]">
                 <thead className="bg-muted sticky top-0">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium text-slate-500">행</th>

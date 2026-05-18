@@ -168,16 +168,16 @@ export default function AttendancePage() {
 
       <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">출석표</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">출석표</h2>
           <p className="text-slate-500 text-sm mt-1">통역사·셀러 출석 상태 관리</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap w-full sm:w-auto">
           <QrIssueButton eventId={eventId} />
-          <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)} className="flex-1 sm:flex-initial">
             <MessageSquare className="w-4 h-4 mr-1" />
             메시지 전송 예약
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setQrOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setQrOpen(true)} className="flex-1 sm:flex-initial">
             <QrCode className="w-4 h-4 mr-1" />
             QR코드 촬영
           </Button>
@@ -320,7 +320,7 @@ export default function AttendancePage() {
 
       {/* 메시지 전송 예약 모달 (스텁) */}
       <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>메시지 전송 예약</DialogTitle>
             <DialogDescription>
@@ -344,7 +344,7 @@ export default function AttendancePage() {
 
       {/* QR 촬영 모달 (스텁) */}
       <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>QR코드 촬영</DialogTitle>
             <DialogDescription>

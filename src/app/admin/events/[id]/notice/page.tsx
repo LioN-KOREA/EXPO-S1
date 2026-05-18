@@ -128,7 +128,7 @@ export default function NoticePage() {
     <div>
 
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground">공지사항</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">공지사항</h2>
         <p className="text-slate-500 text-sm mt-1">상담회 참가자에게 공지를 발송하고 읽음 통계를 확인합니다</p>
       </div>
 
@@ -205,9 +205,9 @@ export default function NoticePage() {
               )}
               {!loading && list.map((n) => (
                 <div key={n.id} className="px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         {n.target_roles.map(r => (
                           <Badge key={r} variant="outline" className="text-xs">{ROLE_LABEL[r]}</Badge>
                         ))}
@@ -215,7 +215,7 @@ export default function NoticePage() {
                           {new Date(n.sent_at).toLocaleString('ko-KR')}
                         </span>
                       </div>
-                      <div className="text-sm whitespace-pre-wrap">{n.message}</div>
+                      <div className="text-sm whitespace-pre-wrap break-words">{n.message}</div>
                       {n.sender?.name && (
                         <div className="text-xs text-slate-500 mt-1">발신자: {n.sender.name}</div>
                       )}
@@ -231,7 +231,7 @@ export default function NoticePage() {
                         </div>
                       )}
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => loadStats(n.id)}>
+                    <Button variant="ghost" size="sm" onClick={() => loadStats(n.id)} className="self-start sm:self-auto">
                       <Eye className="w-4 h-4 mr-1" />
                       읽음 통계
                     </Button>

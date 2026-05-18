@@ -512,9 +512,9 @@ export default function TimetablePage() {
   return (
     <div>
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">타임테이블</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">타임테이블</h2>
           {hasData && (
             <p className="text-slate-500 text-sm mt-1">
               {timeSlots.length}개 타임슬롯 · {buyers.length}명 바이어 · {sellers.length}명 셀러 · {consultations.length}건 매칭
@@ -522,14 +522,14 @@ export default function TimetablePage() {
             </p>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {hasData && (
             <>
-              <Button variant={assignMode ? 'default' : 'outline'} size="sm" onClick={() => setAssignMode(!assignMode)}>
+              <Button variant={assignMode ? 'default' : 'outline'} size="sm" onClick={() => setAssignMode(!assignMode)} className="flex-1 sm:flex-initial">
                 <UserPlus className="w-4 h-4 mr-1" />
                 {assignMode ? '배정모드 종료' : '통역사 배정'}
               </Button>
-              <Button variant="outline" size="sm" onClick={() => setShowUpload(!showUpload)}>
+              <Button variant="outline" size="sm" onClick={() => setShowUpload(!showUpload)} className="flex-1 sm:flex-initial">
                 <Upload className="w-4 h-4 mr-1" />
                 {showUpload ? '닫기' : '재업로드'}
               </Button>
@@ -563,7 +563,7 @@ export default function TimetablePage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
               <div className="bg-blue-50 rounded-lg p-3 text-center">
                 <p className="text-xl font-bold text-blue-700">{previewSummary?.slots ?? 0}</p>
                 <p className="text-xs text-blue-600">타임슬롯</p>
@@ -622,8 +622,8 @@ export default function TimetablePage() {
 
             <div className="mb-4">
               <h4 className="text-sm font-semibold text-muted-foreground mb-2">바이어 목록</h4>
-              <div className="border rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
-                <table className="w-full text-xs">
+              <div className="border rounded-lg max-h-[300px] overflow-auto">
+                <table className="w-full text-xs min-w-[640px]">
                   <thead className="bg-muted sticky top-0">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium text-slate-500">#</th>
@@ -684,9 +684,9 @@ export default function TimetablePage() {
       ) : hasData && (
         <>
           {/* 뷰 모드 탭 + 페이지네이션 */}
-          <div className="flex items-center justify-between mb-3 gap-4">
-            <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v as ViewMode); setCurrentPage(1); }}>
-              <TabsList>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-3">
+            <Tabs value={viewMode} onValueChange={(v) => { setViewMode(v as ViewMode); setCurrentPage(1); }} className="w-full sm:w-auto">
+              <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:flex">
                 <TabsTrigger value="buyer">바이어</TabsTrigger>
                 <TabsTrigger value="booth">부스</TabsTrigger>
                 <TabsTrigger value="interpreter">통역사</TabsTrigger>
@@ -704,12 +704,12 @@ export default function TimetablePage() {
 
           {/* 날짜 탭 */}
           {dates.length >= 1 && (
-            <div className="flex gap-1 mb-4">
+            <div className="flex gap-1 mb-4 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
               {dates.map(date => (
                 <button
                   key={date}
                   onClick={() => setSelectedDate(date)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap shrink-0 ${
                     selectedDate === date
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-card text-muted-foreground hover:bg-muted border border-border'

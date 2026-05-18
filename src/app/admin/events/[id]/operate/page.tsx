@@ -142,12 +142,12 @@ export default function OperatePage() {
 
       <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">현장운영 보드</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">현장운영 보드</h2>
           <p className="text-slate-500 text-sm mt-1">
             통역사 기준 실시간 상담 현황 (10초마다 자동 갱신, 조회 전용)
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {lastUpdate && (
             <span className="text-xs text-slate-500">
               마지막 갱신: {lastUpdate.toLocaleTimeString('ko-KR')}

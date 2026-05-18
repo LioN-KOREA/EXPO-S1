@@ -86,13 +86,13 @@ export default function InterpretersPage() {
   return (
     <div className="max-w-2xl">
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">통역사 관리</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">통역사 관리</h2>
           <p className="text-slate-500 text-sm mt-1">이 상담회에 참여할 통역사를 관리합니다</p>
         </div>
-        <Link href={`/admin/events/${eventId}/registration`}>
-          <Button variant="outline" size="sm">등록 탭에서 추가</Button>
+        <Link href={`/admin/events/${eventId}/registration`} className="block sm:inline-block sm:self-auto">
+          <Button variant="outline" size="sm" className="w-full sm:w-auto">등록 탭에서 추가</Button>
         </Link>
       </div>
 
