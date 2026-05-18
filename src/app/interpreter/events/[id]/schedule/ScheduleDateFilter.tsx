@@ -2,9 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n/context';
 
 interface Props {
   eventId: string;
@@ -13,17 +11,18 @@ interface Props {
   selectedStatus: string;
 }
 
-const STATUSES = [
-  { value: 'all', label: '전체 상태' },
-  { value: 'scheduled', label: '상담전' },
-  { value: 'in_progress', label: '상담중' },
-  { value: 'completed', label: '완료' },
-];
-
 export function ScheduleDateFilter({ eventId, allDates, selectedDate, selectedStatus }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
+
+  const statuses = [
+    { value: 'all', label: t.interpreter.filterAllStatus },
+    { value: 'scheduled', label: t.interpreter.consultBefore },
+    { value: 'in_progress', label: t.interpreter.consultIn },
+    { value: 'completed', label: t.interpreter.consultDone },
+  ];
 
   function updateParam(key: string, val: string) {
     const p = new URLSearchParams(searchParams?.toString() ?? '');
@@ -36,11 +35,11 @@ export function ScheduleDateFilter({ eventId, allDates, selectedDate, selectedSt
     <div className="flex items-center gap-2 mb-4 flex-wrap">
       <Select value={selectedDate} onValueChange={(v) => v && updateParam('date', v)}>
         <SelectTrigger className="w-[160px] h-9">
-          <SelectValue placeholder="일자 선택" />
+          <SelectValue placeholder={t.interpreter.filterDatePlaceholder} />
         </SelectTrigger>
         <SelectContent>
           {allDates.length === 0 ? (
-            <SelectItem value="_none" disabled>일자 없음</SelectItem>
+            <SelectItem value="_none" disabled>{t.interpreter.filterDateEmpty}</SelectItem>
           ) : (
             allDates.map((d) => (
               <SelectItem key={d} value={d}>{d}</SelectItem>
@@ -54,7 +53,7 @@ export function ScheduleDateFilter({ eventId, allDates, selectedDate, selectedSt
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {STATUSES.map((s) => (
+          {statuses.map((s) => (
             <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
           ))}
         </SelectContent>

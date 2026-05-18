@@ -1,7 +1,10 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback } from 'react';
-import { dictionaries, type Locale, type Dictionary } from './dictionaries';
+import { useRouter } from 'next/navigation';
+import { dictionaries, LOCALE_COOKIE, type Locale, type Dictionary } from './dictionaries';
+
+const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 interface I18nContextType {
   locale: Locale;
@@ -23,10 +26,15 @@ export function I18nProvider({
   defaultLocale?: Locale;
 }) {
   const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+  const router = useRouter();
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
-  }, []);
+    if (typeof document !== 'undefined') {
+      document.cookie = `${LOCALE_COOKIE}=${newLocale}; Max-Age=${LOCALE_COOKIE_MAX_AGE}; Path=/; SameSite=Lax`;
+    }
+    router.refresh();
+  }, [router]);
 
   return (
     <I18nContext value={{ locale, t: dictionaries[locale] as Dictionary, setLocale }}>

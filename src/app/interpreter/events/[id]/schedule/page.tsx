@@ -9,6 +9,8 @@ import { batchIn } from '@/lib/supabase/batch-query';
 import { ConsultationScheduleCard } from '@/components/interpreter/ConsultationScheduleCard';
 import { ScheduleDateFilter } from './ScheduleDateFilter';
 import { ScheduleAddButton } from './ScheduleAddButton';
+import { getServerDictionary } from '@/lib/i18n/server';
+import { tmpl } from '@/lib/i18n/dictionaries';
 
 export default async function InterpreterSchedulePage({
   params,
@@ -19,6 +21,7 @@ export default async function InterpreterSchedulePage({
 }) {
   const { id: eventId } = await params;
   const { date: dateFilter, status: statusFilter } = await searchParams;
+  const t = await getServerDictionary();
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -76,14 +79,14 @@ export default async function InterpreterSchedulePage({
     <div>
       <Link href={`/interpreter/events/${eventId}`} className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">
         <ArrowLeft className="w-4 h-4 mr-1" />
-        대시보드로
+        {t.interpreter.backToDashboard}
       </Link>
 
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
             <CalendarDays className="w-5 h-5 text-rose-500" />
-            스케줄 정보
+            {t.interpreter.scheduleInfoTitle}
           </h2>
           <p className="text-sm text-slate-500 mt-1">{event.name}</p>
         </div>
@@ -94,13 +97,13 @@ export default async function InterpreterSchedulePage({
       <div className="grid grid-cols-2 gap-3 mb-4">
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs text-slate-500">오늘의 스케줄</p>
-            <p className="text-2xl font-bold text-foreground mt-1">{total}개</p>
+            <p className="text-xs text-slate-500">{t.interpreter.todaySchedule}</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{tmpl(t.interpreter.countItems, { count: total })}</p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs text-slate-500">제출된 상담일지</p>
+            <p className="text-xs text-slate-500">{t.interpreter.submittedReports}</p>
             <p className="text-2xl font-bold text-rose-500 mt-1">
               {submittedTotal}<span className="text-sm text-slate-400">/{total}</span>
             </p>
@@ -122,7 +125,7 @@ export default async function InterpreterSchedulePage({
           <Card className="border-0 shadow-sm">
             <CardContent className="p-12 text-center">
               <CalendarDays className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-slate-500">해당 조건의 스케줄이 없습니다</p>
+              <p className="text-slate-500">{t.interpreter.noFilteredSchedule}</p>
             </CardContent>
           </Card>
         ) : (

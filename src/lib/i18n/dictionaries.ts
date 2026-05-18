@@ -1,5 +1,7 @@
 export type Locale = 'ko' | 'en';
 
+export const LOCALE_COOKIE = 'locale';
+
 export const dictionaries = {
   ko: {
     // 공통
@@ -219,6 +221,7 @@ export const dictionaries = {
       countApproved: '승인 {count}',
       countExcellent: '우수상담 {count}',
       countSubmitted: '제출 {count}',
+      countUnderReview: '검토중 {count}',
       countRevision: '수정요청 {count}',
       countInProgress: '작성중 {count}',
       countNotStarted: '미작성 {count}',
@@ -236,6 +239,18 @@ export const dictionaries = {
       submitNow: '지금 제출',
       submitConfirm: '제출하기',
       autoSaveInterval: '입력 내용은 1초마다 자동 저장됩니다',
+      // 서버 컴포넌트 i18n 마무리 (2026-05-18)
+      myEventListBack: '내 상담회 목록',
+      myEventsCount: '내 상담회 ({count})',
+      addScheduleAskAdmin: '스케줄 추가는 관리자에게 문의해주세요',
+      filterAllStatus: '전체 상태',
+      filterDatePlaceholder: '일자 선택',
+      filterDateEmpty: '일자 없음',
+      collapse: '접기',
+      expand: '펼치기',
+      unread: '미확인',
+      noticeStatsTotal: '{total}건 · 미확인 {unread}건',
+      glossaryComingDesc: '한국어 / 영어 / 중국어 / 일본어 무역 용어 사전을 곧 제공할 예정입니다.',
     },
 
     // 상태
@@ -471,6 +486,7 @@ export const dictionaries = {
       countApproved: 'Approved {count}',
       countExcellent: 'Excellent {count}',
       countSubmitted: 'Submitted {count}',
+      countUnderReview: 'Under review {count}',
       countRevision: 'Revision {count}',
       countInProgress: 'In progress {count}',
       countNotStarted: 'Not started {count}',
@@ -488,6 +504,18 @@ export const dictionaries = {
       submitNow: 'Submit now',
       submitConfirm: 'Submit',
       autoSaveInterval: 'Your input is auto-saved every second',
+      // Server component i18n follow-up (2026-05-18)
+      myEventListBack: 'My events',
+      myEventsCount: 'My events ({count})',
+      addScheduleAskAdmin: 'Please contact the administrator to add a schedule',
+      filterAllStatus: 'All statuses',
+      filterDatePlaceholder: 'Select date',
+      filterDateEmpty: 'No dates',
+      collapse: 'Collapse',
+      expand: 'Expand',
+      unread: 'Unread',
+      noticeStatsTotal: '{total} · {unread} unread',
+      glossaryComingDesc: 'A multilingual (Korean / English / Chinese / Japanese) trade glossary will be available soon.',
     },
 
     status: {
@@ -517,3 +545,10 @@ type DeepStringify<T> = {
 };
 
 export type Dictionary = DeepStringify<typeof dictionaries.ko>;
+
+export function tmpl(template: string, params: Record<string, string | number>): string {
+  return Object.entries(params).reduce(
+    (acc, [key, value]) => acc.replaceAll(`{${key}}`, String(value)),
+    template,
+  );
+}

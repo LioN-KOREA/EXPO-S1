@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { InterpreterHeader } from '@/components/interpreter/InterpreterHeader';
 import { Toaster } from '@/components/ui/sonner';
 import { I18nWrapper } from '@/components/I18nWrapper';
+import { getServerLocale } from '@/lib/i18n/server';
 import { batchIn } from '@/lib/supabase/batch-query';
 
 export default async function InterpreterLayout({
@@ -58,8 +59,10 @@ export default async function InterpreterLayout({
     unreadNotices = Math.max(0, totalNoticeCount - (readCount ?? 0));
   }
 
+  const locale = await getServerLocale();
+
   return (
-    <I18nWrapper locale="ko">
+    <I18nWrapper locale={locale}>
       <div className="min-h-screen bg-background">
         <InterpreterHeader
           userName={profile.name}

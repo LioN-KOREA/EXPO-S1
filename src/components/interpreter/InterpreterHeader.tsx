@@ -9,6 +9,7 @@ import { LanguageToggle } from '@/components/LanguageToggle';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Logo } from '@/components/Logo';
 import { InterpreterSideMenu } from '@/components/interpreter/InterpreterSideMenu';
+import { useI18n } from '@/lib/i18n/context';
 
 interface InterpreterHeaderProps {
   userName: string;
@@ -27,6 +28,7 @@ export function InterpreterHeader({
 }: InterpreterHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useI18n();
 
   const roleHome = '/' + (pathname.split('/')[1] || 'login');
 
@@ -52,7 +54,7 @@ export function InterpreterHeader({
             size="sm"
             onClick={handleLogout}
             className="text-slate-500 hover:text-slate-300 hover:bg-white/[0.05] hidden sm:inline-flex"
-            aria-label="로그아웃"
+            aria-label={t.common.logout}
           >
             <LogOut className="w-4 h-4" />
           </Button>

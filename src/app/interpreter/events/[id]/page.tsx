@@ -22,6 +22,8 @@ import type { ReportStatus } from '@/types';
 import { batchIn } from '@/lib/supabase/batch-query';
 import { QrAttendButton } from '@/components/interpreter/QrAttendButton';
 import { BuyerCardList } from '@/components/interpreter/BuyerCardList';
+import { getServerDictionary } from '@/lib/i18n/server';
+import { tmpl } from '@/lib/i18n/dictionaries';
 
 export default async function InterpreterEventPage({
   params,
@@ -29,6 +31,7 @@ export default async function InterpreterEventPage({
   params: Promise<{ id: string }>;
 }) {
   const { id: eventId } = await params;
+  const t = await getServerDictionary();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -127,7 +130,7 @@ export default async function InterpreterEventPage({
   // 날짜별 그룹핑
   const grouped = new Map<string, NonNullable<typeof consultations>>();
   consultations?.forEach((c) => {
-    const date = c.time_slot?.date || '날짜 미정';
+    const date = c.time_slot?.date || t.interpreter.dateUndecided;
     if (!grouped.has(date)) grouped.set(date, []);
     grouped.get(date)!.push(c);
   });
@@ -136,7 +139,7 @@ export default async function InterpreterEventPage({
     <div>
       <Link href="/interpreter" className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">
         <ArrowLeft className="w-4 h-4 mr-1" />
-        내 상담회 목록
+        {t.interpreter.myEventListBack}
       </Link>
 
       {/* 인사말 + QR 출석 */}
@@ -145,9 +148,9 @@ export default async function InterpreterEventPage({
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <p className="text-lg font-bold">
-                {profile?.name ?? ''} 통역사님
+                {tmpl(t.interpreter.greetingShort, { name: profile?.name ?? '' })}
               </p>
-              <p className="text-sm opacity-90 mt-0.5">성공적인 통역을 응원해요!</p>
+              <p className="text-sm opacity-90 mt-0.5">{t.interpreter.cheerMessage}</p>
             </div>
             <QrAttendButton eventId={eventId} />
           </div>
@@ -173,7 +176,7 @@ export default async function InterpreterEventPage({
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
             <User className="w-4 h-4 text-rose-500" />
-            담당 바이어 ({buyers.length})
+            {tmpl(t.interpreter.buyersInChargeTitle, { count: buyers.length })}
           </h3>
           <BuyerCardList buyers={buyers} />
         </div>
@@ -188,8 +191,8 @@ export default async function InterpreterEventPage({
           <Card className="border-0 shadow-sm hover:shadow-lg transition-all bg-gradient-to-br from-blue-500 to-blue-600 text-white">
             <CardContent className="p-5 flex items-center justify-between">
               <div>
-                <p className="text-sm opacity-90">일정 관리</p>
-                <p className="text-lg font-bold mt-0.5">상담 시작 / 종료 + 일지 작성</p>
+                <p className="text-sm opacity-90">{t.interpreter.scheduleManage}</p>
+                <p className="text-lg font-bold mt-0.5">{t.interpreter.scheduleManageDesc}</p>
               </div>
               <ChevronRight className="w-6 h-6" />
             </CardContent>
@@ -202,7 +205,7 @@ export default async function InterpreterEventPage({
         <Card className="border-0 shadow-sm mb-6">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-muted-foreground">일지 작성 현황</span>
+              <span className="text-sm font-semibold text-muted-foreground">{t.interpreter.reportStatus}</span>
               <span className={`text-sm font-bold ${
                 rate === 100 ? 'text-emerald-600' : rate >= 50 ? 'text-blue-600' : 'text-slate-500'
               }`}>
@@ -245,37 +248,37 @@ export default async function InterpreterEventPage({
               {approvedCount > 0 && (
                 <span className="flex items-center gap-1.5 text-xs text-emerald-600">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  승인 {approvedCount}
+                  {tmpl(t.interpreter.countApproved, { count: approvedCount })}
                 </span>
               )}
               {excellentCount > 0 && (
                 <span className="flex items-center gap-1.5 text-xs text-amber-500">
                   <Award className="w-3.5 h-3.5" />
-                  우수상담 {excellentCount}
+                  {tmpl(t.interpreter.countExcellent, { count: excellentCount })}
                 </span>
               )}
               {submittedCount > 0 && (
                 <span className="flex items-center gap-1.5 text-xs text-blue-600">
                   <Clock className="w-3.5 h-3.5" />
-                  검토중 {submittedCount}
+                  {tmpl(t.interpreter.countUnderReview, { count: submittedCount })}
                 </span>
               )}
               {revisionCount > 0 && (
                 <span className="flex items-center gap-1.5 text-xs text-red-600">
                   <RotateCcw className="w-3.5 h-3.5" />
-                  수정요청 {revisionCount}
+                  {tmpl(t.interpreter.countRevision, { count: revisionCount })}
                 </span>
               )}
               {inProgressCount > 0 && (
                 <span className="flex items-center gap-1.5 text-xs text-amber-600">
                   <FileText className="w-3.5 h-3.5" />
-                  작성중 {inProgressCount}
+                  {tmpl(t.interpreter.countInProgress, { count: inProgressCount })}
                 </span>
               )}
               {notStarted > 0 && (
                 <span className="flex items-center gap-1.5 text-xs text-slate-500">
                   <AlertCircle className="w-3.5 h-3.5" />
-                  미작성 {notStarted}
+                  {tmpl(t.interpreter.countNotStarted, { count: notStarted })}
                 </span>
               )}
             </div>
@@ -288,7 +291,7 @@ export default async function InterpreterEventPage({
         <Card className="border-0 shadow-sm">
           <CardContent className="p-12 text-center">
             <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-slate-500">배정된 상담이 없습니다</p>
+            <p className="text-slate-500">{t.interpreter.noAssigned}</p>
           </CardContent>
         </Card>
       ) : (
@@ -301,7 +304,7 @@ export default async function InterpreterEventPage({
                   <CalendarDays className="w-4 h-4 text-blue-500" />
                   {date}
                 </div>
-                <span className="text-xs text-slate-500">{items.length}건</span>
+                <span className="text-xs text-slate-500">{tmpl(t.interpreter.countItems, { count: items.length })}</span>
                 <div className="flex-1 h-px bg-card" />
               </div>
 
@@ -311,15 +314,15 @@ export default async function InterpreterEventPage({
                   const rs = report ? ((report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as ReportStatus) : null;
 
                   const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
-                    approved: { label: '승인됨', variant: 'default', className: 'bg-emerald-500' },
-                    excellent: { label: '우수상담', variant: 'default', className: 'bg-amber-500' },
-                    submitted: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
-                    under_review: { label: '검토중', variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
-                    revision_requested: { label: '수정요청', variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },
-                    rejected: { label: '반려', variant: 'destructive' },
-                    draft: { label: '작성중', variant: 'secondary' },
+                    approved: { label: t.interpreter.statusApprovedDone, variant: 'default', className: 'bg-emerald-500' },
+                    excellent: { label: t.interpreter.excellent, variant: 'default', className: 'bg-amber-500' },
+                    submitted: { label: t.interpreter.statusUnderReview, variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+                    under_review: { label: t.interpreter.statusUnderReview, variant: 'outline', className: 'border-blue-200 text-blue-700 bg-blue-50' },
+                    revision_requested: { label: t.interpreter.statusRevisionRequested, variant: 'outline', className: 'border-amber-200 text-amber-700 bg-amber-50' },
+                    rejected: { label: t.interpreter.statusRejected, variant: 'destructive' },
+                    draft: { label: t.interpreter.statusDraft, variant: 'secondary' },
                   };
-                  const statusInfo = rs ? statusMap[rs] : { label: '미작성', variant: 'secondary' as const };
+                  const statusInfo = rs ? statusMap[rs] : { label: t.interpreter.statusNotWritten, variant: 'secondary' as const };
 
                   return (
                     <Link

@@ -11,8 +11,11 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
+import { getServerDictionary } from '@/lib/i18n/server';
+import { tmpl } from '@/lib/i18n/dictionaries';
 
 export default async function InterpreterDashboard() {
+  const t = await getServerDictionary();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -95,9 +98,9 @@ export default async function InterpreterDashboard() {
       {/* 환영 헤더 */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-foreground">
-          안녕하세요, {profile?.name || '통역사'}님
+          {tmpl(t.interpreter.greeting, { name: profile?.name || t.roles.interpreter })}
         </h2>
-        <p className="text-slate-500 text-sm mt-1">배정된 상담회와 일지 작성 현황입니다</p>
+        <p className="text-slate-500 text-sm mt-1">{t.interpreter.statusDescription}</p>
       </div>
 
       {/* 요약 통계 카드 */}
@@ -109,7 +112,7 @@ export default async function InterpreterDashboard() {
                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
               </div>
               <p className="text-2xl font-bold text-foreground">{totalSubmitted}</p>
-              <p className="text-xs text-slate-500 mt-0.5">제출 완료</p>
+              <p className="text-xs text-slate-500 mt-0.5">{t.interpreter.submissionComplete}</p>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
@@ -118,7 +121,7 @@ export default async function InterpreterDashboard() {
                 <FileText className="w-5 h-5 text-amber-500" />
               </div>
               <p className="text-2xl font-bold text-foreground">{totalInProgress}</p>
-              <p className="text-xs text-slate-500 mt-0.5">작성 중</p>
+              <p className="text-xs text-slate-500 mt-0.5">{t.interpreter.inProgress}</p>
             </CardContent>
           </Card>
           <Card className="border-0 shadow-sm">
@@ -127,7 +130,7 @@ export default async function InterpreterDashboard() {
                 <AlertCircle className="w-5 h-5 text-slate-500" />
               </div>
               <p className="text-2xl font-bold text-foreground">{totalNotStarted}</p>
-              <p className="text-xs text-slate-500 mt-0.5">미작성</p>
+              <p className="text-xs text-slate-500 mt-0.5">{t.interpreter.notStarted}</p>
             </CardContent>
           </Card>
         </div>
@@ -140,7 +143,7 @@ export default async function InterpreterDashboard() {
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
               <p className="text-sm text-amber-700">
-                아직 작성하지 않은 상담일지가 <span className="font-semibold">{totalNotStarted}건</span> 있습니다.
+                {tmpl(t.interpreter.unwrittenReports, { count: totalNotStarted })}
               </p>
             </div>
           </CardContent>
@@ -151,7 +154,7 @@ export default async function InterpreterDashboard() {
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
           <CalendarDays className="w-4 h-4" />
-          내 상담회 ({events.length})
+          {tmpl(t.interpreter.myEventsCount, { count: events.length })}
         </h3>
       </div>
 
@@ -159,8 +162,8 @@ export default async function InterpreterDashboard() {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-12 text-center">
             <CalendarDays className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-slate-500">배정된 상담회가 없습니다</p>
-            <p className="text-sm text-slate-500 mt-1">관리자가 상담회에 배정하면 여기에 표시됩니다</p>
+            <p className="text-slate-500">{t.interpreter.noEvents}</p>
+            <p className="text-sm text-slate-500 mt-1">{t.interpreter.noEventsDesc}</p>
           </CardContent>
         </Card>
       ) : (
@@ -178,7 +181,7 @@ export default async function InterpreterDashboard() {
                         variant={event.status === 'active' ? 'default' : 'secondary'}
                         className="text-xs shrink-0"
                       >
-                        {event.status === 'active' ? '진행중' : '종료'}
+                        {event.status === 'active' ? t.interpreter.active : t.interpreter.ended}
                       </Badge>
                     </div>
                     <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-slate-500 transition-colors shrink-0" />
@@ -192,7 +195,7 @@ export default async function InterpreterDashboard() {
                   {event.total > 0 && (
                     <div className="mb-3">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-slate-500">일지 진행률</span>
+                        <span className="text-xs text-slate-500">{t.interpreter.reportProgress}</span>
                         <span className={`text-xs font-semibold ${
                           event.rate === 100 ? 'text-emerald-600' : event.rate >= 50 ? 'text-blue-600' : 'text-slate-500'
                         }`}>
@@ -217,19 +220,19 @@ export default async function InterpreterDashboard() {
                         {event.submitted > 0 && (
                           <span className="flex items-center gap-1 text-[11px] text-emerald-600">
                             <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                            제출 {event.submitted}
+                            {tmpl(t.interpreter.countSubmitted, { count: event.submitted })}
                           </span>
                         )}
                         {event.inProgress > 0 && (
                           <span className="flex items-center gap-1 text-[11px] text-amber-600">
                             <span className="w-2 h-2 rounded-full bg-amber-400" />
-                            작성중 {event.inProgress}
+                            {tmpl(t.interpreter.countInProgress, { count: event.inProgress })}
                           </span>
                         )}
                         {event.notStarted > 0 && (
                           <span className="flex items-center gap-1 text-[11px] text-slate-500">
                             <span className="w-2 h-2 rounded-full bg-slate-200" />
-                            미작성 {event.notStarted}
+                            {tmpl(t.interpreter.countNotStarted, { count: event.notStarted })}
                           </span>
                         )}
                       </div>
@@ -243,7 +246,7 @@ export default async function InterpreterDashboard() {
                     </span>
                     <span className="flex items-center gap-1">
                       <TrendingUp className="w-3 h-3" />
-                      상담 {event.total}건
+                      {tmpl(t.interpreter.consultationCount, { count: event.total })}
                     </span>
                   </div>
                 </CardContent>

@@ -3,8 +3,11 @@ import { redirect } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Megaphone, Clock } from 'lucide-react';
 import { InterpreterNoticeList } from './InterpreterNoticeList';
+import { getServerDictionary } from '@/lib/i18n/server';
+import { tmpl } from '@/lib/i18n/dictionaries';
 
 export default async function InterpreterNoticePage() {
+  const t = await getServerDictionary();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -39,10 +42,13 @@ export default async function InterpreterNoticePage() {
       <div className="mb-6">
         <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
           <Megaphone className="w-5 h-5 text-rose-500" />
-          공지사항
+          {t.interpreter.noticesTitle}
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          {items.length}건 · 미확인 {items.filter((i) => !readSet.has(i.id)).length}건
+          {tmpl(t.interpreter.noticeStatsTotal, {
+            total: items.length,
+            unread: items.filter((i) => !readSet.has(i.id)).length,
+          })}
         </p>
       </div>
 
@@ -50,7 +56,7 @@ export default async function InterpreterNoticePage() {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-12 text-center">
             <Megaphone className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-slate-500">공지사항이 없습니다</p>
+            <p className="text-slate-500">{t.interpreter.noNotices}</p>
           </CardContent>
         </Card>
       ) : (
