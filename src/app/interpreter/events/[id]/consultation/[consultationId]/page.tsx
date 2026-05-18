@@ -294,6 +294,7 @@ export default function ConsultationReportPage() {
     toast.success(submit ? t.interpreter.submittedToast : t.interpreter.savedToast);
 
     if (submit) {
+      fetch('/api/interpreter/stats-revalidate', { method: 'POST' }).catch(() => {});
       router.push(`/interpreter/events/${eventId}`);
     } else {
       const { data: updatedReport } = await supabase

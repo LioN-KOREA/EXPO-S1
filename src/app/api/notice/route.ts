@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
+import { INTERPRETER_STATS_TAG } from '@/lib/cache/interpreter-stats';
 
 const VALID_ROLES = ['admin', 'interpreter', 'buyer', 'seller'];
 
@@ -74,6 +76,10 @@ export async function POST(request: NextRequest) {
     sent_by: guard.user.id,
   }).select().single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (normalizedRoles.includes('interpreter')) {
+    revalidateTag(INTERPRETER_STATS_TAG, 'max');
+  }
 
   return NextResponse.json({ notice: data });
 }

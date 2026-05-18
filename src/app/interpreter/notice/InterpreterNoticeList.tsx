@@ -37,6 +37,7 @@ export function InterpreterNoticeList({ items, initialReadIds, userId }: Props) 
         .insert({ notice_id: id, user_id: userId });
       if (!error) {
         setReadSet((prev) => new Set(prev).add(id));
+        fetch('/api/interpreter/stats-revalidate', { method: 'POST' }).catch(() => {});
         router.refresh();
       }
     }

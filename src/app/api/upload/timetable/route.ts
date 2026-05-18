@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { parseTimetableExcel } from '@/lib/excel/timetable-parser';
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getInitialPassword } from '@/lib/utils/password';
+import { INTERPRETER_STATS_TAG } from '@/lib/cache/interpreter-stats';
 
 /**
  * 이메일로 기존 계정 찾거나 새로 생성
@@ -166,6 +168,8 @@ export async function POST(request: NextRequest) {
 
     // 잠금 해제
     await admin.from('events').update({ is_uploading: false }).eq('id', eventId);
+
+    revalidateTag(INTERPRETER_STATS_TAG, 'max');
 
     return NextResponse.json({
       success: true,
