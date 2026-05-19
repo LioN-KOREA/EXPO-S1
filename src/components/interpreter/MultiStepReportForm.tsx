@@ -16,6 +16,10 @@ import { ChevronLeft, ChevronRight, Sparkles, ClipboardCheck, Pencil } from 'luc
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import type { TemplateField } from '@/types';
+import { ABSENT_CONSULTATION_TYPES } from '@/lib/template/defaults';
+
+const CONSULTATION_TYPE_KEY = 'consultation_type';
+const ABSENCE_REASON_KEY = 'absence_reason';
 
 interface Props {
   fields: TemplateField[];
@@ -65,7 +69,18 @@ export function MultiStepReportForm({
       .sort((a, b) => (a.order ?? 999) - (b.order ?? 999)),
     [fields]
   );
-  const visible = useMemo(() => sorted.filter((f) => isVisible(f, values)), [sorted, values]);
+  // 불참 분기: consultation_type 이 불참 계열이면 consultation_type + absence_reason 외 모두 숨김
+  const isAbsentFlow = ABSENT_CONSULTATION_TYPES.includes(values[CONSULTATION_TYPE_KEY] as string);
+  const visible = useMemo(
+    () => sorted.filter((f) => {
+      if (!isVisible(f, values)) return false;
+      if (isAbsentFlow && f.key !== CONSULTATION_TYPE_KEY && f.key !== ABSENCE_REASON_KEY) {
+        return false;
+      }
+      return true;
+    }),
+    [sorted, values, isAbsentFlow]
+  );
 
   // 검토 step = 마지막 + 1 (visible.length 위치)
   const totalSteps = visible.length + 1; // 양식 step + 검토 step

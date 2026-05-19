@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { DEFAULT_TEMPLATE_FIELDS } from '@/lib/template/defaults';
 
 export default function NewEventPage() {
   const router = useRouter();
@@ -32,20 +33,32 @@ export default function NewEventPage() {
 
     const supabase = createClient();
 
-    const { error } = await supabase.from('events').insert({
-      name: formData.get('name') as string,
-      description: formData.get('description') as string || null,
-      start_date: startDate,
-      end_date: endDate,
-    });
+    const { data: created, error } = await supabase
+      .from('events')
+      .insert({
+        name: formData.get('name') as string,
+        description: formData.get('description') as string || null,
+        start_date: startDate,
+        end_date: endDate,
+      })
+      .select('id')
+      .single();
 
-    if (error) {
+    if (error || !created) {
       toast.error('상담회 생성에 실패했습니다.');
       setLoading(false);
       return;
     }
 
-    toast.success('상담회가 생성되었습니다.');
+    const { error: templateError } = await supabase
+      .from('report_templates')
+      .insert({ event_id: created.id, fields: DEFAULT_TEMPLATE_FIELDS });
+
+    if (templateError) {
+      toast.error('상담회는 생성됐으나 기본 양식 생성에 실패했습니다. 양식 화면에서 수동 생성하세요.');
+    } else {
+      toast.success('상담회가 생성되었습니다. 기본 양식이 자동 등록되었습니다.');
+    }
     router.push('/admin/events');
   }
 

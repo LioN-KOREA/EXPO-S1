@@ -11,7 +11,7 @@ const cfg = new pulumi.Config();
 const bucketName = cfg.get("bucketName") ?? "lk-expo-s1";
 
 // Paths to OpenNext build output (run `npx open-next@latest build` in repo root first)
-const OPEN_NEXT_DIR = path.join("..", ".open-next");
+const OPEN_NEXT_DIR = path.resolve(__dirname, "..", ".open-next");
 const ASSETS_DIR = path.join(OPEN_NEXT_DIR, "assets");
 const SERVER_FN_DIR = path.join(OPEN_NEXT_DIR, "server-functions", "default");
 const IMAGE_FN_DIR = path.join(OPEN_NEXT_DIR, "image-optimization-function");

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
   Select,
@@ -12,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowUp, ArrowDown, Trash2, Plus, Save, FileText, Eye } from 'lucide-react';
+import { ArrowUp, ArrowDown, Trash2, Plus, Save, FileText, Eye, GripVertical } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import {
@@ -50,6 +51,8 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewValues, setPreviewValues] = useState<Record<string, unknown>>({});
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
   function openPreview() {
     setPreviewValues({});
@@ -71,6 +74,19 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
       const target = index + dir;
       if (target < 0 || target >= next.length) return prev;
       [next[index], next[target]] = [next[target], next[index]];
+      return next.map((f, i) => ({ ...f, order: i + 1 }));
+    });
+  }
+
+  // 위치를 from 에서 to 로 이동(삽입 방식). 번호 입력·드래그 양쪽에서 사용.
+  function reorder(from: number, to: number) {
+    setFields((prev) => {
+      if (from === to) return prev;
+      if (from < 0 || from >= prev.length) return prev;
+      const clamped = Math.max(0, Math.min(prev.length - 1, to));
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(clamped, 0, moved);
       return next.map((f, i) => ({ ...f, order: i + 1 }));
     });
   }
@@ -196,9 +212,56 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
           </div>
         )}
         {fields.map((field, i) => (
-          <div key={field.key + i} className="border rounded-lg p-3 space-y-2 bg-muted/30">
+          <div
+            key={field.key + i}
+            draggable
+            onDragStart={(e) => {
+              setDragFrom(i);
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', String(i));
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+              if (dragOver !== i) setDragOver(i);
+            }}
+            onDragLeave={() => {
+              if (dragOver === i) setDragOver(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const from = dragFrom ?? Number(e.dataTransfer.getData('text/plain'));
+              setDragFrom(null);
+              setDragOver(null);
+              if (!Number.isNaN(from)) reorder(from, i);
+            }}
+            onDragEnd={() => {
+              setDragFrom(null);
+              setDragOver(null);
+            }}
+            className={`border rounded-lg p-3 space-y-2 bg-muted/30 transition-colors ${
+              dragOver === i && dragFrom !== i ? 'ring-2 ring-blue-400 bg-blue-50/50' : ''
+            } ${dragFrom === i ? 'opacity-60' : ''}`}
+          >
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-slate-500 w-6 text-center shrink-0">{i + 1}</span>
+              <GripVertical
+                className="w-4 h-4 text-slate-400 cursor-grab active:cursor-grabbing shrink-0"
+                aria-label="드래그하여 순서 변경"
+              />
+              <Input
+                type="number"
+                min={1}
+                max={fields.length}
+                value={i + 1}
+                onChange={(e) => {
+                  const next = Number(e.target.value);
+                  if (Number.isFinite(next) && next >= 1 && next <= fields.length) {
+                    reorder(i, next - 1);
+                  }
+                }}
+                className="w-14 h-8 text-xs text-center shrink-0 px-1"
+                title="번호를 입력하면 해당 위치로 이동합니다"
+              />
               <Input
                 value={field.label}
                 onChange={(e) => updateLabel(i, e.target.value)}
@@ -239,15 +302,30 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
               </div>
             </div>
 
-            {/* 옵션 (select 전용) */}
+            {/* 옵션 (select 전용) — 한 줄에 하나씩 입력 */}
             {field.type === 'select' && (
-              <div className="flex items-center gap-2 pl-2 sm:pl-8">
-                <span className="text-xs text-slate-500 shrink-0">옵션:</span>
-                <Input
-                  value={field.options?.join(',') ?? ''}
-                  onChange={(e) => update(i, { options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-                  placeholder="옵션을 쉼표로 구분 (예: 상,중,하)"
-                  className="h-7 text-xs"
+              <div className="flex items-start gap-2 pl-2 sm:pl-8">
+                <span className="text-xs text-slate-500 shrink-0 mt-1.5">옵션:</span>
+                <Textarea
+                  value={(field.options ?? []).join('\n')}
+                  onChange={(e) =>
+                    update(i, {
+                      options: e.target.value
+                        .split('\n')
+                        .map((s) => s.replace(/\r$/, '')),
+                    })
+                  }
+                  onBlur={(e) =>
+                    update(i, {
+                      options: e.target.value
+                        .split('\n')
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    })
+                  }
+                  placeholder={'한 줄에 하나씩 입력\n예:\n상\n중\n하'}
+                  rows={Math.max(2, (field.options?.length ?? 0) + 1)}
+                  className="text-xs min-h-[60px] resize-y"
                 />
               </div>
             )}
@@ -344,26 +422,34 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
               </Select>
               {field.condition?.field && (
                 <>
-                  <span className="text-xs text-slate-500">값:</span>
-                  <Input
+                  <span className="text-xs text-slate-500 mt-1.5">값:</span>
+                  <Textarea
                     value={
                       Array.isArray(field.condition.in)
-                        ? field.condition.in.join(',')
+                        ? field.condition.in.join('\n')
                         : String(field.condition.equals ?? '')
                     }
                     onChange={(e) => {
-                      const val = e.target.value;
-                      if (val.includes(',')) {
-                        const arr = val.split(',').map((s) => s.trim()).filter(Boolean);
-                        update(i, { condition: { field: field.condition!.field, in: arr } });
+                      const lines = e.target.value.split('\n');
+                      if (lines.length > 1) {
+                        update(i, { condition: { field: field.condition!.field, in: lines } });
                       } else {
-                        update(i, { condition: { field: field.condition!.field, equals: val } });
+                        update(i, { condition: { field: field.condition!.field, equals: lines[0] } });
                       }
                     }}
-                    placeholder="값 또는 쉼표로 다중값"
-                    className="h-7 text-xs flex-1 min-w-[120px]"
+                    onBlur={(e) => {
+                      const lines = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean);
+                      if (lines.length > 1) {
+                        update(i, { condition: { field: field.condition!.field, in: lines } });
+                      } else if (lines.length === 1) {
+                        update(i, { condition: { field: field.condition!.field, equals: lines[0] } });
+                      }
+                    }}
+                    placeholder={'값 1개 = 일치 비교\n여러 줄 = 그 중 하나라도 일치'}
+                    rows={Math.max(2, Array.isArray(field.condition.in) ? field.condition.in.length + 1 : 2)}
+                    className="text-xs flex-1 min-w-[160px] min-h-[44px] resize-y"
                   />
-                  <Badge variant="outline" className="text-[10px]">
+                  <Badge variant="outline" className="text-[10px] mt-1.5">
                     {Array.isArray(field.condition.in) ? `다중값 (${field.condition.in.length}개)` : '같음'}
                   </Badge>
                 </>

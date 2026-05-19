@@ -2,6 +2,16 @@ import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 
+const STATUS_LABEL: Record<string, string> = {
+  approved: '승인',
+  submitted: '검토중',
+  under_review: '검토중',
+  revision_requested: '수정요청',
+  rejected: '반려',
+  draft: '작성중',
+  excellent: '우수상담',
+};
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
@@ -25,23 +35,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'event_id가 필요합니다' }, { status: 400 });
   }
 
-  // 상담회 이름 조회
   const { data: event } = await supabase
     .from('events')
     .select('name')
     .eq('id', eventId)
     .single();
 
-  // 양식 필드 조회
   const { data: template } = await supabase
     .from('report_templates')
     .select('fields')
     .eq('event_id', eventId)
     .single();
 
-  const fields = (template?.fields ?? []) as Array<{ key: string; label: string; type?: string }>;
+  const fields = (template?.fields ?? []) as Array<{
+    key: string;
+    label: string;
+    type?: string;
+    source?: string;
+  }>;
 
-  // 상담 + 일지 데이터 조회
+  // 통역사 또는 관리자 작성 필드만 export (auto 채움 필드는 좌측 컬럼에 이미 포함됨)
+  const exportFields = fields.filter((f) => (f.source ?? 'interpreter') !== 'auto');
+
   const { data: consultations } = await supabase
     .from('consultations')
     .select(`
@@ -53,7 +68,6 @@ export async function GET(request: NextRequest) {
     `)
     .eq('event_id', eventId);
 
-  // 날짜+시간순 정렬
   consultations?.sort((a, b) => {
     const dateA = a.time_slot?.date || '';
     const dateB = b.time_slot?.date || '';
@@ -67,22 +81,41 @@ export async function GET(request: NextRequest) {
   const reports: Record<string, unknown>[] = [];
   for (let i = 0; i < consultationIds.length; i += 100) {
     const batch = consultationIds.slice(i, i + 100);
-    const { data } = await supabase.from('consultation_reports').select('*').in('consultation_id', batch);
+    const { data } = await supabase
+      .from('consultation_reports')
+      .select('*')
+      .in('consultation_id', batch);
     if (data) reports.push(...data);
   }
-
   const reportsMap = new Map(reports.map((r) => [r.consultation_id, r]));
 
   // 엑셀 생성
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('상담일지');
 
-  // 헤더 구성: 기본 정보 + 동적 필드
-  const baseHeaders = ['날짜', '시간', '바이어', '바이어국가', '셀러', '통역사', '제출여부'];
-  const dynamicHeaders = fields.map((f) => f.label);
-  const allHeaders = [...baseHeaders, ...dynamicHeaders];
+  // BIS@T 스타일 좌측 자동 채움 컬럼 (C~Q 대응)
+  const baseHeaders = [
+    'No',
+    '일지번호',
+    '날짜',
+    '시간',
+    '현황',
+    '부스',
+    '바이어 회사명',
+    '바이어명',
+    '바이어 국가',
+    '바이어 연락처',
+    '바이어 이메일',
+    '국내기업명',
+    '국내기업 영문명',
+    '국내기업 대표자',
+    '국내기업 이메일',
+    '통역사',
+  ];
+  const dynamicHeaders = exportFields.map((f) => f.label);
+  const tailHeaders = ['작성일시'];
+  const allHeaders = [...baseHeaders, ...dynamicHeaders, ...tailHeaders];
 
-  // 헤더 행 스타일
   const headerRow = worksheet.addRow(allHeaders);
   headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
   headerRow.fill = {
@@ -90,35 +123,38 @@ export async function GET(request: NextRequest) {
     pattern: 'solid',
     fgColor: { argb: 'FF1E3A5F' },
   };
-  headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+  headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: false };
 
-  // 데이터 행
-  consultations?.forEach((c) => {
+  consultations?.forEach((c, idx) => {
     const report = reportsMap.get(c.id);
     const reportData = (report?.data ?? {}) as Record<string, unknown>;
+    const rs = (report?.report_status ??
+      (report ? (report.submitted ? 'submitted' : 'draft') : '')) as string;
+    const statusLabel = report ? (STATUS_LABEL[rs] ?? '미제출') : '미제출';
+    const submitTime = report?.updated_at || report?.created_at || '';
 
     const baseValues = [
+      idx + 1,
+      String(c.id).slice(0, 8),
       c.time_slot?.date ?? '',
-      `${c.time_slot?.start_time}-${c.time_slot?.end_time}`,
+      c.time_slot ? `${c.time_slot.start_time}-${c.time_slot.end_time}` : '',
+      statusLabel,
+      c.buyer?.booth_number ?? '',
       c.buyer?.company_name ?? '',
+      c.buyer?.buyer_name ?? '',
       c.buyer?.country ?? '',
-      c.seller?.company_name_kr || c.seller?.company_name || '',
+      c.buyer?.phone ?? '',
+      c.buyer?.email ?? '',
+      c.seller?.company_name_kr ?? '',
+      c.seller?.company_name ?? '',
+      c.seller?.representative ?? '',
+      c.seller?.email ?? '',
       c.interpreter?.name ?? '',
-      report ? (() => {
-        const rs = (report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as string;
-        if (rs === 'approved') return '승인';
-        if (rs === 'submitted' || rs === 'under_review') return '검토중';
-        if (rs === 'revision_requested') return '수정요청';
-        if (rs === 'rejected') return '반려';
-        if (rs === 'draft') return '작성중';
-        return '미제출';
-      })() : '미제출',
     ];
 
-    const dynamicValues = fields.map((f) => {
+    const dynamicValues = exportFields.map((f) => {
       const raw = reportData[f.key];
       if (raw === null || raw === undefined || raw === '') return '';
-      // 숫자 타입 필드는 실제 숫자로 저장 (콤마 제거 후 변환)
       if (f.type === 'number') {
         const cleaned = String(raw).replace(/,/g, '').trim();
         if (cleaned && !isNaN(Number(cleaned))) return Number(cleaned);
@@ -127,36 +163,46 @@ export async function GET(request: NextRequest) {
       return String(raw);
     });
 
-    worksheet.addRow([...baseValues, ...dynamicValues]);
+    worksheet.addRow([...baseValues, ...dynamicValues, submitTime]);
   });
 
-  // 숫자 컬럼에 콤마 포맷 적용
-  const numberColIndices = fields
-    .map((f, i) => f.type === 'number' ? baseHeaders.length + i : -1)
-    .filter(i => i >= 0);
-
-  numberColIndices.forEach(colIdx => {
-    const col = worksheet.getColumn(colIdx + 1); // 1-based
-    col.numFmt = '#,##0';
+  // 숫자 컬럼 콤마 포맷
+  const numberColIndices = exportFields
+    .map((f, i) => (f.type === 'number' ? baseHeaders.length + i : -1))
+    .filter((i) => i >= 0);
+  numberColIndices.forEach((colIdx) => {
+    worksheet.getColumn(colIdx + 1).numFmt = '#,##0';
   });
 
-  // 열 너비 자동 조절
+  // 열 너비 자동 조절 (한글은 2배 너비로 카운트)
+  const visualWidth = (raw: unknown): number => {
+    const s = String(raw ?? '');
+    let w = 0;
+    for (const ch of s) {
+      w += /[ㄱ-ㆎ가-힣　-〿＀-￯]/.test(ch) ? 2 : 1;
+    }
+    return w;
+  };
   worksheet.columns.forEach((col) => {
     let maxLen = 10;
     col.eachCell?.((cell) => {
-      const len = String(cell.value ?? '').length;
-      if (len > maxLen) maxLen = Math.min(len, 50);
+      const len = visualWidth(cell.value);
+      if (len > maxLen) maxLen = Math.min(len, 60);
     });
-    col.width = maxLen + 2;
+    col.width = maxLen + 3;
   });
 
-  // Buffer 생성
+  headerRow.height = 22;
+
   const buffer = await workbook.xlsx.writeBuffer();
 
   return new NextResponse(buffer, {
     headers: {
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(`상담일지_${event?.name || eventId}.xlsx`)}`,
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(
+        `상담일지_${event?.name || eventId}.xlsx`,
+      )}`,
     },
   });
 }
