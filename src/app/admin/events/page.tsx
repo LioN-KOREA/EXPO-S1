@@ -25,6 +25,7 @@ export default function EventsPage() {
   const [showDeleted, setShowDeleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [restoring, setRestoring] = useState<string | null>(null);
+  const [hardDeleting, setHardDeleting] = useState<string | null>(null);
 
   useEffect(() => { loadEvents(); }, []);
 
@@ -66,6 +67,39 @@ export default function EventsPage() {
       loadEvents();
     } catch { toast.error('복구 중 오류'); }
     finally { setRestoring(null); }
+  }
+
+  async function handleHardDelete(event: Event) {
+    const warning =
+      '경고: 이 작업은 되돌릴 수 없습니다.\n\n' +
+      `상담회 "${event.name}" 과 그에 속한 데이터\n` +
+      '(바이어, 셀러, 통역사 배정, 상담일지, 출석, 공지 등)가\n' +
+      '데이터베이스에서 영구적으로 삭제됩니다.\n' +
+      '(메시지 로그는 익명화되어 감사용으로 잔존)\n\n' +
+      '계속하려면 상담회 이름을 정확히 입력하세요.';
+    const typed = prompt(warning, '');
+    if (typed === null) return;
+    if (typed.trim() !== event.name) {
+      toast.error('상담회 이름이 일치하지 않습니다');
+      return;
+    }
+
+    setHardDeleting(event.id);
+    try {
+      const url = `/api/events/${event.id}?hard=true&confirmName=${encodeURIComponent(event.name)}`;
+      const res = await fetch(url, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || '완전 삭제에 실패했습니다');
+        return;
+      }
+      toast.success('상담회가 완전 삭제되었습니다');
+      setDeletedEvents(prev => prev.filter(e => e.id !== event.id));
+    } catch {
+      toast.error('완전 삭제 중 오류');
+    } finally {
+      setHardDeleting(null);
+    }
   }
 
   return (
@@ -158,16 +192,28 @@ export default function EventsPage() {
                           <span>삭제: {new Date(event.deleted_at!).toLocaleDateString('ko-KR')}</span>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRestore(event.id)}
-                        disabled={restoring === event.id}
-                        className="text-xs gap-1 self-start sm:self-auto sm:shrink-0"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        {restoring === event.id ? '복구 중...' : '복구'}
-                      </Button>
+                      <div className="flex gap-2 self-start sm:self-auto sm:shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRestore(event.id)}
+                          disabled={restoring === event.id || hardDeleting === event.id}
+                          className="text-xs gap-1"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          {restoring === event.id ? '복구 중...' : '복구'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleHardDelete(event)}
+                          disabled={restoring === event.id || hardDeleting === event.id}
+                          className="text-xs gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          {hardDeleting === event.id ? '삭제 중...' : '완전 삭제'}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
