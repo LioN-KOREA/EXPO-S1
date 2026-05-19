@@ -67,6 +67,11 @@ jobs:
         working-directory: infra
         run: pulumi up --stack e1s --yes --non-interactive
 
+      - name: Sync S3 assets (synced-folder fallback)
+        run: |
+          BUCKET=$(cd infra && pulumi stack output bucketName --stack e1s)
+          aws s3 sync .open-next/assets/ "s3://${BUCKET}/" --exclude "_cache/*"
+
       - name: Invalidate CloudFront
         run: |
           DIST_ID=$(cd infra && pulumi stack output cdnId --stack e1s)
