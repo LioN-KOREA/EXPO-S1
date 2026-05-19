@@ -12,11 +12,12 @@ import type { ReportStatus } from '@/types';
 interface ReportActionsProps {
   reportId: string;
   reportStatus: ReportStatus;
+  reportVersion: number;
   adminComment?: string | null;
   reviewedAt?: string | null;
 }
 
-export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt }: ReportActionsProps) {
+export function ReportActions({ reportId, reportStatus, reportVersion, adminComment, reviewedAt }: ReportActionsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [actionType, setActionType] = useState<'revision' | 'reject' | null>(null);
@@ -45,7 +46,7 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
       allowedFrom = ['submitted', 'under_review'];
     }
 
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('consultation_reports')
       .update({
         report_status: status,
@@ -55,10 +56,15 @@ export function ReportActions({ reportId, reportStatus, adminComment, reviewedAt
         reviewed_by: user?.id,
       })
       .eq('id', reportId)
-      .in('report_status', allowedFrom);
+      .eq('version', reportVersion)
+      .in('report_status', allowedFrom)
+      .select('id');
 
     if (error) {
       toast.error('처리에 실패했습니다');
+    } else if (!updated || updated.length === 0) {
+      toast.error('다른 관리자가 먼저 처리했거나 상태가 변경되었습니다. 새로고침 후 다시 시도하세요');
+      router.refresh();
     } else {
       const labels: Record<string, string> = {
         approved: '승인',

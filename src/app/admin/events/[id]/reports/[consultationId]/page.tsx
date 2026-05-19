@@ -159,6 +159,7 @@ export default async function AdminReportDetailPage({
           <ReportActions
             reportId={report.id}
             reportStatus={reportStatus}
+            reportVersion={report.version ?? 1}
             adminComment={report.admin_comment}
             reviewedAt={report.reviewed_at}
           />

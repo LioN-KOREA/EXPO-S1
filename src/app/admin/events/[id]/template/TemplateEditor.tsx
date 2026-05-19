@@ -131,12 +131,16 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
       order: i + 1,
       source: f.source ?? 'interpreter',
       autoSource: f.source === 'auto' ? f.autoSource : undefined,
-      // 조건 정리: field/equals/in 셋 다 없으면 condition 제거
+      // 조건 정리: field 없거나, equals/in 모두 비어있을 때만 condition 제거
+      // equals = 0, false, '' 모두 유효값이므로 undefined/null 만 비어있음으로 본다
+      // (MultiStepReportForm은 'equals' in field.condition 으로 strict 평가)
       condition: (() => {
         if (!f.condition?.field) return undefined;
         const v = f.condition.equals;
         const arr = f.condition.in;
-        if (!v && !arr) return undefined;
+        const hasEquals = v !== undefined && v !== null;
+        const hasIn = Array.isArray(arr) && arr.length > 0;
+        if (!hasEquals && !hasIn) return undefined;
         return f.condition;
       })(),
     }));
