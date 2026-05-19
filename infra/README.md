@@ -19,18 +19,17 @@ NOTICE: It is highly recommended that you build this on Linux or WSL, as OpenNex
 ```bash
 cd infra
 npm install
-pulumi login --local # Necessary if you don't want to create an account on Pulumi.com
+pulumi login <your CICD s3 bucket URL> # Necessary if you don't want to create an account on Pulumi.com
 
 pulumi stack init e1s
 
 # pulumi package add terraform-provider supabase/supabase # Uncomment if you would like to rebuild the supabase terraform provider bridge.
 
 # Supabase access token from https://supabase.com/dashboard/account/tokens
-pulumi config set --secret supabaseAccessToken <token>
-pulumi config set --secret supabaseServiceRoleKey <token>
-pulumi config set --secret supabaseAnonKey <token>
-pulumi config set supabaseOrganizationId <org-id>
-pulumi config set --secret dbPassword <strong-password>
+export SUPABASE_ACCESS_TOKEN=<your-access-token>
+export SUPABASE_SERVICE_ROLE_KEY=<your-db-password>
+export SUPABASE_ORGANIZATION_ID=<your-organization-id>
+export SUPABASE_DB_PASSWORD=<your-db-password>
 
 export NEXT_PUBLIC_SUPABASE_URL=<the supabase URL for the project>
 export NEXT_PUBLIC_SUPABASE_ANON_KEY=<the anon key for the supabase project>

@@ -1,0 +1,68 @@
+name: Deploy (prod)
+
+on:
+  push:
+    branches: [EXPO-S1]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+    env:
+      PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_ORGANIZATION_ID: ${{ secrets.SUPABASE_ORGANIZATION_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CICD_S3_BUCKET_URL: ${{ secrets.CICD_S3_BUCKET_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            infra/package-lock.json
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
+
+      - uses: pulumi/actions@v6
+
+      - name: Pulumi login (S3 backend)
+        run: pulumi login ${{ secrets.CICD_S3_BUCKET_URL }}
+
+      - name: Install app deps
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Build OpenNext adapter
+        run: npx --yes open-next@latest build
+
+      - name: Install infra deps
+        working-directory: infra
+        run: npm ci
+
+      - name: Pulumi up
+        working-directory: infra
+        run: pulumi up --stack e1s --yes --non-interactive
