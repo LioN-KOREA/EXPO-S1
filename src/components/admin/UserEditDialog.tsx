@@ -22,6 +22,13 @@ import { COUNTRIES } from '@/lib/constants/countries';
 import { getInitialPassword } from '@/lib/utils/password';
 import type { Profile, UserRole } from '@/types';
 
+const ROLE_LABEL: Record<UserRole, string> = {
+  admin: '관리자',
+  interpreter: '통역사',
+  seller: '셀러',
+  buyer: '바이어',
+};
+
 interface UserEditDialogProps {
   user: Profile | null;
   open: boolean;
@@ -119,7 +126,9 @@ export function UserEditDialog({ user, open, onOpenChange, onUpdated }: UserEdit
           <div className="space-y-2">
             <Label>역할 *</Label>
             <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue>{ROLE_LABEL[role]}</SelectValue>
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">관리자</SelectItem>
                 <SelectItem value="interpreter">통역사</SelectItem>

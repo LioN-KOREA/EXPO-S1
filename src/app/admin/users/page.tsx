@@ -189,7 +189,9 @@ export default function UsersPage() {
               <div className="space-y-2">
                 <Label>역할 *</Label>
                 <Select value={newRole} onValueChange={(v) => setNewRole(v as UserRole)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue>{ROLE_CONFIG[newRole]?.label ?? newRole}</SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">관리자</SelectItem>
                     <SelectItem value="interpreter">통역사</SelectItem>
