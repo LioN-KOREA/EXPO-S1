@@ -66,3 +66,8 @@ jobs:
       - name: Pulumi up
         working-directory: infra
         run: pulumi up --stack e1s --yes --non-interactive
+
+      - name: Invalidate CloudFront
+        run: |
+          DIST_ID=$(cd infra && pulumi stack output cdnId --stack e1s)
+          aws cloudfront create-invalidation --distribution-id "$DIST_ID" --paths "/*"
