@@ -27,7 +27,7 @@ import { MultiStepReportForm } from '@/components/interpreter/MultiStepReportFor
 import type { TemplateField, FieldType, FieldSource, AutoSourceKey } from '@/types';
 import { AUTO_SOURCE_OPTIONS, inferAutoSourceFromLabel, isAdminLabel } from '@/lib/template/auto-source';
 import { DEFAULT_AUTO_ANSWER_TEMPLATE } from '@/lib/template/defaults';
-import { listAutoAnswerVariables } from '@/lib/template/autoAnswer';
+import { listAutoAnswerVariables, JOSA_PAIR_KEYS } from '@/lib/template/autoAnswer';
 
 const typeOptions: { value: FieldType; label: string }[] = [
   { value: 'text', label: '텍스트' },
@@ -203,7 +203,7 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
           value={autoAnswerTemplate}
           onChange={(e) => setAutoAnswerTemplate(e.target.value)}
           rows={Math.max(6, autoAnswerTemplate.split('\n').length + 1)}
-          placeholder="예: 국내기업 {{seller_company}}는 {{consultation_item}}에 대해 상담했습니다..."
+          placeholder="예: 국내기업 {{seller_company|은/는}} {{consultation_item}}에 대해 상담했습니다..."
           className="text-sm font-mono"
         />
         <div className="flex flex-wrap gap-2">
@@ -240,6 +240,30 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
                 <span className="text-slate-500"> — {v.label}</span>
               </button>
             ))}
+          </div>
+        </details>
+        <details className="text-xs text-slate-600">
+          <summary className="cursor-pointer select-none">조사 자동 처리 ({JOSA_PAIR_KEYS.length}개)</summary>
+          <div className="mt-2 space-y-1.5">
+            <p className="text-[11px] text-slate-500">
+              변수 뒤에 <code className="font-mono text-rose-600">|페어</code>를 붙이면 값의 받침에 맞는 조사가 자동으로 붙습니다.
+              예: <code className="font-mono">{`{{seller_company|은/는}}`}</code> → 회사명이 받침이 있으면 “…은”, 없으면 “…는”.
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {JOSA_PAIR_KEYS.map((pair) => (
+                <span
+                  key={pair}
+                  className="text-[11px] px-2 py-0.5 rounded bg-muted font-mono"
+                  title="변수 뒤에 |로 붙여 사용"
+                >
+                  {`|${pair}`}
+                </span>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              값이 한글이 아니거나 “(미입력)”처럼 괄호로 끝나면 안쪽 마지막 한글 글자의 받침으로 판정합니다.
+              알 수 없는 페어는 그대로 출력됩니다.
+            </p>
           </div>
         </details>
       </CardContent>
