@@ -3,7 +3,7 @@
 // S2 텍스트 메시지 + S3 Realtime + S4 읽음 표시.
 // 첨부 S5, soft delete S6, 종료 가드 S7.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, Check, CheckCheck, Paperclip, X, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -18,7 +18,6 @@ import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n/context';
 import { createClient } from '@/lib/supabase/client';
 import { MESSAGE_BODY_MAX, type MessageRow, type AttachmentMeta } from '@/lib/messenger/messageRepository';
-import { useThreadRealtime } from '@/lib/messenger/useThreadRealtime';
 import type { ThreadRow } from '@/lib/messenger/threadRepository';
 import {
   validateAttachments,
@@ -27,25 +26,22 @@ import {
   ALLOWED_MIME_TYPES,
 } from '@/lib/messenger/attachmentValidator';
 import { isEventClosed } from '@/lib/messenger/eventGate';
+import { useMessageSync } from '@/lib/messenger/useMessageSync';
 
 interface ChatPaneProps {
   threadId: string;
   currentUserId: string;
   currentUserRole: 'admin' | 'interpreter';
-  initialMessages?: MessageRow[];
 }
 
 const MARK_READ_DEBOUNCE_MS = 1000;
 
-export function ChatPane({
-  threadId,
-  currentUserId,
-  currentUserRole,
-  initialMessages = [],
-}: ChatPaneProps) {
+export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneProps) {
   const { t, locale } = useI18n();
-  const [messages, setMessages] = useState<MessageRow[]>(initialMessages);
-  const [loading, setLoading] = useState(initialMessages.length === 0);
+  const { messages, loading, appendLocal, updateLocal } = useMessageSync(
+    threadId,
+    t.interpreter.messengerLoadError
+  );
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [thread, setThread] = useState<ThreadRow | null>(null);
@@ -65,10 +61,8 @@ export function ChatPane({
       : thread.last_read_at_admin;
   }, [thread, currentUserRole]);
 
-  // threadId 변경 시 state reset
+  // threadId 변경 시 비메시지 state reset (messages/loading 은 useMessageSync 가 처리)
   useEffect(() => {
-    setMessages([]);
-    setLoading(true);
     setThread(null);
     setEventEndDate(null);
     setPendingFiles([]);
@@ -79,38 +73,6 @@ export function ChatPane({
       markReadTimerRef.current = null;
     }
   }, [threadId]);
-
-  // 메시지 로드 (snapshot race 보존)
-  const loadMessages = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/messages/threads/${threadId}/messages`);
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error((json as { error?: string }).error || t.interpreter.messengerLoadError);
-      }
-      const json = await res.json();
-      const serverItems = (json.items as MessageRow[]) ?? [];
-      setMessages((prev) => {
-        const byId = new Map<string, MessageRow>();
-        for (const m of serverItems) byId.set(m.id, m);
-        for (const m of prev) if (!byId.has(m.id)) byId.set(m.id, m);
-        return Array.from(byId.values()).sort((a, b) =>
-          a.created_at === b.created_at
-            ? a.id.localeCompare(b.id)
-            : a.created_at.localeCompare(b.created_at)
-        );
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t.interpreter.messengerLoadError);
-    } finally {
-      setLoading(false);
-    }
-  }, [threadId, t.interpreter.messengerLoadError]);
-
-  useEffect(() => {
-    void loadMessages();
-  }, [loadMessages]);
 
   // thread row 직접 fetch + realtime UPDATE 구독 → otherLastReadAt 갱신
   useEffect(() => {
@@ -148,34 +110,6 @@ export function ChatPane({
       void supabase.removeChannel(channel);
     };
   }, [threadId]);
-
-  // realtime messages
-  const onRealtimeInsert = useCallback(async (row: MessageRow) => {
-    let enriched = row;
-    if (!row.sender_name && row.sender_id) {
-      try {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', row.sender_id)
-          .maybeSingle();
-        enriched = { ...row, sender_name: (data?.name as string | undefined) ?? null };
-      } catch {
-        // ignore
-      }
-    }
-    setMessages((prev) => {
-      if (prev.some((m) => m.id === enriched.id)) return prev;
-      return [...prev, enriched];
-    });
-  }, []);
-
-  const onRealtimeUpdate = useCallback((row: MessageRow) => {
-    setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)));
-  }, []);
-
-  useThreadRealtime(threadId, onRealtimeInsert, onRealtimeUpdate);
 
   // 새 메시지 들어오면 하단으로 스크롤
   useEffect(() => {
@@ -260,11 +194,7 @@ export function ChatPane({
       if (!res.ok) {
         throw new Error((json as { error?: string }).error || t.interpreter.messengerSendError);
       }
-      setMessages((prev) => {
-        const next = (json as { message: MessageRow }).message;
-        if (prev.some((m) => m.id === next.id)) return prev;
-        return [...prev, next];
-      });
+      appendLocal((json as { message: MessageRow }).message);
       setText('');
       setPendingFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -285,17 +215,11 @@ export function ChatPane({
         throw new Error((json as { error?: string }).error || '삭제 실패');
       }
       // realtime UPDATE 가 곧 도착하지만 즉시 반영을 위해 local update
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === deleteTargetId
-            ? {
-                ...m,
-                deleted_at: new Date().toISOString(),
-                deleted_by_role: (json as { deleted_by_role: 'admin' | 'sender' }).deleted_by_role,
-              }
-            : m
-        )
-      );
+      updateLocal({
+        id: deleteTargetId,
+        deleted_at: new Date().toISOString(),
+        deleted_by_role: (json as { deleted_by_role: 'admin' | 'sender' }).deleted_by_role,
+      });
       setDeleteTargetId(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '삭제 실패');

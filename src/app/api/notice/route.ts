@@ -3,16 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { INTERPRETER_STATS_TAG } from '@/lib/cache/interpreter-stats';
+import { ensureAdmin } from '@/lib/auth/guards';
+import { listNotices, insertNotice, type NoticeRole } from '@/lib/notice/noticeRepository';
 
-const VALID_ROLES = ['admin', 'interpreter', 'buyer', 'seller'];
-
-async function ensureAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: '인증 필요', status: 401 as const };
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'admin') return { error: '권한 없음', status: 403 as const };
-  return { user };
-}
+const VALID_ROLES: NoticeRole[] = ['admin', 'interpreter', 'buyer', 'seller'];
 
 /** 보낸 공지함 (admin) */
 export async function GET(request: NextRequest) {
@@ -24,16 +18,15 @@ export async function GET(request: NextRequest) {
   const eventId = searchParams.get('event_id');
   if (!eventId) return NextResponse.json({ error: 'event_id 필수' }, { status: 400 });
 
-  const admin = createAdminClient();
-  // 표시에 필요한 컬럼만 (내부 메타 숨김)
-  const { data, error } = await admin
-    .from('notices')
-    .select('id, event_id, message, target_roles, sent_at, edited_at, sender:profiles!notices_sent_by_fkey(id, name)')
-    .eq('event_id', eventId)
-    .order('sent_at', { ascending: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ items: data ?? [] });
+  try {
+    const items = await listNotices(createAdminClient(), eventId);
+    return NextResponse.json({ items });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : '조회 실패' },
+      { status: 500 }
+    );
+  }
 }
 
 /** 공지 발송 (admin) */
@@ -53,14 +46,13 @@ export async function POST(request: NextRequest) {
   if (!Array.isArray(body.target_roles) || body.target_roles.length === 0) {
     return NextResponse.json({ error: '대상 역할 1개 이상 선택' }, { status: 400 });
   }
-  // 역할 정규화 — 중복/공백 제거, 화이트리스트
   const normalizedRoles = Array.from(new Set(
     body.target_roles
       .filter((r: unknown) => typeof r === 'string')
       .map((r: string) => r.trim())
       .filter((r: string) => r.length > 0)
-  ));
-  const invalid = normalizedRoles.filter((r) => !VALID_ROLES.includes(r as string));
+  )) as string[];
+  const invalid = normalizedRoles.filter((r) => !VALID_ROLES.includes(r as NoticeRole));
   if (invalid.length > 0) {
     return NextResponse.json({ error: `유효하지 않은 역할: ${invalid.join(', ')}` }, { status: 400 });
   }
@@ -68,18 +60,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: '대상 역할 1개 이상 선택' }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-  const { data, error } = await admin.from('notices').insert({
-    event_id: body.event_id,
-    message: body.message.trim(),
-    target_roles: normalizedRoles,
-    sent_by: guard.user.id,
-  }).select().single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  if (normalizedRoles.includes('interpreter')) {
-    revalidateTag(INTERPRETER_STATS_TAG, 'max');
+  try {
+    const inserted = await insertNotice(createAdminClient(), {
+      event_id: body.event_id,
+      message: body.message.trim(),
+      target_roles: normalizedRoles as NoticeRole[],
+      sent_by: guard.user.id,
+    });
+    if (inserted.target_roles.includes('interpreter')) {
+      revalidateTag(INTERPRETER_STATS_TAG, 'max');
+    }
+    return NextResponse.json({ notice: inserted });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : '발송 실패' },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ notice: data });
 }
