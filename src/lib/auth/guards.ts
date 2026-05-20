@@ -21,19 +21,20 @@ export interface AuthedUser {
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 
 type GuardOk = { user: AuthedUser };
-type GuardErr = { error: string; status: 401 | 403 };
+type GuardErr = { error: string; status: 401 | 403 | 500; kind?: 'unauthenticated' | 'no_profile' | 'forbidden' | 'db_error' };
 type GuardResult = GuardOk | GuardErr;
 
-/** 인증된 사용자 확보 (역할 무관). */
+/** 인증된 사용자 확보 (역할 무관). DB 오류는 500 + kind='db_error' 로 구분. */
 export async function ensureAuthenticated(supabase: ServerClient): Promise<GuardResult> {
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: '인증 필요', status: 401 };
-  const { data: profile } = await supabase
+  if (!user) return { error: '인증 필요', status: 401, kind: 'unauthenticated' };
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', user.id)
-    .single();
-  if (!profile) return { error: '프로필 없음', status: 403 };
+    .maybeSingle();
+  if (error) return { error: `프로필 조회 실패: ${error.message}`, status: 500, kind: 'db_error' };
+  if (!profile) return { error: '프로필 없음', status: 403, kind: 'no_profile' };
   return { user: { id: user.id, role: profile.role as Role } };
 }
 
@@ -45,7 +46,7 @@ export async function ensureRole(
   const guard = await ensureAuthenticated(supabase);
   if ('error' in guard) return guard;
   if (!allowed.includes(guard.user.role)) {
-    return { error: '권한 없음', status: 403 };
+    return { error: '권한 없음', status: 403, kind: 'forbidden' };
   }
   return guard;
 }

@@ -1,9 +1,10 @@
 'use client';
 
-// S2 텍스트 메시지 + S3 Realtime + S4 읽음 표시.
-// 첨부 S5, soft delete S6, 종료 가드 S7.
+// 메신저 채팅창. 1:1 thread 안에서 메시지 송수신·읽음 표시·첨부·soft delete·이벤트 종료 가드 처리.
+// 책임 분리: 메시지 동기화는 useMessageSync, 첨부 검증은 attachmentValidator, soft delete API는 markMessageDeleted route.
+// 잔여 책임 (잠재 추출 후보): thread row + last_read_at + markRead debounce.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Send, Check, CheckCheck, Paperclip, X, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -18,15 +19,15 @@ import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n/context';
 import { createClient } from '@/lib/supabase/client';
 import { MESSAGE_BODY_MAX, type MessageRow, type AttachmentMeta } from '@/lib/messenger/messageRepository';
-import type { ThreadRow } from '@/lib/messenger/threadRepository';
 import {
   validateAttachments,
   sanitizeFilename,
   MAX_ATTACHMENTS_PER_MESSAGE,
   ALLOWED_MIME_TYPES,
 } from '@/lib/messenger/attachmentValidator';
-import { isEventClosed } from '@/lib/messenger/eventGate';
+import { isEventClosed } from '@/lib/events/eventGate';
 import { useMessageSync } from '@/lib/messenger/useMessageSync';
+import { useThreadReadState } from '@/lib/messenger/useThreadReadState';
 
 interface ChatPaneProps {
   threadId: string;
@@ -38,14 +39,18 @@ const MARK_READ_DEBOUNCE_MS = 1000;
 
 export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneProps) {
   const { t, locale } = useI18n();
+  const { thread, eventEndDate, otherLastReadAt, applyThreadUpdate } = useThreadReadState(
+    threadId,
+    currentUserRole
+  );
   const { messages, loading, appendLocal, updateLocal } = useMessageSync(
     threadId,
-    t.interpreter.messengerLoadError
+    t.interpreter.messengerLoadError,
+    { onThreadUpdate: applyThreadUpdate }
   );
+  void thread;
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const [thread, setThread] = useState<ThreadRow | null>(null);
-  const [eventEndDate, setEventEndDate] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -54,17 +59,8 @@ export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneP
   const fileInputRef = useRef<HTMLInputElement>(null);
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const otherLastReadAt = useMemo(() => {
-    if (!thread) return null;
-    return currentUserRole === 'admin'
-      ? thread.last_read_at_interpreter
-      : thread.last_read_at_admin;
-  }, [thread, currentUserRole]);
-
-  // threadId 변경 시 비메시지 state reset (messages/loading 은 useMessageSync 가 처리)
+  // threadId 변경 시 UI state reset (messages·thread 는 각 훅이 처리)
   useEffect(() => {
-    setThread(null);
-    setEventEndDate(null);
     setPendingFiles([]);
     setLightboxUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -74,42 +70,7 @@ export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneP
     }
   }, [threadId]);
 
-  // thread row 직접 fetch + realtime UPDATE 구독 → otherLastReadAt 갱신
-  useEffect(() => {
-    if (!threadId) return;
-    let cancelled = false;
-    const supabase = createClient();
-
-    (async () => {
-      const { data } = await supabase
-        .from('message_threads')
-        .select('id, event_id, interpreter_id, last_read_at_admin, last_read_at_interpreter, created_at, events(end_date)')
-        .eq('id', threadId)
-        .maybeSingle();
-      if (cancelled || !data) return;
-      const evRel = (data as { events?: { end_date?: string | null } | { end_date?: string | null }[] | null }).events;
-      const ev = Array.isArray(evRel) ? evRel[0] : evRel;
-      setEventEndDate(ev?.end_date ?? null);
-      setThread(data as ThreadRow);
-    })();
-
-    const channel = supabase
-      .channel(`thread-row:${threadId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'message_threads', filter: `id=eq.${threadId}` },
-        (payload) => {
-          if (cancelled) return;
-          setThread((payload.new as ThreadRow) ?? null);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      void supabase.removeChannel(channel);
-    };
-  }, [threadId]);
+  // thread row + realtime UPDATE 는 useThreadReadState + useMessageSync(onThreadUpdate) 가 처리
 
   // 새 메시지 들어오면 하단으로 스크롤
   useEffect(() => {

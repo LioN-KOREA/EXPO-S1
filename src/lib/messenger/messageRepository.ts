@@ -1,5 +1,5 @@
-// messages 도메인 모듈.
-// S2 슬라이스: 텍스트 메시지 GET / INSERT 만. 첨부·페이지네이션·soft delete 는 후속 슬라이스.
+// messages 도메인 저장소.
+// 책임: 메시지 조회 / INSERT / soft delete. 첨부 첨부 검증은 attachmentValidator, 권한은 RLS + messages_update_guard 트리거.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -87,6 +87,23 @@ export function validateMessageInput(input: InsertMessageInput): string | null {
     return '첨부는 최대 3개';
   }
   return null;
+}
+
+/** soft delete. 권한 분기는 호출자 (route) 가 결정, trigger 가 위장 차단. */
+export async function markMessageDeleted(
+  supabase: SupabaseClient,
+  messageId: string,
+  deletedByRole: 'admin' | 'sender',
+  at: string = new Date().toISOString()
+): Promise<{ id: string } | null> {
+  const { data, error } = await supabase
+    .from('messages')
+    .update({ deleted_at: at, deleted_by_role: deletedByRole })
+    .eq('id', messageId)
+    .select('id')
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { id: string } | null) ?? null;
 }
 
 export async function insertMessage(

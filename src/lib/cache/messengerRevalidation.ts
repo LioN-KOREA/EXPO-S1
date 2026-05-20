@@ -11,8 +11,10 @@ export function revalidateForNoticeRoles(roles: ReadonlyArray<string>): void {
   }
 }
 
-/** 메신저 메시지 / read 갱신 후. 현재 server cache 미사용 — no-op. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function revalidateForMessengerEvent(_role: 'admin' | 'interpreter'): void {
-  // 향후 unread server cache 도입 시 활성. 현재 realtime + per-fetch 로 충분.
+// 메신저 메시지 / read 갱신 후 캐시 무효화 hook.
+// 현재 unread 는 realtime + per-fetch 로 충분 (server cache 미도입) → no-op 유지.
+// 향후 server cache 도입 시 본 함수에서 revalidateTag 호출 추가.
+// 호출자는 항상 이 함수를 통해 트리거 — 정책 단일 출처 보장.
+export function revalidateForMessengerEvent(role: 'admin' | 'interpreter'): void {
+  void role;
 }

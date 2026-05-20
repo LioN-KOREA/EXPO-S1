@@ -74,9 +74,13 @@ export interface AttachmentMetaInput {
  * 통과 시 정규화된 AttachmentMetaInput[] 반환, 실패 시 error 메시지.
  */
 export function validateAttachmentMetaList(
-  raw: unknown[],
+  raw: unknown,
   threadId: string
 ): { ok: true; metas: AttachmentMetaInput[] } | { ok: false; error: string } {
+  if (raw === undefined || raw === null) return { ok: true, metas: [] };
+  if (!Array.isArray(raw)) {
+    return { ok: false, error: '첨부 메타는 배열이어야 합니다' };
+  }
   if (raw.length > MAX_ATTACHMENTS_PER_MESSAGE) {
     return { ok: false, error: `첨부는 최대 ${MAX_ATTACHMENTS_PER_MESSAGE}개` };
   }

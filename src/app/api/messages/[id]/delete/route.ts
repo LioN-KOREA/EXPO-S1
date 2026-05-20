@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { authMessenger } from '@/lib/messenger/auth';
+import { markMessageDeleted } from '@/lib/messenger/messageRepository';
 
 export async function PATCH(
   _request: NextRequest,
@@ -20,7 +21,7 @@ export async function PATCH(
   const { id: messageId } = await ctx.params;
   if (!messageId) return NextResponse.json({ error: 'message id 필수' }, { status: 400 });
 
-  // 대상 메시지 sender 확인 (admin client — RLS 우회로 조회. 권한 확인은 user client 의 UPDATE 에서)
+  // 대상 메시지 sender 확인 (auth 분기용). RLS·trigger 가 권한 위장 차단.
   const { data: msg } = await supabase
     .from('messages')
     .select('id, sender_id, deleted_at')
@@ -32,16 +33,11 @@ export async function PATCH(
   const isMine = msg.sender_id === guard.user.id;
   const deletedByRole = guard.user.role === 'admin' && !isMine ? 'admin' : 'sender';
 
-  const { error } = await supabase
-    .from('messages')
-    .update({
-      deleted_at: new Date().toISOString(),
-      deleted_by_role: deletedByRole,
-    })
-    .eq('id', messageId);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 403 });
+  try {
+    const updated = await markMessageDeleted(supabase, messageId, deletedByRole);
+    if (!updated) return NextResponse.json({ error: '삭제 실패' }, { status: 403 });
+    return NextResponse.json({ ok: true, deleted_by_role: deletedByRole });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : '삭제 실패' }, { status: 403 });
   }
-
-  return NextResponse.json({ ok: true, deleted_by_role: deletedByRole });
 }

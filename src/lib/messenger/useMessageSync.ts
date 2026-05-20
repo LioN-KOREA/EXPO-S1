@@ -1,38 +1,44 @@
 'use client';
 
 // thread 메시지 동기화 — 초기 load + realtime INSERT/UPDATE dedupe + sender_name enrich + snapshot race 보존.
-// ChatPane 의 상태 폭증을 줄이기 위해 deep module 로 추출.
-// 외부 사용자는 messages / loading / appendLocal / updateLocal 만 본다.
+// 책임 분리:
+//   - 병합/정렬 = messageMerge (순수)
+//   - sender_name 보강 = senderNameCache (profiles 스키마 격리)
+//   - realtime 구독 = useThreadRealtime
+// 본 훅은 위 3개 모듈 조합 + state 관리.
 
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
 import { useThreadRealtime } from './useThreadRealtime';
+import { mergeMessagesById, patchMessageById, upsertMessageSorted } from './messageMerge';
+import { lookupSenderName } from './senderNameCache';
 import type { MessageRow } from './messageRepository';
 
 export interface UseMessageSyncResult {
   messages: MessageRow[];
   loading: boolean;
-  /** 본인 발송 직후 즉시 반영용 (realtime broadcast 도 옴 — dedupe). */
   appendLocal: (m: MessageRow) => void;
-  /** soft delete 등 로컬 UPDATE 즉시 반영. */
   updateLocal: (patch: Partial<MessageRow> & { id: string }) => void;
+}
+
+export interface UseMessageSyncOptions {
+  /** 같은 channel 의 thread row UPDATE 콜백 (last_read_at_* 갱신 등). useThreadReadState 등 외부 hook 이 처리. */
+  onThreadUpdate?: (row: import('./threadRepository').ThreadRow) => void;
 }
 
 export function useMessageSync(
   threadId: string,
-  loadErrorLabel: string
+  loadErrorLabel: string,
+  options: UseMessageSyncOptions = {}
 ): UseMessageSyncResult {
   const [messages, setMessages] = useState<MessageRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // threadId 변경 시 reset
   useEffect(() => {
     setMessages([]);
     setLoading(true);
   }, [threadId]);
 
-  // 초기 load — realtime 으로 먼저 도착한 메시지 보존
   useEffect(() => {
     if (!threadId) return;
     let cancelled = false;
@@ -46,7 +52,7 @@ export function useMessageSync(
         const json = await res.json();
         if (cancelled) return;
         const serverItems = (json.items as MessageRow[]) ?? [];
-        setMessages((prev) => mergeById(serverItems, prev));
+        setMessages((prev) => mergeMessagesById(serverItems, prev));
       } catch (e) {
         if (!cancelled) {
           toast.error(e instanceof Error ? e.message : loadErrorLabel);
@@ -61,47 +67,31 @@ export function useMessageSync(
   }, [threadId, loadErrorLabel]);
 
   const appendLocal = useCallback((m: MessageRow) => {
-    setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+    setMessages((prev) => upsertMessageSorted(prev, m));
   }, []);
 
   const updateLocal = useCallback((patch: Partial<MessageRow> & { id: string }) => {
-    setMessages((prev) => prev.map((m) => (m.id === patch.id ? { ...m, ...patch } : m)));
+    setMessages((prev) => patchMessageById(prev, patch));
   }, []);
 
   const onRealtimeInsert = useCallback(async (row: MessageRow) => {
     let enriched = row;
     if (!row.sender_name && row.sender_id) {
-      try {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', row.sender_id)
-          .maybeSingle();
-        enriched = { ...row, sender_name: (data?.name as string | undefined) ?? null };
-      } catch {
-        // ignore — name 비어도 라벨 fallback
-      }
+      const name = await lookupSenderName(row.sender_id);
+      enriched = { ...row, sender_name: name };
     }
-    setMessages((prev) => (prev.some((m) => m.id === enriched.id) ? prev : [...prev, enriched]));
+    setMessages((prev) => upsertMessageSorted(prev, enriched));
   }, []);
 
   const onRealtimeUpdate = useCallback((row: MessageRow) => {
-    setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)));
+    setMessages((prev) => patchMessageById(prev, row));
   }, []);
 
-  useThreadRealtime(threadId, onRealtimeInsert, onRealtimeUpdate);
+  useThreadRealtime(threadId, {
+    onMessageInsert: onRealtimeInsert,
+    onMessageUpdate: onRealtimeUpdate,
+    onThreadUpdate: options.onThreadUpdate,
+  });
 
   return { messages, loading, appendLocal, updateLocal };
-}
-
-function mergeById(serverItems: MessageRow[], local: MessageRow[]): MessageRow[] {
-  const byId = new Map<string, MessageRow>();
-  for (const m of serverItems) byId.set(m.id, m);
-  for (const m of local) if (!byId.has(m.id)) byId.set(m.id, m);
-  return Array.from(byId.values()).sort((a, b) =>
-    a.created_at === b.created_at
-      ? a.id.localeCompare(b.id)
-      : a.created_at.localeCompare(b.created_at)
-  );
 }

@@ -71,9 +71,8 @@ export async function POST(
   }
 
   const text = typeof body.body === 'string' ? body.body : null;
-  const rawAttachments = Array.isArray(body.attachments) ? (body.attachments as unknown[]) : [];
 
-  const metaCheck = validateAttachmentMetaList(rawAttachments, threadId);
+  const metaCheck = validateAttachmentMetaList(body.attachments, threadId);
   if (!metaCheck.ok) {
     return NextResponse.json({ error: metaCheck.error }, { status: 400 });
   }

@@ -63,15 +63,16 @@ export async function insertNotice(
   return data as InsertedNotice;
 }
 
-/** message 수정. edited_at 자동 갱신. 미존재 id 면 null. */
+/** message 수정. edited_at 자동 갱신. 미존재 id 면 null. clock 주입 가능 (test). */
 export async function updateNoticeMessage(
   supabase: SupabaseClient,
   id: string,
-  message: string
+  message: string,
+  editedAt: string = new Date().toISOString()
 ): Promise<{ id: string; target_roles: NoticeRole[] } | null> {
   const { data, error } = await supabase
     .from('notices')
-    .update({ message, edited_at: new Date().toISOString() })
+    .update({ message, edited_at: editedAt })
     .eq('id', id)
     .select('id, target_roles')
     .maybeSingle();

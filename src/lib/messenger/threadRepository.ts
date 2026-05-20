@@ -70,38 +70,34 @@ export async function listThreadsForEvent(
   }
 
   // 3) 각 thread 의 last_message_at + admin 시점 unread count
-  // 단일 query: messages WHERE thread_id IN (...) GROUP BY thread_id
+  // unread = RPC messenger_unread_for_admin (마이그 037, DB GROUP BY)
+  // last_message_at = messages 단일 쿼리 (deleted_at NULL 인 최신 1건)
   const threadIds = Array.from(threadByInterpreter.values()).map((t) => t.id);
   const lastByThread = new Map<string, string>();
   const unreadByThread = new Map<string, number>();
 
   if (threadIds.length > 0) {
-    const { data: msgs, error: msgsErr } = await supabase
-      .from('messages')
-      .select('thread_id, created_at, sender_role')
-      .in('thread_id', threadIds)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
-    if (msgsErr) throw new Error(msgsErr.message);
+    const [lastRes, unreadRes] = await Promise.all([
+      supabase
+        .from('messages')
+        .select('thread_id, created_at')
+        .in('thread_id', threadIds)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false }),
+      supabase.rpc('messenger_unread_for_admin', { p_event_id: eventId }),
+    ]);
+    if (lastRes.error) throw new Error(lastRes.error.message);
+    if (unreadRes.error) throw new Error(unreadRes.error.message);
 
-    for (const m of msgs ?? []) {
+    for (const m of lastRes.data ?? []) {
       const tId = m.thread_id as string;
       if (!lastByThread.has(tId)) {
         lastByThread.set(tId, m.created_at as string);
       }
     }
-
-    // unread: admin 입장 — interpreter 가 보낸 메시지 중 last_read_at_admin 이후
-    for (const [interpreterId, t] of threadByInterpreter) {
-      const cutoff = t.last_read_at_admin;
-      const count = (msgs ?? []).filter(
-        (m) =>
-          m.thread_id === t.id &&
-          (m.sender_role as string) === 'interpreter' &&
-          (!cutoff || (m.created_at as string) > cutoff)
-      ).length;
-      unreadByThread.set(t.id, count);
-      void interpreterId;
+    for (const r of (unreadRes.data ?? []) as { thread_id: string; unread_count: number | bigint }[]) {
+      const n = typeof r.unread_count === 'bigint' ? Number(r.unread_count) : r.unread_count;
+      unreadByThread.set(r.thread_id, n);
     }
   }
 
