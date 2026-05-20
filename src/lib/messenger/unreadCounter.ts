@@ -1,6 +1,6 @@
-// unread 메시지 집계.
-// admin: 전체 thread 의 unread sum (interpreter 가 보낸 메시지 중 last_read_at_admin 이후)
-// interpreter: 본인 thread 의 unread (admin 이 보낸 메시지 중 last_read_at_interpreter 이후)
+// 메신저 unread 집계. 마이그 037 RPC 사용 (DB 단계 집계, N+1 제거).
+// admin: 전체 thread (interpreter 가 보낸 메시지 중 last_read_at_admin 이후)
+// interpreter: 본인 thread (admin 이 보낸 메시지 중 last_read_at_interpreter 이후)
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -9,78 +9,42 @@ export interface UnreadResult {
   byThread: Record<string, number>;
 }
 
+interface UnreadRow {
+  thread_id: string;
+  unread_count: number | bigint;
+}
+
+function toResult(rows: UnreadRow[] | null | undefined): UnreadResult {
+  const result: UnreadResult = { total: 0, byThread: {} };
+  if (!rows) return result;
+  for (const r of rows) {
+    const n = typeof r.unread_count === 'bigint' ? Number(r.unread_count) : r.unread_count;
+    if (n > 0) {
+      result.byThread[r.thread_id] = n;
+      result.total += n;
+    }
+  }
+  return result;
+}
+
 export async function unreadForAdmin(
   supabase: SupabaseClient,
   eventId?: string
 ): Promise<UnreadResult> {
-  let threadQuery = supabase
-    .from('message_threads')
-    .select('id, last_read_at_admin');
-  if (eventId) threadQuery = threadQuery.eq('event_id', eventId);
-  const { data: threads, error: threadsErr } = await threadQuery;
-  if (threadsErr) throw new Error(threadsErr.message);
-
-  const result: UnreadResult = { total: 0, byThread: {} };
-  if (!threads || threads.length === 0) return result;
-
-  // 각 thread 의 last_read_at_admin 이후 interpreter 메시지 count
-  const threadIds = threads.map((t) => t.id as string);
-  const { data: msgs, error: msgsErr } = await supabase
-    .from('messages')
-    .select('thread_id, created_at, sender_role')
-    .in('thread_id', threadIds)
-    .eq('sender_role', 'interpreter')
-    .is('deleted_at', null);
-  if (msgsErr) throw new Error(msgsErr.message);
-
-  for (const t of threads) {
-    const cutoff = t.last_read_at_admin as string | null;
-    const count = (msgs ?? []).filter(
-      (m) =>
-        m.thread_id === t.id &&
-        (!cutoff || (m.created_at as string) > cutoff)
-    ).length;
-    if (count > 0) {
-      result.byThread[t.id as string] = count;
-      result.total += count;
-    }
-  }
-  return result;
+  const { data, error } = await supabase.rpc('messenger_unread_for_admin', {
+    p_event_id: eventId ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return toResult(data as UnreadRow[] | null);
 }
 
 export async function unreadForInterpreter(
   supabase: SupabaseClient,
   interpreterId: string
 ): Promise<UnreadResult> {
-  const { data: threads, error: threadsErr } = await supabase
-    .from('message_threads')
-    .select('id, last_read_at_interpreter')
-    .eq('interpreter_id', interpreterId);
-  if (threadsErr) throw new Error(threadsErr.message);
-
-  const result: UnreadResult = { total: 0, byThread: {} };
-  if (!threads || threads.length === 0) return result;
-
-  const threadIds = threads.map((t) => t.id as string);
-  const { data: msgs, error: msgsErr } = await supabase
-    .from('messages')
-    .select('thread_id, created_at, sender_role')
-    .in('thread_id', threadIds)
-    .eq('sender_role', 'admin')
-    .is('deleted_at', null);
-  if (msgsErr) throw new Error(msgsErr.message);
-
-  for (const t of threads) {
-    const cutoff = t.last_read_at_interpreter as string | null;
-    const count = (msgs ?? []).filter(
-      (m) =>
-        m.thread_id === t.id &&
-        (!cutoff || (m.created_at as string) > cutoff)
-    ).length;
-    if (count > 0) {
-      result.byThread[t.id as string] = count;
-      result.total += count;
-    }
-  }
-  return result;
+  const { data, error } = await supabase.rpc('messenger_unread_for_interpreter', {
+    p_interpreter_id: interpreterId,
+  });
+  if (error) throw new Error(error.message);
+  return toResult(data as UnreadRow[] | null);
 }

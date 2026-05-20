@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
-import { INTERPRETER_STATS_TAG } from '@/lib/cache/interpreter-stats';
 import { ensureAdmin } from '@/lib/auth/guards';
 import { listNotices, insertNotice, type NoticeRole } from '@/lib/notice/noticeRepository';
+import { revalidateForNoticeRoles } from '@/lib/cache/messengerRevalidation';
 
 const VALID_ROLES: NoticeRole[] = ['admin', 'interpreter', 'buyer', 'seller'];
 
@@ -67,9 +66,7 @@ export async function POST(request: NextRequest) {
       target_roles: normalizedRoles as NoticeRole[],
       sent_by: guard.user.id,
     });
-    if (inserted.target_roles.includes('interpreter')) {
-      revalidateTag(INTERPRETER_STATS_TAG, 'max');
-    }
+    revalidateForNoticeRoles(inserted.target_roles);
     return NextResponse.json({ notice: inserted });
   } catch (e) {
     return NextResponse.json(

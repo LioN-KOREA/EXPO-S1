@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
-import { INTERPRETER_STATS_TAG } from '@/lib/cache/interpreter-stats';
 import { ensureAdmin } from '@/lib/auth/guards';
 import { updateNoticeMessage, deleteNotice } from '@/lib/notice/noticeRepository';
+import { revalidateForNoticeRoles } from '@/lib/cache/messengerRevalidation';
 
 /** 공지 수정 (admin) — message 만 갱신, edited_at 자동 기록 */
 export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -34,9 +33,7 @@ export async function PATCH(request: NextRequest, ctx: { params: Promise<{ id: s
   try {
     const updated = await updateNoticeMessage(createAdminClient(), id, body.message.trim());
     if (!updated) return NextResponse.json({ error: '공지 없음' }, { status: 404 });
-    if (updated.target_roles.includes('interpreter')) {
-      revalidateTag(INTERPRETER_STATS_TAG, 'max');
-    }
+    revalidateForNoticeRoles(updated.target_roles);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '수정 실패' }, { status: 500 });
@@ -55,9 +52,7 @@ export async function DELETE(_request: NextRequest, ctx: { params: Promise<{ id:
   try {
     const deleted = await deleteNotice(createAdminClient(), id);
     if (!deleted) return NextResponse.json({ error: '공지 없음' }, { status: 404 });
-    if (deleted.target_roles.includes('interpreter')) {
-      revalidateTag(INTERPRETER_STATS_TAG, 'max');
-    }
+    revalidateForNoticeRoles(deleted.target_roles);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : '삭제 실패' }, { status: 500 });
