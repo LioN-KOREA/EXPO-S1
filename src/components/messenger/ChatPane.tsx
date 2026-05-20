@@ -4,8 +4,16 @@
 // 첨부 S5, soft delete S6, 종료 가드 S7.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Send, Check, CheckCheck, Paperclip, X, FileText } from 'lucide-react';
+import { Send, Check, CheckCheck, Paperclip, X, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n/context';
 import { createClient } from '@/lib/supabase/client';
@@ -42,6 +50,8 @@ export function ChatPane({
   const [thread, setThread] = useState<ThreadRow | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -258,6 +268,41 @@ export function ChatPane({
     }
   }
 
+  async function confirmDelete() {
+    if (!deleteTargetId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/messages/${deleteTargetId}/delete`, { method: 'PATCH' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((json as { error?: string }).error || '삭제 실패');
+      }
+      // realtime UPDATE 가 곧 도착하지만 즉시 반영을 위해 local update
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === deleteTargetId
+            ? {
+                ...m,
+                deleted_at: new Date().toISOString(),
+                deleted_by_role: (json as { deleted_by_role: 'admin' | 'sender' }).deleted_by_role,
+              }
+            : m
+        )
+      );
+      setDeleteTargetId(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '삭제 실패');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function canDelete(m: MessageRow): boolean {
+    if (m.deleted_at) return false;
+    if (currentUserRole === 'admin') return true;
+    return m.sender_id === currentUserId;
+  }
+
   async function openAttachment(att: AttachmentMeta) {
     try {
       const res = await fetch('/api/messages/attachment/sign', {
@@ -314,47 +359,73 @@ export function ChatPane({
                 ? m.sender_name ?? t.interpreter.messengerSenderAdmin
                 : m.sender_name ?? '';
             const readByOther = isMine && isMessageReadByOther(m);
+            const isDeleted = !!m.deleted_at;
+            const showDelete = canDelete(m);
             return (
-              <div key={m.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+              <div key={m.id} className={`group flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                 {!isMine && senderLabel && (
                   <span className="text-[11px] text-slate-500 mb-0.5 px-1">{senderLabel}</span>
                 )}
-                <div
-                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words ${
-                    isMine
-                      ? 'bg-blue-600 text-white rounded-br-sm'
-                      : 'bg-muted text-foreground rounded-bl-sm'
-                  }`}
-                >
-                  {m.body && <p>{m.body}</p>}
-                  {m.attachments && m.attachments.length > 0 && (
-                    <div className={`${m.body ? 'mt-1.5' : ''} flex flex-col gap-1.5`}>
-                      {m.attachments.map((att) => (
-                        <button
-                          key={att.path}
-                          type="button"
-                          onClick={() => openAttachment(att)}
-                          className={`flex items-center gap-2 text-left rounded px-2 py-1.5 text-xs ${
-                            isMine ? 'bg-blue-700/60 hover:bg-blue-700/80' : 'bg-background/70 hover:bg-background'
-                          }`}
-                        >
-                          {att.mime.startsWith('image/') ? (
-                            <span className="text-base">🖼️</span>
-                          ) : (
-                            <FileText className="w-4 h-4 shrink-0" />
-                          )}
-                          <span className="truncate">{att.name}</span>
-                          <span className={`shrink-0 ${isMine ? 'text-blue-200' : 'text-slate-500'}`}>
-                            {(att.size / 1024).toFixed(0)}KB
-                          </span>
-                        </button>
-                      ))}
+                {isDeleted ? (
+                  <div
+                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 text-sm italic text-slate-500 ${
+                      isMine ? 'bg-blue-600/30 rounded-br-sm' : 'bg-muted/60 rounded-bl-sm'
+                    }`}
+                  >
+                    {m.deleted_by_role === 'admin' ? '관리자에 의해 삭제된 메시지' : '삭제된 메시지'}
+                  </div>
+                ) : (
+                  <div className="relative group/msg">
+                    <div
+                      className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words ${
+                        isMine
+                          ? 'bg-blue-600 text-white rounded-br-sm'
+                          : 'bg-muted text-foreground rounded-bl-sm'
+                      }`}
+                    >
+                      {m.body && <p>{m.body}</p>}
+                      {m.attachments && m.attachments.length > 0 && (
+                        <div className={`${m.body ? 'mt-1.5' : ''} flex flex-col gap-1.5`}>
+                          {m.attachments.map((att) => (
+                            <button
+                              key={att.path}
+                              type="button"
+                              onClick={() => openAttachment(att)}
+                              className={`flex items-center gap-2 text-left rounded px-2 py-1.5 text-xs ${
+                                isMine ? 'bg-blue-700/60 hover:bg-blue-700/80' : 'bg-background/70 hover:bg-background'
+                              }`}
+                            >
+                              {att.mime.startsWith('image/') ? (
+                                <span className="text-base">🖼️</span>
+                              ) : (
+                                <FileText className="w-4 h-4 shrink-0" />
+                              )}
+                              <span className="truncate">{att.name}</span>
+                              <span className={`shrink-0 ${isMine ? 'text-blue-200' : 'text-slate-500'}`}>
+                                {(att.size / 1024).toFixed(0)}KB
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                    {showDelete && (
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTargetId(m.id)}
+                        className={`absolute top-1 ${
+                          isMine ? '-left-7' : '-right-7'
+                        } p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/40 text-slate-400 hover:text-red-500 opacity-0 group-hover/msg:opacity-100 focus:opacity-100 transition-opacity`}
+                        aria-label="메시지 삭제"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5 px-1">
                   <span>{formatTime(m.created_at)}</span>
-                  {isMine && (
+                  {isMine && !isDeleted && (
                     readByOther ? (
                       <CheckCheck className="w-3 h-3 text-blue-500" aria-label="읽음" />
                     ) : (
@@ -447,6 +518,36 @@ export function ChatPane({
           />
         </div>
       )}
+
+      <Dialog
+        open={!!deleteTargetId}
+        onOpenChange={(o) => {
+          if (!o && !deleting) setDeleteTargetId(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>메시지 삭제</DialogTitle>
+            <DialogDescription>
+              {currentUserRole === 'admin'
+                ? '이 메시지를 삭제하면 상대방 화면에 "삭제된 메시지" 표시가 남습니다. 본문·첨부는 운영 기록을 위해 DB 에 보존됩니다.'
+                : '이 메시지를 삭제하면 상대방 화면에 "삭제된 메시지" 표시가 남습니다.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTargetId(null)} disabled={deleting}>
+              취소
+            </Button>
+            <Button
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? '삭제 중…' : '삭제'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
