@@ -1,15 +1,17 @@
 'use client';
 
-// S2 슬라이스: 텍스트 메시지 채팅창. realtime 은 S3, 첨부 S5, soft delete S6, 종료 가드 S7.
+// S2 텍스트 메시지 + S3 Realtime + S4 읽음 표시.
+// 첨부 S5, soft delete S6, 종료 가드 S7.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Send } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Send, Check, CheckCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n/context';
 import { createClient } from '@/lib/supabase/client';
 import { MESSAGE_BODY_MAX, type MessageRow } from '@/lib/messenger/messageRepository';
 import { useThreadRealtime } from '@/lib/messenger/useThreadRealtime';
+import type { ThreadRow } from '@/lib/messenger/threadRepository';
 
 interface ChatPaneProps {
   threadId: string;
@@ -17,6 +19,8 @@ interface ChatPaneProps {
   currentUserRole: 'admin' | 'interpreter';
   initialMessages?: MessageRow[];
 }
+
+const MARK_READ_DEBOUNCE_MS = 1000;
 
 export function ChatPane({
   threadId,
@@ -29,19 +33,39 @@ export function ChatPane({
   const [loading, setLoading] = useState(initialMessages.length === 0);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [thread, setThread] = useState<ThreadRow | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const markReadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const otherLastReadAt = useMemo(() => {
+    if (!thread) return null;
+    return currentUserRole === 'admin'
+      ? thread.last_read_at_interpreter
+      : thread.last_read_at_admin;
+  }, [thread, currentUserRole]);
+
+  // threadId 변경 시 state reset — 이전 thread 잔존 데이터로 markRead/✓✓ 잘못 처리 방지
+  useEffect(() => {
+    setMessages([]);
+    setLoading(true);
+    setThread(null);
+    if (markReadTimerRef.current) {
+      clearTimeout(markReadTimerRef.current);
+      markReadTimerRef.current = null;
+    }
+  }, [threadId]);
+
+  // 메시지 로드 (snapshot race 보존)
   const loadMessages = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/messages/threads/${threadId}/messages`);
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || t.interpreter.messengerLoadError);
+        throw new Error((json as { error?: string }).error || t.interpreter.messengerLoadError);
       }
       const json = await res.json();
       const serverItems = (json.items as MessageRow[]) ?? [];
-      // realtime 으로 먼저 도착한 메시지 보존 (snapshot race 방지)
       setMessages((prev) => {
         const byId = new Map<string, MessageRow>();
         for (const m of serverItems) byId.set(m.id, m);
@@ -63,7 +87,40 @@ export function ChatPane({
     void loadMessages();
   }, [loadMessages]);
 
-  // Realtime: INSERT/UPDATE 들어오면 dedupe 후 state 갱신. sender_name 은 raw payload 에 없으니 enrich.
+  // thread row 직접 fetch + realtime UPDATE 구독 → otherLastReadAt 갱신
+  useEffect(() => {
+    if (!threadId) return;
+    let cancelled = false;
+    const supabase = createClient();
+
+    (async () => {
+      const { data } = await supabase
+        .from('message_threads')
+        .select('id, event_id, interpreter_id, last_read_at_admin, last_read_at_interpreter, created_at')
+        .eq('id', threadId)
+        .maybeSingle();
+      if (!cancelled) setThread((data as ThreadRow | null) ?? null);
+    })();
+
+    const channel = supabase
+      .channel(`thread-row:${threadId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'message_threads', filter: `id=eq.${threadId}` },
+        (payload) => {
+          if (cancelled) return;
+          setThread((payload.new as ThreadRow) ?? null);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [threadId]);
+
+  // realtime messages
   const onRealtimeInsert = useCallback(async (row: MessageRow) => {
     let enriched = row;
     if (!row.sender_name && row.sender_id) {
@@ -76,7 +133,7 @@ export function ChatPane({
           .maybeSingle();
         enriched = { ...row, sender_name: (data?.name as string | undefined) ?? null };
       } catch {
-        // ignore — name 비어도 라벨 fallback
+        // ignore
       }
     }
     setMessages((prev) => {
@@ -91,12 +148,30 @@ export function ChatPane({
 
   useThreadRealtime(threadId, onRealtimeInsert, onRealtimeUpdate);
 
+  // 새 메시지 들어오면 하단으로 스크롤
   useEffect(() => {
-    // 새 메시지 들어오면 하단으로 스크롤
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length]);
+
+  // markRead: thread 진입 + 새 메시지 도착 시 debounce.
+  // 서버가 now() 사용하므로 client 시각 전송 X (클럭 스큐 방지).
+  useEffect(() => {
+    if (!threadId || messages.length === 0) return;
+    const currentThread = threadId;
+    if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    markReadTimerRef.current = setTimeout(() => {
+      void fetch(`/api/messages/threads/${currentThread}/read`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      }).catch(() => {});
+    }, MARK_READ_DEBOUNCE_MS);
+    return () => {
+      if (markReadTimerRef.current) clearTimeout(markReadTimerRef.current);
+    };
+  }, [threadId, messages.length]);
 
   async function send() {
     const value = text.trim();
@@ -112,7 +187,11 @@ export function ChatPane({
       if (!res.ok) {
         throw new Error((json as { error?: string }).error || t.interpreter.messengerSendError);
       }
-      setMessages((prev) => [...prev, (json as { message: MessageRow }).message]);
+      setMessages((prev) => {
+        const next = (json as { message: MessageRow }).message;
+        if (prev.some((m) => m.id === next.id)) return prev;
+        return [...prev, next];
+      });
       setText('');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t.interpreter.messengerSendError);
@@ -128,6 +207,14 @@ export function ChatPane({
       hour: '2-digit',
       minute: '2-digit',
     });
+  }
+
+  function isMessageReadByOther(m: MessageRow): boolean {
+    if (!otherLastReadAt) return false;
+    const a = Date.parse(m.created_at);
+    const b = Date.parse(otherLastReadAt);
+    if (Number.isNaN(a) || Number.isNaN(b)) return false;
+    return a <= b;
   }
 
   return (
@@ -146,11 +233,9 @@ export function ChatPane({
               m.sender_role === 'admin'
                 ? m.sender_name ?? t.interpreter.messengerSenderAdmin
                 : m.sender_name ?? '';
+            const readByOther = isMine && isMessageReadByOther(m);
             return (
-              <div
-                key={m.id}
-                className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}
-              >
+              <div key={m.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                 {!isMine && senderLabel && (
                   <span className="text-[11px] text-slate-500 mb-0.5 px-1">{senderLabel}</span>
                 )}
@@ -163,7 +248,16 @@ export function ChatPane({
                 >
                   {m.body}
                 </div>
-                <span className="text-[10px] text-slate-400 mt-0.5 px-1">{formatTime(m.created_at)}</span>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5 px-1">
+                  <span>{formatTime(m.created_at)}</span>
+                  {isMine && (
+                    readByOther ? (
+                      <CheckCheck className="w-3 h-3 text-blue-500" aria-label="읽음" />
+                    ) : (
+                      <Check className="w-3 h-3" aria-label="전송됨" />
+                    )
+                  )}
+                </div>
               </div>
             );
           })}
@@ -189,8 +283,6 @@ export function ChatPane({
           {sending ? t.interpreter.messengerSending : t.interpreter.messengerSend}
         </Button>
       </div>
-      {/* role 차이 가시화는 후속 슬라이스에서. 현재 visual 동일. */}
-      <span className="sr-only">{currentUserRole}</span>
     </div>
   );
 }

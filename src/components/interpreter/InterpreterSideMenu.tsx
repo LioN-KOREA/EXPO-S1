@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
+import { useUnreadBadge } from '@/lib/messenger/useUnreadBadge';
 import {
   Menu,
   QrCode,
@@ -39,6 +40,18 @@ export function InterpreterSideMenu({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const { total: unreadMessages } = useUnreadBadge();
+  const baseTitleRef = useRef<string | null>(null);
+
+  // 탭 제목 (N) 갱신 — mount 시 baseTitle 캡쳐
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (baseTitleRef.current === null) {
+      baseTitleRef.current = document.title;
+    }
+    const base = baseTitleRef.current;
+    document.title = unreadMessages > 0 ? `(${unreadMessages > 99 ? '99+' : unreadMessages}) ${base}` : base;
+  }, [unreadMessages]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -57,7 +70,7 @@ export function InterpreterSideMenu({
         className="relative inline-flex items-center justify-center h-9 w-9 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/[0.05] transition-colors"
       >
         <Menu className="w-5 h-5" />
-        {unreadNotices > 0 && (
+        {(unreadNotices > 0 || unreadMessages > 0) && (
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
         )}
       </SheetTrigger>
@@ -130,10 +143,17 @@ export function InterpreterSideMenu({
             <Link
               href="/interpreter/messages"
               onClick={close}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors"
+              className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors"
             >
-              <MessageSquare className="w-5 h-5 text-slate-500" />
-              <span className="text-sm font-medium">{t.interpreter.messengerTitle}</span>
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-5 h-5 text-slate-500" />
+                <span className="text-sm font-medium">{t.interpreter.messengerTitle}</span>
+              </div>
+              {unreadMessages > 0 && (
+                <span className="text-xs font-bold bg-red-500 text-white rounded-full px-2 py-0.5">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
             </Link>
 
             <Link

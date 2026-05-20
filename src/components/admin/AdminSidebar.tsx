@@ -24,9 +24,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Logo } from '@/components/Logo';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useUnreadBadge } from '@/lib/messenger/useUnreadBadge';
 
 const navItems = [
   { href: '/admin', label: '대시보드', icon: LayoutDashboard },
@@ -96,6 +97,19 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const eventId = extractEventId(pathname);
+  const { total: unreadMessages, byThread: unreadByThread } = useUnreadBadge(eventId ?? undefined);
+  void unreadByThread;
+  const baseTitleRef = useRef<string | null>(null);
+
+  // 탭 제목 (N) 갱신 — admin 전역. baseTitle 을 mount 시 1회 캡쳐해 regex 충돌 회피.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (baseTitleRef.current === null) {
+      baseTitleRef.current = document.title;
+    }
+    const base = baseTitleRef.current;
+    document.title = unreadMessages > 0 ? `(${unreadMessages > 99 ? '99+' : unreadMessages}) ${base}` : base;
+  }, [unreadMessages]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -145,20 +159,28 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
                 {group.items.map((sub) => {
                   const href = `/admin/events/${eventId}${sub.suffix}`;
                   const isActive = pathname === href || pathname.startsWith(href + '/');
+                  const showMsgBadge = sub.suffix === '/messages' && unreadMessages > 0;
                   return (
                     <Link
                       key={sub.suffix}
                       href={href}
                       onClick={() => setMobileOpen(false)}
                       className={cn(
-                        'flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all',
+                        'flex items-center justify-between gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-all',
                         isActive
                           ? 'bg-white/[0.08] text-white'
                           : 'text-slate-400 hover:bg-card hover:text-foreground/80'
                       )}
                     >
-                      <sub.icon className="w-4 h-4" />
-                      {sub.label}
+                      <span className="flex items-center gap-3">
+                        <sub.icon className="w-4 h-4" />
+                        {sub.label}
+                      </span>
+                      {showMsgBadge && (
+                        <span className="text-[10px] font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5">
+                          {unreadMessages > 9 ? '9+' : unreadMessages}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
