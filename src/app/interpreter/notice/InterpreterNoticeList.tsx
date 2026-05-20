@@ -11,6 +11,7 @@ interface NoticeItem {
   id: string;
   message: string;
   sent_at: string;
+  edited_at?: string | null;
   event_name: string;
 }
 
@@ -81,6 +82,17 @@ export function InterpreterNoticeList({ items, initialReadIds, userId }: Props) 
               <p className="text-sm text-foreground whitespace-pre-wrap break-words">
                 {isOpen ? n.message : preview}
               </p>
+              {n.edited_at && (
+                <p className="text-[11px] text-slate-400 italic mt-1">
+                  ({t.interpreter.noticeEdited ?? '수정됨'} ·{' '}
+                  {new Date(n.edited_at).toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })})
+                </p>
+              )}
               <div className="mt-2 flex items-center text-xs text-slate-500">
                 {isOpen ? (
                   <>

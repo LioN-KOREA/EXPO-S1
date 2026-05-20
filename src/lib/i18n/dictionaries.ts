@@ -252,6 +252,7 @@ export const dictionaries = {
       expand: '펼치기',
       unread: '미확인',
       noticeStatsTotal: '{total}건 · 미확인 {unread}건',
+      noticeEdited: '수정됨',
       glossaryComingDesc: '한국어 / 영어 / 중국어 / 일본어 무역 용어 사전을 곧 제공할 예정입니다.',
       // 자동 채움 / 잔여 일지 팝업 (2026-05-18)
       autoFilledTitle: '자동으로 채워지는 항목',
@@ -542,6 +543,7 @@ export const dictionaries = {
       expand: 'Expand',
       unread: 'Unread',
       noticeStatsTotal: '{total} · {unread} unread',
+      noticeEdited: 'edited',
       glossaryComingDesc: 'A multilingual (Korean / English / Chinese / Japanese) trade glossary will be available soon.',
       // Auto-fill / pending popup (2026-05-18)
       autoFilledTitle: 'Auto-filled fields',

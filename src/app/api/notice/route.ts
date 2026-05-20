@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   // 표시에 필요한 컬럼만 (내부 메타 숨김)
   const { data, error } = await admin
     .from('notices')
-    .select('id, event_id, message, target_roles, sent_at, sender:profiles!notices_sent_by_fkey(id, name)')
+    .select('id, event_id, message, target_roles, sent_at, edited_at, sender:profiles!notices_sent_by_fkey(id, name)')
     .eq('event_id', eventId)
     .order('sent_at', { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

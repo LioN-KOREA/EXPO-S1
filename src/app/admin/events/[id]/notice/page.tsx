@@ -7,8 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Send, Inbox, Eye } from 'lucide-react';
-import Link from 'next/link';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Send, Inbox, Eye, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 type Role = 'admin' | 'interpreter' | 'buyer' | 'seller';
@@ -19,6 +26,7 @@ interface NoticeRow {
   message: string;
   target_roles: Role[];
   sent_at: string;
+  edited_at?: string | null;
   sender?: { id: string; name: string };
 }
 
@@ -53,6 +61,12 @@ export default function NoticePage() {
   const [loading, setLoading] = useState(false);
   const [statsMap, setStatsMap] = useState<Record<string, ReadStats>>({});
   const [openStatsId, setOpenStatsId] = useState<string | null>(null);
+
+  const [editTarget, setEditTarget] = useState<NoticeRow | null>(null);
+  const [editMessage, setEditMessage] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<NoticeRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -104,6 +118,62 @@ export default function NoticePage() {
       toast.error(e instanceof Error ? e.message : '발송 실패');
     } finally {
       setSending(false);
+    }
+  }
+
+  function openEdit(n: NoticeRow) {
+    setEditTarget(n);
+    setEditMessage(n.message);
+  }
+
+  function closeEdit() {
+    setEditTarget(null);
+    setEditMessage('');
+  }
+
+  async function saveEdit() {
+    if (!editTarget) return;
+    if (!editMessage.trim()) {
+      toast.error('메시지를 입력하세요');
+      return;
+    }
+    if (editMessage.trim() === editTarget.message) {
+      closeEdit();
+      return;
+    }
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/notice/${editTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: editMessage }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || '수정 실패');
+      toast.success('공지가 수정되었습니다');
+      closeEdit();
+      void loadList();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '수정 실패');
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/notice/${deleteTarget.id}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || '삭제 실패');
+      toast.success('공지가 삭제되었습니다');
+      setDeleteTarget(null);
+      void loadList();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '삭제 실패');
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -215,9 +285,14 @@ export default function NoticePage() {
                         </span>
                       </div>
                       <div className="text-sm whitespace-pre-wrap break-words">{n.message}</div>
-                      {n.sender?.name && (
-                        <div className="text-xs text-slate-500 mt-1">발신자: {n.sender.name}</div>
-                      )}
+                      <div className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-2">
+                        {n.sender?.name && <span>발신자: {n.sender.name}</span>}
+                        {n.edited_at && (
+                          <span className="italic">
+                            (수정됨 {new Date(n.edited_at).toLocaleString('ko-KR')})
+                          </span>
+                        )}
+                      </div>
                       {openStatsId === n.id && statsMap[n.id] && (
                         <div className="mt-2 flex gap-2 flex-wrap">
                           <Badge variant="outline">전체 {statsMap[n.id].total}</Badge>
@@ -230,10 +305,24 @@ export default function NoticePage() {
                         </div>
                       )}
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => loadStats(n.id)} className="self-start sm:self-auto">
-                      <Eye className="w-4 h-4 mr-1" />
-                      읽음 통계
-                    </Button>
+                    <div className="flex flex-wrap gap-1 self-start sm:self-auto">
+                      <Button variant="ghost" size="sm" onClick={() => loadStats(n.id)}>
+                        <Eye className="w-4 h-4 mr-1" />
+                        읽음 통계
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(n)} title="수정">
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteTarget(n)}
+                        title="삭제"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -241,6 +330,54 @@ export default function NoticePage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!editTarget} onOpenChange={(o) => { if (!o && !editSaving) closeEdit(); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>공지 수정</DialogTitle>
+            <DialogDescription>메시지를 수정하면 통역사 화면에 &quot;수정됨&quot; 표시가 붙습니다.</DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={editMessage}
+            onChange={(e) => setEditMessage(e.target.value)}
+            rows={6}
+            maxLength={2000}
+          />
+          <p className="text-xs text-slate-500">{editMessage.length}자 / 2000</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEdit} disabled={editSaving}>취소</Button>
+            <Button onClick={saveEdit} disabled={editSaving || !editMessage.trim()}>
+              {editSaving ? '저장 중…' : '저장'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o && !deleting) setDeleteTarget(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>공지 삭제</DialogTitle>
+            <DialogDescription>
+              이 공지를 삭제하면 통역사 화면에서도 즉시 사라지고, 읽음 기록도 함께 삭제됩니다. 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteTarget && (
+            <div className="text-sm whitespace-pre-wrap break-words bg-muted p-3 rounded max-h-40 overflow-auto">
+              {deleteTarget.message}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>취소</Button>
+            <Button
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? '삭제 중…' : '삭제'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

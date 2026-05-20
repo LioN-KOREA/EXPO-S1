@@ -15,7 +15,7 @@ export default async function InterpreterNoticePage() {
   // 통역사 대상 공지 (RLS가 자기 역할만 보이게 필터, target_roles에 interpreter 포함)
   const { data: notices } = await supabase
     .from('notices')
-    .select('id, message, sent_at, event_id, target_roles, events(name)')
+    .select('id, message, sent_at, edited_at, event_id, target_roles, events(name)')
     .contains('target_roles', JSON.stringify(['interpreter']))
     .order('sent_at', { ascending: false });
 
@@ -26,6 +26,7 @@ export default async function InterpreterNoticePage() {
       id: n.id,
       message: n.message,
       sent_at: n.sent_at,
+      edited_at: n.edited_at,
       event_name,
     };
   });
