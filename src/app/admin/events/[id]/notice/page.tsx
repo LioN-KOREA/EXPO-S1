@@ -28,10 +28,9 @@ interface ReadStats {
   unread: number;
 }
 
+// 현재 운영: 통역사 사이트만. 바이어/셀러 화면 추가 시 옵션 복원.
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: 'buyer', label: '바이어' },
   { value: 'interpreter', label: '통역사' },
-  { value: 'seller', label: '셀러' },
 ];
 
 const ROLE_LABEL: Record<Role, string> = {
