@@ -26,6 +26,7 @@ import {
   MAX_ATTACHMENTS_PER_MESSAGE,
   ALLOWED_MIME_TYPES,
 } from '@/lib/messenger/attachmentValidator';
+import { isEventClosed } from '@/lib/messenger/eventGate';
 
 interface ChatPaneProps {
   threadId: string;
@@ -48,6 +49,7 @@ export function ChatPane({
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [thread, setThread] = useState<ThreadRow | null>(null);
+  const [eventEndDate, setEventEndDate] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
@@ -63,11 +65,12 @@ export function ChatPane({
       : thread.last_read_at_admin;
   }, [thread, currentUserRole]);
 
-  // threadId 변경 시 state reset — 이전 thread 잔존 데이터/첨부/lightbox 모두 초기화
+  // threadId 변경 시 state reset
   useEffect(() => {
     setMessages([]);
     setLoading(true);
     setThread(null);
+    setEventEndDate(null);
     setPendingFiles([]);
     setLightboxUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -118,10 +121,14 @@ export function ChatPane({
     (async () => {
       const { data } = await supabase
         .from('message_threads')
-        .select('id, event_id, interpreter_id, last_read_at_admin, last_read_at_interpreter, created_at')
+        .select('id, event_id, interpreter_id, last_read_at_admin, last_read_at_interpreter, created_at, events(end_date)')
         .eq('id', threadId)
         .maybeSingle();
-      if (!cancelled) setThread((data as ThreadRow | null) ?? null);
+      if (cancelled || !data) return;
+      const evRel = (data as { events?: { end_date?: string | null } | { end_date?: string | null }[] | null }).events;
+      const ev = Array.isArray(evRel) ? evRel[0] : evRel;
+      setEventEndDate(ev?.end_date ?? null);
+      setThread(data as ThreadRow);
     })();
 
     const channel = supabase
@@ -342,8 +349,15 @@ export function ChatPane({
     return a <= b;
   }
 
+  const isClosed = isEventClosed({ end_date: eventEndDate });
+
   return (
     <div className="flex flex-col h-full min-h-0 bg-background">
+      {isClosed && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+          이 이벤트는 종료되어 새 메시지를 보낼 수 없습니다.
+        </div>
+      )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading && (
           <p className="text-center text-sm text-slate-500 py-8">{t.interpreter.messengerLoading}</p>
@@ -479,7 +493,7 @@ export function ChatPane({
           variant="outline"
           size="icon"
           onClick={() => fileInputRef.current?.click()}
-          disabled={sending || pendingFiles.length >= MAX_ATTACHMENTS_PER_MESSAGE}
+          disabled={isClosed || sending || pendingFiles.length >= MAX_ATTACHMENTS_PER_MESSAGE}
           aria-label="첨부 추가"
         >
           <Paperclip className="w-4 h-4" />
@@ -493,12 +507,17 @@ export function ChatPane({
               void send();
             }
           }}
-          placeholder={t.interpreter.messengerInputPlaceholder}
+          placeholder={isClosed ? '이벤트 종료 — 발송 불가' : t.interpreter.messengerInputPlaceholder}
           maxLength={MESSAGE_BODY_MAX}
           rows={2}
-          className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          disabled={isClosed}
+          className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed"
         />
-        <Button onClick={send} disabled={sending || (!text.trim() && pendingFiles.length === 0)} className="gap-1.5">
+        <Button
+          onClick={send}
+          disabled={isClosed || sending || (!text.trim() && pendingFiles.length === 0)}
+          className="gap-1.5"
+        >
           <Send className="w-4 h-4" />
           {sending ? t.interpreter.messengerSending : t.interpreter.messengerSend}
         </Button>

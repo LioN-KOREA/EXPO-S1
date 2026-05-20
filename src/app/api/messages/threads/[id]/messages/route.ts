@@ -12,6 +12,8 @@ import {
   MESSAGE_PAGE_SIZE,
   validateMessageInput,
 } from '@/lib/messenger/messageRepository';
+import { getThreadEvent } from '@/lib/messenger/threadRepository';
+import { isEventClosed } from '@/lib/messenger/eventGate';
 
 export async function GET(
   request: NextRequest,
@@ -55,6 +57,16 @@ export async function POST(
     body = await request.json();
   } catch {
     return NextResponse.json({ error: '유효한 JSON 본문 필요' }, { status: 400 });
+  }
+
+  // 이벤트 종료 가드 — readonly thread 발송 차단
+  try {
+    const event = await getThreadEvent(supabase, threadId);
+    if (isEventClosed(event)) {
+      return NextResponse.json({ error: '이벤트 종료된 채널' }, { status: 403 });
+    }
+  } catch {
+    // event lookup 실패 시 통상 진행 (404 등은 후속 처리)
   }
 
   const text = typeof body.body === 'string' ? body.body : null;
