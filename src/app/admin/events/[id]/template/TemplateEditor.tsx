@@ -542,6 +542,7 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
             onChange={(key, value) => setPreviewValues((prev) => ({ ...prev, [key]: value }))}
             onSubmit={handlePreviewSubmit}
             submitLabel="미리보기 완료"
+            autoAnswerTemplate={autoAnswerTemplate}
           />
         </div>
       </DialogContent>
