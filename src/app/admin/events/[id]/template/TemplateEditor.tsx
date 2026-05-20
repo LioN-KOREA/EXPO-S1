@@ -26,6 +26,8 @@ import {
 import { MultiStepReportForm } from '@/components/interpreter/MultiStepReportForm';
 import type { TemplateField, FieldType, FieldSource, AutoSourceKey } from '@/types';
 import { AUTO_SOURCE_OPTIONS, inferAutoSourceFromLabel, isAdminLabel } from '@/lib/template/auto-source';
+import { DEFAULT_AUTO_ANSWER_TEMPLATE } from '@/lib/template/defaults';
+import { listAutoAnswerVariables } from '@/lib/template/autoAnswer';
 
 const typeOptions: { value: FieldType; label: string }[] = [
   { value: 'text', label: '텍스트' },
@@ -44,10 +46,14 @@ const sourceOptions: { value: FieldSource; label: string; hint: string }[] = [
 interface Props {
   eventId: string;
   initialFields: TemplateField[];
+  initialAutoAnswerTemplate?: string | null;
 }
 
-export function TemplateEditor({ eventId, initialFields }: Props) {
+export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTemplate }: Props) {
   const [fields, setFields] = useState<TemplateField[]>(initialFields);
+  const [autoAnswerTemplate, setAutoAnswerTemplate] = useState<string>(
+    initialAutoAnswerTemplate ?? ''
+  );
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewValues, setPreviewValues] = useState<Record<string, unknown>>({});
@@ -163,7 +169,10 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
 
     const { error } = await supabase
       .from('report_templates')
-      .update({ fields: cleanFields })
+      .update({
+        fields: cleanFields,
+        auto_answer_template: autoAnswerTemplate.trim() === '' ? null : autoAnswerTemplate,
+      })
       .eq('event_id', eventId);
 
     if (error) {
@@ -176,8 +185,66 @@ export function TemplateEditor({ eventId, initialFields }: Props) {
 
   const fieldKeys = useMemo(() => fields.map((f) => f.key), [fields]);
 
+  const autoAnswerVars = useMemo(() => listAutoAnswerVariables(fields), [fields]);
+
   return (
     <>
+    <Card className="border-0 shadow-sm mb-4">
+      <CardHeader>
+        <CardTitle className="text-lg">자동 답변 템플릿</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-slate-500">
+          통역사가 장문(textarea) 필드의 &quot;자동 답변 생성&quot; 버튼을 누르면 아래 템플릿에
+          현재 양식 답안과 바이어/셀러 카드 정보를 채워 textarea에 주입합니다. 비워두면
+          버튼이 비활성화 안내를 띄웁니다.
+        </p>
+        <Textarea
+          value={autoAnswerTemplate}
+          onChange={(e) => setAutoAnswerTemplate(e.target.value)}
+          rows={Math.max(6, autoAnswerTemplate.split('\n').length + 1)}
+          placeholder="예: 국내기업 {{seller_company}}는 {{consultation_item}}에 대해 상담했습니다..."
+          className="text-sm font-mono"
+        />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setAutoAnswerTemplate(DEFAULT_AUTO_ANSWER_TEMPLATE)}
+            className="h-7 text-xs"
+          >
+            기본 템플릿 불러오기
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setAutoAnswerTemplate('')}
+            disabled={autoAnswerTemplate === ''}
+            className="h-7 text-xs text-red-600"
+          >
+            비우기
+          </Button>
+        </div>
+        <details className="text-xs text-slate-600">
+          <summary className="cursor-pointer select-none">사용 가능한 변수 ({autoAnswerVars.length}개)</summary>
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+            {autoAnswerVars.map((v) => (
+              <button
+                key={v.key}
+                type="button"
+                onClick={() => setAutoAnswerTemplate((prev) => prev + `{{${v.key}}}`)}
+                className="text-left text-[11px] px-2 py-1 rounded bg-muted hover:bg-slate-200 font-mono"
+                title="클릭하면 끝에 삽입"
+              >
+                <span className="text-rose-600">{`{{${v.key}}}`}</span>
+                <span className="text-slate-500"> — {v.label}</span>
+              </button>
+            ))}
+          </div>
+        </details>
+      </CardContent>
+    </Card>
+
     <Card className="border-0 shadow-sm">
       <CardHeader>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

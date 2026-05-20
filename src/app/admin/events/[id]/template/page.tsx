@@ -29,6 +29,7 @@ export default function TemplatePage() {
   const eventId = params.id as string;
   const [dataLoading, setDataLoading] = useState(true);
   const [fields, setFields] = useState<TemplateField[]>([]);
+  const [autoAnswerTemplate, setAutoAnswerTemplate] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -36,13 +37,14 @@ export default function TemplatePage() {
     const supabase = createClient();
     const { data } = await supabase
       .from('report_templates')
-      .select('fields')
+      .select('fields, auto_answer_template')
       .eq('event_id', eventId)
       .single();
 
     if (data?.fields) {
       setFields(data.fields as TemplateField[]);
     }
+    setAutoAnswerTemplate((data?.auto_answer_template ?? null) as string | null);
     setDataLoading(false);
   }, [eventId]);
 
@@ -85,7 +87,12 @@ export default function TemplatePage() {
       )}
 
       {hasData && editMode && (
-        <TemplateEditor eventId={eventId} initialFields={fields} key={fields.length} />
+        <TemplateEditor
+          eventId={eventId}
+          initialFields={fields}
+          initialAutoAnswerTemplate={autoAnswerTemplate}
+          key={fields.length}
+        />
       )}
       {hasData && !editMode && (
         <Card className="border-0 shadow-sm">

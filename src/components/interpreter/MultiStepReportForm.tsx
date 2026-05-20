@@ -17,9 +17,22 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import type { TemplateField } from '@/types';
 import { ABSENT_CONSULTATION_TYPES } from '@/lib/template/defaults';
+import {
+  buildAutoAnswerContext,
+  renderAutoAnswer,
+} from '@/lib/template/autoAnswer';
 
 const CONSULTATION_TYPE_KEY = 'consultation_type';
 const ABSENCE_REASON_KEY = 'absence_reason';
+
+interface AutoAnswerConsultation {
+  buyer?: { company_name?: string | null; country?: string | null } | null;
+  seller?: {
+    company_name?: string | null;
+    company_name_kr?: string | null;
+    contact_name?: string | null;
+  } | null;
+}
 
 interface Props {
   fields: TemplateField[];
@@ -29,6 +42,8 @@ interface Props {
   onSubmit: () => void;
   submitting?: boolean;
   submitLabel?: string;
+  autoAnswerTemplate?: string | null;
+  consultation?: AutoAnswerConsultation | null;
 }
 
 function isVisible(field: TemplateField, values: Record<string, unknown>): boolean {
@@ -57,6 +72,8 @@ export function MultiStepReportForm({
   onSubmit,
   submitting = false,
   submitLabel,
+  autoAnswerTemplate,
+  consultation,
 }: Props) {
   const { t } = useI18n();
   const resolvedSubmitLabel = submitLabel ?? t.interpreter.submit;
@@ -244,7 +261,20 @@ export function MultiStepReportForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.info(t.interpreter.aiGeneratePreparing)}
+                  onClick={() => {
+                    if (!autoAnswerTemplate || !autoAnswerTemplate.trim()) {
+                      toast.info(t.interpreter.aiGeneratePreparing);
+                      return;
+                    }
+                    const existing = String(values[current.key] ?? '');
+                    if (existing.trim() && !confirm(t.interpreter.aiGenerateOverwrite)) {
+                      return;
+                    }
+                    const ctx = buildAutoAnswerContext(fields, values, consultation ?? null);
+                    const rendered = renderAutoAnswer(autoAnswerTemplate, ctx);
+                    onChange(current.key, rendered);
+                    toast.success(t.interpreter.aiGenerateDone);
+                  }}
                   className="gap-1.5 mb-2 border-rose-200 text-rose-600 hover:bg-rose-50"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
@@ -289,18 +319,29 @@ export function MultiStepReportForm({
       )}
 
       {/* 이전/다음 */}
-      {!disabled && (
-        <div className="flex gap-2 pt-4 border-t">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handlePrev}
-            disabled={isFirst || submitting}
-            className="gap-1.5 min-w-[88px] h-10"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            {t.interpreter.prev}
-          </Button>
+      <div className="flex gap-2 pt-4 border-t">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handlePrev}
+          disabled={isFirst || submitting}
+          className="gap-1.5 min-w-[88px] h-10"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          {t.interpreter.prev}
+        </Button>
+        {disabled ? (
+          !isLast && (
+            <Button
+              type="button"
+              onClick={() => setStep((s) => s + 1)}
+              className="flex-1 gap-1.5 h-10"
+            >
+              {t.interpreter.next}
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          )
+        ) : (
           <Button
             type="button"
             onClick={handleNext}
@@ -314,8 +355,8 @@ export function MultiStepReportForm({
             {isLast ? (submitting ? t.interpreter.submitting : resolvedSubmitLabel) : t.interpreter.next}
             {!isLast && <ChevronRight className="w-4 h-4" />}
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

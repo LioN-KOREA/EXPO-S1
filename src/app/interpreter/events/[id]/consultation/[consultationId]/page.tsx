@@ -28,6 +28,7 @@ export default function ConsultationReportPage() {
   const [saving, setSaving] = useState(false);
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [fields, setFields] = useState<TemplateField[]>([]);
+  const [autoAnswerTemplate, setAutoAnswerTemplate] = useState<string | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [report, setReport] = useState<ConsultationReport | null>(null);
   const [submitOpen, setSubmitOpen] = useState(false);
@@ -83,7 +84,7 @@ export default function ConsultationReportPage() {
 
         const { data: template, error: templateError } = await supabase
           .from('report_templates')
-          .select('fields')
+          .select('fields, auto_answer_template')
           .eq('event_id', actualEventId ?? eventId)
           .single();
 
@@ -97,6 +98,7 @@ export default function ConsultationReportPage() {
         if (templateFields.length > 0) {
           setFields(templateFields);
         }
+        setAutoAnswerTemplate((template?.auto_answer_template ?? null) as string | null);
 
         const { data: existingReport } = await supabase
           .from('consultation_reports')
@@ -498,13 +500,6 @@ export default function ConsultationReportPage() {
         );
       })()}
 
-      {/* 안내 */}
-      {isEditable && (
-        <p className="text-xs text-slate-500 mb-3 px-1">
-          {t.interpreter.reportInfoNotice}
-        </p>
-      )}
-
       {/* 상담일지 폼 */}
       <Card className="border-0 shadow-sm">
         <CardHeader>
@@ -547,6 +542,8 @@ export default function ConsultationReportPage() {
                 onSubmit={() => setSubmitOpen(true)}
                 submitting={saving}
                 submitLabel={reportStatus === 'revision_requested' ? t.interpreter.resubmit : t.interpreter.submit}
+                autoAnswerTemplate={autoAnswerTemplate}
+                consultation={consultation}
               />
 
               {isEditable && (

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { DEFAULT_TEMPLATE_FIELDS } from '@/lib/template/defaults';
+import { DEFAULT_TEMPLATE_FIELDS, DEFAULT_AUTO_ANSWER_TEMPLATE } from '@/lib/template/defaults';
 
 export default function NewEventPage() {
   const router = useRouter();
@@ -52,7 +52,11 @@ export default function NewEventPage() {
 
     const { error: templateError } = await supabase
       .from('report_templates')
-      .insert({ event_id: created.id, fields: DEFAULT_TEMPLATE_FIELDS });
+      .insert({
+        event_id: created.id,
+        fields: DEFAULT_TEMPLATE_FIELDS,
+        auto_answer_template: DEFAULT_AUTO_ANSWER_TEMPLATE,
+      });
 
     if (templateError) {
       toast.error('상담회는 생성됐으나 기본 양식 생성에 실패했습니다. 양식 화면에서 수동 생성하세요.');
