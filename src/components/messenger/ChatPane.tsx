@@ -7,7 +7,9 @@ import { Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/lib/i18n/context';
+import { createClient } from '@/lib/supabase/client';
 import { MESSAGE_BODY_MAX, type MessageRow } from '@/lib/messenger/messageRepository';
+import { useThreadRealtime } from '@/lib/messenger/useThreadRealtime';
 
 interface ChatPaneProps {
   threadId: string;
@@ -38,7 +40,18 @@ export function ChatPane({
         throw new Error(json.error || t.interpreter.messengerLoadError);
       }
       const json = await res.json();
-      setMessages((json.items as MessageRow[]) ?? []);
+      const serverItems = (json.items as MessageRow[]) ?? [];
+      // realtime 으로 먼저 도착한 메시지 보존 (snapshot race 방지)
+      setMessages((prev) => {
+        const byId = new Map<string, MessageRow>();
+        for (const m of serverItems) byId.set(m.id, m);
+        for (const m of prev) if (!byId.has(m.id)) byId.set(m.id, m);
+        return Array.from(byId.values()).sort((a, b) =>
+          a.created_at === b.created_at
+            ? a.id.localeCompare(b.id)
+            : a.created_at.localeCompare(b.created_at)
+        );
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t.interpreter.messengerLoadError);
     } finally {
@@ -49,6 +62,34 @@ export function ChatPane({
   useEffect(() => {
     void loadMessages();
   }, [loadMessages]);
+
+  // Realtime: INSERT/UPDATE 들어오면 dedupe 후 state 갱신. sender_name 은 raw payload 에 없으니 enrich.
+  const onRealtimeInsert = useCallback(async (row: MessageRow) => {
+    let enriched = row;
+    if (!row.sender_name && row.sender_id) {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', row.sender_id)
+          .maybeSingle();
+        enriched = { ...row, sender_name: (data?.name as string | undefined) ?? null };
+      } catch {
+        // ignore — name 비어도 라벨 fallback
+      }
+    }
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === enriched.id)) return prev;
+      return [...prev, enriched];
+    });
+  }, []);
+
+  const onRealtimeUpdate = useCallback((row: MessageRow) => {
+    setMessages((prev) => prev.map((m) => (m.id === row.id ? { ...m, ...row } : m)));
+  }, []);
+
+  useThreadRealtime(threadId, onRealtimeInsert, onRealtimeUpdate);
 
   useEffect(() => {
     // 새 메시지 들어오면 하단으로 스크롤
