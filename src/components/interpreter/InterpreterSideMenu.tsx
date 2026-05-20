@@ -12,6 +12,7 @@ import {
   ScanLine,
   FileText,
   Megaphone,
+  MessageSquare,
   BookOpen,
   CalendarDays,
   LogOut,
@@ -124,6 +125,15 @@ export function InterpreterSideMenu({
                   {unreadNotices}
                 </span>
               )}
+            </Link>
+
+            <Link
+              href="/interpreter/messages"
+              onClick={close}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted transition-colors"
+            >
+              <MessageSquare className="w-5 h-5 text-slate-500" />
+              <span className="text-sm font-medium">{t.interpreter.messengerTitle}</span>
             </Link>
 
             <Link

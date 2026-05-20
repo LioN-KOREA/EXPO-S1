@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
   Info,
   Megaphone,
+  MessageSquare,
   ClipboardList,
   CalendarClock,
   Languages,
@@ -63,6 +64,7 @@ const eventGroups: EventGroup[] = [
       { suffix: '/operate', label: '현장운영', icon: Activity },
       { suffix: '/infodesk', label: '인포데스크', icon: Info },
       { suffix: '/notice', label: '공지사항', icon: Megaphone },
+      { suffix: '/messages', label: '메시지', icon: MessageSquare },
     ],
   },
   {
