@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/button';
 import { useUnreadBadge } from '@/lib/messenger/useUnreadBadge';
 import {
   Menu,
-  QrCode,
-  ScanLine,
   FileText,
   Megaphone,
   MessageSquare,
@@ -19,7 +17,6 @@ import {
   LogOut,
   User,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 
 interface InterpreterSideMenuProps {
@@ -91,24 +88,6 @@ export function InterpreterSideMenu({
         </SheetHeader>
 
         <div className="flex-1 overflow-y-auto">
-          {/* QR 영역 */}
-          <div className="grid grid-cols-2 gap-3 p-4 border-b">
-            <button
-              onClick={() => { close(); toast.info(t.interpreter.qrScanPreparing); }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card hover:bg-muted transition-colors"
-            >
-              <ScanLine className="w-6 h-6 text-rose-500" />
-              <span className="text-xs font-medium">{t.interpreter.qrScan}</span>
-            </button>
-            <button
-              onClick={() => { close(); toast.info(t.interpreter.myQrPreparing); }}
-              className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card hover:bg-muted transition-colors"
-            >
-              <QrCode className="w-6 h-6 text-rose-500" />
-              <span className="text-xs font-medium">{t.interpreter.myQr}</span>
-            </button>
-          </div>
-
           {/* 제출현황 */}
           <div className="p-4 border-b">
             <div className="flex items-center justify-between px-3 py-3 rounded-xl bg-muted">

@@ -170,6 +170,54 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
 
     async function start() {
       try {
+        // 1) 보안 컨텍스트 / API 존재 확인 — getUserMedia 실행 전에 명확한 사유 노출
+        if (typeof window !== 'undefined') {
+          if (!window.isSecureContext) {
+            throw new Error(t.interpreter.cameraInsecureContext);
+          }
+          if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+            throw new Error(t.interpreter.cameraApiUnavailable);
+          }
+        }
+        if (aborted) return;
+
+        // 2) 직접 getUserMedia 시도 — 권한 prompt 띄우고 DOMException name 으로 사유 구분
+        //    (html5-qrcode 의 추상화는 에러 사유를 가려 사용자에게 무엇이 막혔는지 못 알려줌)
+        try {
+          const probeStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+          });
+          // 즉시 정리 — html5-qrcode 가 자체 stream 다시 획득
+          probeStream.getTracks().forEach((track) => { try { track.stop(); } catch { /* ignore */ } });
+        } catch (mediaErr) {
+          if (aborted) return;
+          const name = (mediaErr as DOMException)?.name ?? '';
+          const msg = mediaErr instanceof Error ? mediaErr.message : '';
+          // NotAllowedError = user denied OR Permissions-Policy block
+          // SecurityError = insecure context or policy block (Chrome 옛 버전)
+          // NotFoundError = no camera
+          // NotReadableError = camera in use by other app
+          if (name === 'NotAllowedError' || name === 'SecurityError') {
+            // Permissions-Policy 차단인지 사용자 거부인지 메시지로 추론
+            const isPolicyBlock = /Permissions[- ]?Policy/i.test(msg) || /disallowed by permissions policy/i.test(msg);
+            console.warn('[QrScannerModal] getUserMedia blocked:', { name, msg, isPolicyBlock });
+            if (isPolicyBlock) {
+              throw new Error(t.interpreter.cameraPolicyBlocked);
+            }
+            throw new Error(t.interpreter.cameraPermissionDenied);
+          }
+          if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+            throw new Error(t.interpreter.cameraNotFound);
+          }
+          if (name === 'NotReadableError') {
+            throw new Error(t.interpreter.cameraInUse);
+          }
+          // 알 수 없는 에러 — 원본 메시지 유지 (디버깅 도움)
+          console.warn('[QrScannerModal] getUserMedia unknown error:', { name, msg });
+          throw new Error(msg || t.interpreter.cameraStartFailed);
+        }
+        if (aborted) return;
+
         // 이전 세션 dispose 가 끝날 때까지 대기 (DOM id qr-scanner-region 재사용 충돌 방지)
         const pending = pendingDisposeRef.current;
         if (pending) {
