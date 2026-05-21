@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Search, Calendar, Plus, MessageSquare, QrCode } from 'lucide-react';
+import { ArrowLeft, Search, Calendar, Plus, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { QrIssueButton } from './QrIssueButton';
@@ -81,7 +81,6 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [messageOpen, setMessageOpen] = useState(false);
-  const [qrOpen, setQrOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -176,10 +175,6 @@ export default function AttendancePage() {
           <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)} className="flex-1 sm:flex-initial">
             <MessageSquare className="w-4 h-4 mr-1" />
             메시지 전송 예약
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setQrOpen(true)} className="flex-1 sm:flex-initial">
-            <QrCode className="w-4 h-4 mr-1" />
-            QR코드 촬영
           </Button>
         </div>
       </div>
@@ -342,20 +337,6 @@ export default function AttendancePage() {
         </DialogContent>
       </Dialog>
 
-      {/* QR 촬영 모달 (스텁) */}
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>QR코드 촬영</DialogTitle>
-            <DialogDescription>
-              QR 스캔으로 빠른 출석 처리를 합니다. 카메라 연동은 Phase E에서 구현됩니다.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQrOpen(false)}>닫기</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
