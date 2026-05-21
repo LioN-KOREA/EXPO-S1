@@ -128,6 +128,8 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
         const today = new Date().toISOString().slice(0, 10);
         const nowIso = new Date().toISOString();
 
+        // ignoreDuplicates: true — RLS 가 통역사에게 INSERT 만 허용 (UPDATE 는 admin 전용).
+        // 같은 날 중복 스캔은 UNIQUE 제약으로 자연 차단. 첫 출석만 기록.
         const { error } = await supabase
           .from('attendances')
           .upsert({
@@ -136,7 +138,7 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
             date: today,
             account_type: 'INTERPRETER',
             status: 'WAITING',
-          }, { onConflict: 'event_id,user_id,date', ignoreDuplicates: false });
+          }, { onConflict: 'event_id,user_id,date', ignoreDuplicates: true });
 
         if (aborted) return;
         if (error) throw new Error(error.message);
