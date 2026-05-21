@@ -159,6 +159,10 @@ export default async function InterpreterEventPage({
         pendingCount={pendingCount}
         eventId={eventId}
         firstPendingConsultationId={firstPendingConsultationId}
+        notStartedCount={notStarted}
+        inProgressCount={inProgressCount}
+        revisionCount={revisionCount}
+        rejectedCount={rejectedCount}
       />
 
       <Link href="/interpreter" className="inline-flex items-center text-sm text-slate-500 hover:text-muted-foreground mb-4">

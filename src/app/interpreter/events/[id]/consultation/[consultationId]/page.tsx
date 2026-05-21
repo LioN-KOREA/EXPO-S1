@@ -396,17 +396,20 @@ export default function ConsultationReportPage() {
       </Link>
 
       {/* 수정요청 알림 */}
-      {(reportStatus === 'revision_requested' || reportStatus === 'rejected') && report?.admin_comment && (
+      {(reportStatus === 'revision_requested' || reportStatus === 'rejected') && (
         <Card className="border-0 shadow-sm mb-4 bg-red-50/50 border-red-100">
           <CardContent className="p-4">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
               <div>
                 <p className="text-sm font-medium text-red-700">{t.interpreter.adminRevisionTitle}</p>
-                <div className="flex items-start gap-1.5 mt-1">
-                  <MessageSquare className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
-                  <p className="text-sm text-red-600">{report.admin_comment}</p>
-                </div>
+                <p className="text-sm text-red-600 mt-1">{t.interpreter.revisionInstructionMessage}</p>
+                {report?.admin_comment && (
+                  <div className="flex items-start gap-1.5 mt-2 pt-2 border-t border-red-100">
+                    <MessageSquare className="w-3 h-3 text-red-400 mt-0.5 shrink-0" />
+                    <p className="text-sm text-red-600">{report.admin_comment}</p>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
