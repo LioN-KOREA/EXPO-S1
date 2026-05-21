@@ -2,24 +2,13 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { parseTemplateExcel } from '@/lib/excel/template-parser';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureAdmin } from '@/lib/auth/guards';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
-  }
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   const formData = await request.formData();
   const file = formData.get('file') as File;

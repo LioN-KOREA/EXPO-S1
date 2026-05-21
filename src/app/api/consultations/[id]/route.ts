@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureAdmin } from '@/lib/auth/guards';
 
 export async function PATCH(
   request: NextRequest,
@@ -9,21 +10,8 @@ export async function PATCH(
   const { id } = await params;
   const supabase = await createClient();
 
-  // 인증 + Admin 확인
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
-  }
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   // Admin-confirmed — use service-role client for the mutations to bypass RLS
   const admin = createAdminClient();

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureAdmin } from '@/lib/auth/guards';
 
 const VALID_STATUSES = ['NONE', 'WAITING', 'COMING', 'ABSENT', 'IN_CONSULT', 'DONE', 'LEAVE_OK', 'LEAVE'];
 const VALID_EVALS = ['NORMAL', 'ABSENT', 'LATE', 'UNAUTHORIZED', 'OTHER'];
@@ -17,17 +18,8 @@ export async function PATCH(
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: '권한 없음' }, { status: 403 });
-  }
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   const body = await request.json();
   const admin = createAdminClient();
@@ -82,7 +74,7 @@ export async function PATCH(
       attendance_id: id,
       prev_status: current.status,
       new_status: updates.status,
-      changed_by: user.id,
+      changed_by: guard.user.id,
       change_method: method,
     });
     if (logErr) logError = logErr.message;

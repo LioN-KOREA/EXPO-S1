@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureAdmin } from '@/lib/auth/guards';
 
 /**
  * 공지 읽음 통계 (admin)
@@ -14,10 +15,8 @@ export async function GET(
   const { id: noticeId } = await params;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 });
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'admin') return NextResponse.json({ error: '권한 없음' }, { status: 403 });
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   const admin = createAdminClient();
   const { data: notice, error: nerr } = await admin

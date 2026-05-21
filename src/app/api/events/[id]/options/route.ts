@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureAdmin } from '@/lib/auth/guards';
 
 const BOOLEAN_KEYS = ['prior_match', 'greeting', 'onsite_match', 'ai_interpret', 'video_call'] as const;
 const ALLOWED_TARGETS = ['buyer', 'seller', 'all'] as const;
@@ -22,14 +23,6 @@ const DEFAULT_OPTIONS: EventOptions = {
   video_call: false,
   infodesk_target: 'all',
 };
-
-async function ensureAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: '인증 필요', status: 401 as const };
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'admin') return { error: '권한 없음', status: 403 as const };
-  return { user };
-}
 
 export async function GET(
   _request: NextRequest,

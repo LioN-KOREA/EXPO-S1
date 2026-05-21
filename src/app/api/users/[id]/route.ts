@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
 import { isValidCountryCode } from '@/lib/constants/countries';
 import type { UserRole } from '@/types';
+import { ensureAdmin } from '@/lib/auth/guards';
 
 const ALLOWED_ROLES: UserRole[] = ['admin', 'interpreter', 'buyer', 'seller'];
 const ALLOWED_FIELDS = ['name', 'email', 'role', 'phone', 'language', 'company_name', 'country'];
@@ -14,11 +15,8 @@ export async function PATCH(
   const { id: userId } = await params;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'admin') return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   const admin = createAdminClient();
   const body = await request.json();
@@ -109,14 +107,11 @@ export async function DELETE(
   const { id: userId } = await params;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-  if (profile?.role !== 'admin') return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   // 자기 자신 삭제 방지
-  if (userId === user.id) return NextResponse.json({ error: '자기 자신은 삭제할 수 없습니다' }, { status: 400 });
+  if (userId === guard.user.id) return NextResponse.json({ error: '자기 자신은 삭제할 수 없습니다' }, { status: 400 });
 
   const admin = createAdminClient();
 

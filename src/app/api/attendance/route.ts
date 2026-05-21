@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { NextRequest, NextResponse } from 'next/server';
+import { ensureAdmin } from '@/lib/auth/guards';
 
 // 입력 검증 헬퍼
 const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -14,17 +15,8 @@ const VALID_ACCOUNT_TYPES_INSERT = ['INTERPRETER', 'SELLER', 'ALL'] as const;
  */
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: '권한 없음' }, { status: 403 });
-  }
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   const { searchParams } = new URL(request.url);
   const eventId = searchParams.get('event_id');
@@ -63,17 +55,8 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: '인증 필요' }, { status: 401 });
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: '권한 없음' }, { status: 403 });
-  }
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   const body = await request.json();
   const { event_id, date } = body;

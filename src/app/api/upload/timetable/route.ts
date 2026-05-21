@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { getInitialPassword } from '@/lib/utils/password';
 import { INTERPRETER_STATS_TAG } from '@/lib/cache/interpreter-stats';
+import { ensureAdmin } from '@/lib/auth/guards';
 
 /**
  * 이메일로 기존 계정 찾거나 새로 생성
@@ -61,20 +62,8 @@ async function findOrCreateAccount(
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: '인증이 필요합니다' }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: '권한이 없습니다' }, { status: 403 });
-  }
+  const guard = await ensureAdmin(supabase);
+  if ('error' in guard) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
   const formData = await request.formData();
   const file = formData.get('file') as File;
