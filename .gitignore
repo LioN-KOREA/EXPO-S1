@@ -49,4 +49,3 @@ TEST_ACCOUNTS.md
 # claude code
 .claude/
 lambda-out.json
-session-history/
