@@ -125,23 +125,26 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
         if (aborted) return;
         if (!user) throw new Error(t.interpreter.loginRequired);
 
-        const today = new Date().toISOString().slice(0, 10);
         const nowIso = new Date().toISOString();
 
-        // ignoreDuplicates: true — RLS 가 통역사에게 INSERT 만 허용 (UPDATE 는 admin 전용).
-        // 같은 날 중복 스캔은 UNIQUE 제약으로 자연 차단. 첫 출석만 기록.
-        const { error } = await supabase
-          .from('attendances')
-          .upsert({
-            event_id: scannedEventId,
-            user_id: user.id,
-            date: today,
-            account_type: 'INTERPRETER',
-            status: 'WAITING',
-          }, { onConflict: 'event_id,user_id,date', ignoreDuplicates: true });
+        // RPC interpreter_self_checkin (마이그 039) —
+        // INSERT 또는 status='NONE' → 'WAITING' UPDATE 를 서버측에서 원자적으로 처리.
+        // admin 이 미리 만들어둔 status=NONE 행이 있어도 정상 승격된다.
+        const { error } = await supabase.rpc('interpreter_self_checkin', {
+          p_event_id: scannedEventId,
+        });
 
         if (aborted) return;
-        if (error) throw new Error(error.message);
+        if (error) {
+          // 서버측 영문 키워드 에러 → i18n 매핑된 사용자 메시지
+          const raw = error.message ?? '';
+          let mapped: string | null = null;
+          if (raw.includes('unauthenticated')) mapped = t.interpreter.loginRequired;
+          else if (raw.includes('not_interpreter')) mapped = t.interpreter.qrErrNotInterpreter;
+          else if (raw.includes('not_assigned')) mapped = t.interpreter.qrErrNotAssigned;
+          else if (raw.includes('event_inactive')) mapped = t.interpreter.qrErrEventInactive;
+          throw new Error(mapped ?? raw);
+        }
 
         // 외부 콜백 호출 전에 카메라 정리 (콜백이 throw 해도 leak 없도록)
         await disposeOnce();
