@@ -221,6 +221,52 @@ async function buildTimetableExcel() {
   console.log(`✅ ${outPath}`);
 }
 
+// =================================================================
+// 3. 통역사 등록 엑셀
+// =================================================================
+async function buildInterpretersExcel() {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('통역사');
+
+  const headers = ['이름', '이메일', '전화번호', '통역언어'];
+  applyHeaderStyle(ws.addRow(headers));
+
+  // 10명. 언어 분포: 영어 3, 중국어 2, 일본어 2, 베트남어 1, 태국어 1, 인도네시아어 1
+  const interpreters = [
+    ['김영어', 'interpreter01@excon-test.kr', '010-4001-1111', '영어'],
+    ['이영어', 'interpreter02@excon-test.kr', '010-4002-2222', '영어'],
+    ['박영어', 'interpreter03@excon-test.kr', '010-4003-3333', '영어'],
+    ['최중국', 'interpreter04@excon-test.kr', '010-4004-4444', '중국어'],
+    ['정중국', 'interpreter05@excon-test.kr', '010-4005-5555', '중국어'],
+    ['강일본', 'interpreter06@excon-test.kr', '010-4006-6666', '일본어'],
+    ['조일본', 'interpreter07@excon-test.kr', '010-4007-7777', '일본어'],
+    ['윤월남', 'interpreter08@excon-test.kr', '010-4008-8888', '베트남어'],
+    ['장태국', 'interpreter09@excon-test.kr', '010-4009-9999', '태국어'],
+    ['임인니', 'interpreter10@excon-test.kr', '010-4010-1010', '인도네시아어'],
+  ];
+
+  interpreters.forEach(r => ws.addRow(r));
+
+  ws.columns = [{ width: 15 }, { width: 30 }, { width: 18 }, { width: 18 }];
+
+  // 안내 시트
+  const guide = wb.addWorksheet('작성 안내');
+  guide.addRow(['테스트 상담회 — 통역사 등록']);
+  guide.addRow([]);
+  guide.addRow(['- 통역사 10명']);
+  guide.addRow(['- 영어 3 / 중국어 2 / 일본어 2 / 베트남어 1 / 태국어 1 / 인도네시아어 1']);
+  guide.addRow(['- 이메일: interpreter01~10@excon-test.kr']);
+  guide.addRow(['- 초기 비밀번호: 전화번호 뒷자리 (예: 010-4001-1111 → 40011111)']);
+  guide.addRow(['- 업로드: 통역사 배정 페이지 > 엑셀 업로드 (교체/추가 모드 선택)']);
+  guide.getColumn(1).width = 60;
+  guide.getRow(1).font = { bold: true, size: 13 };
+
+  const outPath = path.join(outDir, '통역사_등록_테스트.xlsx');
+  await wb.xlsx.writeFile(outPath);
+  console.log(`✅ ${outPath}`);
+}
+
 await buildUsersExcel();
 await buildTimetableExcel();
+await buildInterpretersExcel();
 console.log('\n작업 완료. output/ 폴더 확인.');

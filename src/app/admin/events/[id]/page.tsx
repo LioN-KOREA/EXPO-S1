@@ -9,7 +9,6 @@ import {
   Download,
   ClipboardList,
   BarChart3,
-  SlidersHorizontal,
   ClipboardCheck,
   Activity,
   Info,
@@ -68,11 +67,6 @@ export default async function EventDetailPage({
     supabase.from('notices').select('*', { count: 'exact', head: true }).eq('event_id', id),
     supabase.from('attendances').select('*', { count: 'exact', head: true }).eq('event_id', id),
   ]);
-
-  // 이벤트 옵션 활성 토글 개수
-  const options = (event.options ?? {}) as Record<string, unknown>;
-  const optionToggles = ['prior_match', 'greeting', 'onsite_match', 'ai_interpret', 'video_call'];
-  const activeOptionCount = optionToggles.filter((k) => options[k] === true).length;
 
   type MenuItem = {
     title: string;
@@ -135,15 +129,6 @@ export default async function EventDetailPage({
           countLabel: '개 필드',
           color: 'from-amber-500 to-amber-600',
         },
-        {
-          title: '옵션',
-          description: '사전주선·영접·현장매칭·AI통역·화상상담·인포데스크 대상',
-          href: `/admin/events/${id}/settings`,
-          icon: SlidersHorizontal,
-          count: activeOptionCount,
-          countLabel: '/ 5 활성',
-          color: 'from-cyan-500 to-cyan-600',
-        },
       ],
     },
     {
@@ -151,7 +136,7 @@ export default async function EventDetailPage({
       items: [
         {
           title: '출석표',
-          description: '통역사·셀러 출석 상태 + 근태평가',
+          description: '통역사 출석 상태 + 근태평가',
           href: `/admin/events/${id}/attendance`,
           icon: ClipboardCheck,
           count: attendancesRes.count ?? 0,
