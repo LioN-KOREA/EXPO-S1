@@ -1,0 +1,43 @@
+name: CI
+
+# 모든 PR, 그리고 EXPO-S1 브랜치 push 에서 typecheck + 테스트를 돌린다.
+# deploy-prod 워크플로 자체도 빌드 직전에 `npm test` 게이트를 가지므로
+# 테스트가 실패하면 양쪽에서 모두 차단된다.
+#
+# 정책:
+# - lint: 기존 코드베이스 누적 부채로 인해 별도 클린업 슬라이스 전까지 비활성
+# - typecheck: TS strict 회귀 차단용 필수 게이트
+# - test: Vitest 단위 테스트 (S0 슬라이스에서 도입)
+# - build: Windows 로컬에서 사전 존재 webpack 이슈가 있어 PR CI 에서는 제외.
+#          deploy-prod (Linux runner) 가 본 빌드를 담당한다.
+on:
+  pull_request:
+    branches: ['**']
+  push:
+    branches: [EXPO-S1]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Typecheck (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Unit tests (Vitest)
+        run: npm test

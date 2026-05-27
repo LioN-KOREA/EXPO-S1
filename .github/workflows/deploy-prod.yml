@@ -53,6 +53,9 @@ jobs:
       - name: Install app deps
         run: npm ci
 
+      - name: Unit tests (Vitest)
+        run: npm test
+
       - name: Build Next.js
         run: npm run build
 
