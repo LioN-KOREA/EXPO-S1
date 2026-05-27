@@ -127,7 +127,7 @@ function buildUsersTemplate(workbook: ExcelJS.Workbook) {
   guide.addRow(['2. 유형(권한): 바이어/셀러/통역사/관리자 또는 BUYER/SELLER/INTERPRETER/ADMIN 중 선택']);
   guide.addRow(['3. 이름, 아이디(이메일), 연락처는 필수입니다.']);
   guide.addRow(['4. 국가: Country 시트의 Code 값을 사용해주세요 (예: KR, CN, US)']);
-  guide.addRow(['5. 초기 비밀번호: 전화번호에서 국가코드·area code 제외한 subscriber number(예: 010-1234-5678 → 12345678, (212) 555-1234 → 5551234)로 자동 설정됩니다.']);
+  guide.addRow(['5. 초기 비밀번호는 전화번호 뒷자리(국가번호·지역번호 제외)로 자동 설정됩니다. 예) 010-1234-5678 → 12345678, (212) 555-1234 → 5551234.']);
   guide.addRow(['6. 첫 로그인 시 비밀번호를 변경해야 합니다.']);
   guide.getColumn(1).width = 60;
   guide.getRow(1).font = { bold: true, size: 13 };

@@ -36,8 +36,8 @@ export function InterpreterRegistration({ eventId }: { eventId: string }) {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-slate-500 mb-4">
-          엑셀 파일 (이름, 이메일, 전화번호)로 통역사 계정을 생성하고 이 상담회에 배정합니다.
-          PW는 전화번호의 subscriber number(국가코드·area code 제외). 이미 있는 계정은 배정만 합니다.
+          엑셀 파일(이름·이메일·전화번호)로 통역사 계정을 만들고 이 상담회에 배정합니다.
+          초기 비밀번호는 전화번호 뒷자리(국가번호·지역번호 제외). 이미 있는 계정은 배정만 됩니다.
         </p>
 
         <div className="flex gap-2 mb-4">
