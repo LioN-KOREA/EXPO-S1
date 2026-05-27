@@ -6,14 +6,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ArrowLeft, Search, Calendar, Plus, MessageSquare } from 'lucide-react';
-import Link from 'next/link';
+import { Search, Calendar, Plus, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { QrIssueButton } from './QrIssueButton';
 
-type AccountType = 'INTERPRETER' | 'SELLER';
 type WorkType = 'REGULAR' | 'RESERVE';
 type AttendanceStatus = 'NONE' | 'WAITING' | 'COMING' | 'ABSENT' | 'IN_CONSULT' | 'DONE' | 'LEAVE_OK' | 'LEAVE';
 type EvalType = 'NORMAL' | 'ABSENT' | 'LATE' | 'UNAUTHORIZED' | 'OTHER' | null;
@@ -29,7 +26,7 @@ interface AttendanceRow {
   event_id: string;
   user_id: string;
   date: string;
-  account_type: AccountType;
+  account_type: 'INTERPRETER';
   work_type: WorkType;
   status: AttendanceStatus;
   eval: EvalType;
@@ -73,7 +70,6 @@ export default function AttendancePage() {
   const params = useParams();
   const eventId = params.id as string;
 
-  const [accountTab, setAccountTab] = useState<AccountType>('INTERPRETER');
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [search, setSearch] = useState('');
   const [workFilter, setWorkFilter] = useState<'ALL' | WorkType>('ALL');
@@ -88,7 +84,7 @@ export default function AttendancePage() {
       const url = new URL('/api/attendance', window.location.origin);
       url.searchParams.set('event_id', eventId);
       url.searchParams.set('date', date);
-      url.searchParams.set('account_type', accountTab);
+      url.searchParams.set('account_type', 'INTERPRETER');
       const res = await fetch(url.toString());
       if (!res.ok) throw new Error('출석 조회 실패');
       const json = await res.json();
@@ -98,7 +94,7 @@ export default function AttendancePage() {
     } finally {
       setLoading(false);
     }
-  }, [eventId, date, accountTab]);
+  }, [eventId, date]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -130,7 +126,7 @@ export default function AttendancePage() {
       const res = await fetch('/api/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_id: eventId, date, account_type: accountTab }),
+        body: JSON.stringify({ event_id: eventId, date, account_type: 'INTERPRETER' }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || '생성 실패');
@@ -168,7 +164,7 @@ export default function AttendancePage() {
       <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-foreground">출석표</h2>
-          <p className="text-slate-500 text-sm mt-1">통역사·셀러 출석 상태 관리</p>
+          <p className="text-slate-500 text-sm mt-1">통역사 출석 상태 관리</p>
         </div>
         <div className="flex gap-2 flex-wrap w-full sm:w-auto">
           <QrIssueButton eventId={eventId} />
@@ -197,14 +193,6 @@ export default function AttendancePage() {
       {/* 컨트롤 바 */}
       <Card className="border-0 shadow-sm mb-4">
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
-          {/* 시연용 셀러 탭 일시 숨김. accountTab state 는 INTERPRETER 고정 유지 */}
-          <Tabs value={accountTab} onValueChange={(v) => setAccountTab(v as AccountType)}>
-            <TabsList>
-              <TabsTrigger value="INTERPRETER">통역사</TabsTrigger>
-              {false && <TabsTrigger value="SELLER">셀러</TabsTrigger>}
-            </TabsList>
-          </Tabs>
-
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-slate-500" />
             <Input
@@ -323,7 +311,7 @@ export default function AttendancePage() {
           <DialogHeader>
             <DialogTitle>메시지 전송 예약</DialogTitle>
             <DialogDescription>
-              해당 일자({date}) {accountTab === 'INTERPRETER' ? '통역사' : '셀러'} 출석 대상자에게 메시지 발송을 예약합니다.
+              해당 일자({date}) 통역사 출석 대상자에게 메시지 발송을 예약합니다.
               실제 발송 기능은 Phase E에서 연동될 예정입니다.
             </DialogDescription>
           </DialogHeader>
