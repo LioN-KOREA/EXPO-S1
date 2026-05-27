@@ -6,8 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Search, Calendar, Plus, MessageSquare } from 'lucide-react';
+import { Search, Calendar, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { QrIssueButton } from './QrIssueButton';
 
@@ -76,7 +75,6 @@ export default function AttendancePage() {
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [messageOpen, setMessageOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -168,13 +166,6 @@ export default function AttendancePage() {
         </div>
         <div className="flex gap-2 flex-wrap w-full sm:w-auto">
           <QrIssueButton eventId={eventId} />
-          {/* PRD #10 (이슈 #12~#15) 구현 전까지 비활성화. 다이얼로그/state 는 그대로 두고 트리거 버튼만 숨김 */}
-          {false && (
-            <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)} className="flex-1 sm:flex-initial">
-              <MessageSquare className="w-4 h-4 mr-1" />
-              메시지 전송 예약
-            </Button>
-          )}
         </div>
       </div>
 
@@ -304,30 +295,6 @@ export default function AttendancePage() {
           </table>
         </CardContent>
       </Card>
-
-      {/* 메시지 전송 예약 모달 (스텁) */}
-      <Dialog open={messageOpen} onOpenChange={setMessageOpen}>
-        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>메시지 전송 예약</DialogTitle>
-            <DialogDescription>
-              해당 일자({date}) 통역사 출석 대상자에게 메시지 발송을 예약합니다.
-              실제 발송 기능은 Phase E에서 연동될 예정입니다.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMessageOpen(false)}>닫기</Button>
-            <Button
-              onClick={async () => {
-                toast.info('메시지 발송 예약은 Phase E에서 구현됩니다');
-                setMessageOpen(false);
-              }}
-            >
-              예약하기
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
     </div>
   );
