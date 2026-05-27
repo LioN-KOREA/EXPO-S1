@@ -39,9 +39,12 @@ export async function GET(request: NextRequest) {
     if (!mapping) {
       return NextResponse.json({ error: '해당 이벤트에 배정되지 않은 통역사' }, { status: 403 });
     }
-    let thread = await getThreadForInterpreter(supabase, eventId, guard.user.id);
+    // interpreter thread upsert/조회는 service-role 로 — RLS post-insert SELECT 가시성 이슈 회피.
+    // mapping 검증을 user client 로 이미 완료해 권한 확인은 끝난 상태.
+    const admin = createAdminClient();
+    let thread = await getThreadForInterpreter(admin, eventId, guard.user.id);
     if (!thread) {
-      thread = await getOrCreateThread(supabase, eventId, guard.user.id);
+      thread = await getOrCreateThread(admin, eventId, guard.user.id);
     }
     return NextResponse.json({ thread });
   } catch (e) {
