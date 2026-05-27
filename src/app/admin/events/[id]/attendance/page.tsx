@@ -172,10 +172,13 @@ export default function AttendancePage() {
         </div>
         <div className="flex gap-2 flex-wrap w-full sm:w-auto">
           <QrIssueButton eventId={eventId} />
-          <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)} className="flex-1 sm:flex-initial">
-            <MessageSquare className="w-4 h-4 mr-1" />
-            메시지 전송 예약
-          </Button>
+          {/* PRD #10 (이슈 #12~#15) 구현 전까지 비활성화. 다이얼로그/state 는 그대로 두고 트리거 버튼만 숨김 */}
+          {false && (
+            <Button variant="outline" size="sm" onClick={() => setMessageOpen(true)} className="flex-1 sm:flex-initial">
+              <MessageSquare className="w-4 h-4 mr-1" />
+              메시지 전송 예약
+            </Button>
+          )}
         </div>
       </div>
 
