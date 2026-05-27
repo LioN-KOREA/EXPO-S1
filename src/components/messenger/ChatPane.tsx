@@ -186,7 +186,6 @@ export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneP
   }
 
   function canDelete(m: MessageRow): boolean {
-    if (m.deleted_at) return false;
     if (currentUserRole === 'admin') return true;
     return m.sender_id === currentUserId;
   }
@@ -254,23 +253,13 @@ export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneP
                 ? m.sender_name ?? t.interpreter.messengerSenderAdmin
                 : m.sender_name ?? '';
             const readByOther = isMine && isMessageReadByOther(m);
-            const isDeleted = !!m.deleted_at;
             const showDelete = canDelete(m);
             return (
               <div key={m.id} className={`group flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
                 {!isMine && senderLabel && (
                   <span className="text-[11px] text-slate-500 mb-0.5 px-1">{senderLabel}</span>
                 )}
-                {isDeleted ? (
-                  <div
-                    className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 text-sm italic text-slate-500 ${
-                      isMine ? 'bg-blue-600/30 rounded-br-sm' : 'bg-muted/60 rounded-bl-sm'
-                    }`}
-                  >
-                    {m.deleted_by_role === 'admin' ? '관리자에 의해 삭제된 메시지' : '삭제된 메시지'}
-                  </div>
-                ) : (
-                  <div className="relative group/msg">
+                <div className="relative group/msg">
                     <div
                       className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words ${
                         isMine
@@ -317,10 +306,9 @@ export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneP
                       </button>
                     )}
                   </div>
-                )}
                 <div className="flex items-center gap-1 text-[10px] text-slate-400 mt-0.5 px-1">
                   <span>{formatTime(m.created_at)}</span>
-                  {isMine && !isDeleted && (
+                  {isMine && (
                     readByOther ? (
                       <CheckCheck className="w-3 h-3 text-blue-500" aria-label="읽음" />
                     ) : (

@@ -1,5 +1,5 @@
 // messages 도메인 저장소.
-// 책임: 메시지 조회 / INSERT / soft delete. 첨부 첨부 검증은 attachmentValidator, 권한은 RLS + messages_update_guard 트리거.
+// 책임: 메시지 조회 / INSERT. hard delete 는 라우트 (`/api/messages/[id]/delete`) 에서 service-role 로 직접 수행.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -12,8 +12,6 @@ export interface MessageRow {
   sender_role: SenderRole;
   body: string | null;
   attachments: AttachmentMeta[];
-  deleted_at: string | null;
-  deleted_by_role: 'admin' | 'sender' | null;
   created_at: string;
   sender_name?: string | null;
 }
@@ -37,7 +35,7 @@ export async function listMessages(
   const { data, error } = await supabase
     .from('messages')
     .select(
-      'id, thread_id, sender_id, sender_role, body, attachments, deleted_at, deleted_by_role, created_at, sender:profiles!messages_sender_id_fkey(name)'
+      'id, thread_id, sender_id, sender_role, body, attachments, created_at, sender:profiles!messages_sender_id_fkey(name)'
     )
     .eq('thread_id', threadId)
     .order('created_at', { ascending: false })
@@ -55,8 +53,6 @@ export async function listMessages(
       sender_role: m.sender_role as SenderRole,
       body: m.body as string | null,
       attachments: (m.attachments as AttachmentMeta[]) ?? [],
-      deleted_at: m.deleted_at as string | null,
-      deleted_by_role: m.deleted_by_role as 'admin' | 'sender' | null,
       created_at: m.created_at as string,
       sender_name: senderObj?.name ?? null,
     } satisfies MessageRow;
@@ -89,23 +85,6 @@ export function validateMessageInput(input: InsertMessageInput): string | null {
   return null;
 }
 
-/** soft delete. 권한 분기는 호출자 (route) 가 결정, trigger 가 위장 차단. */
-export async function markMessageDeleted(
-  supabase: SupabaseClient,
-  messageId: string,
-  deletedByRole: 'admin' | 'sender',
-  at: string = new Date().toISOString()
-): Promise<{ id: string } | null> {
-  const { data, error } = await supabase
-    .from('messages')
-    .update({ deleted_at: at, deleted_by_role: deletedByRole })
-    .eq('id', messageId)
-    .select('id')
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  return (data as { id: string } | null) ?? null;
-}
-
 export async function insertMessage(
   supabase: SupabaseClient,
   input: InsertMessageInput
@@ -123,7 +102,7 @@ export async function insertMessage(
       attachments: input.attachments ?? [],
     })
     .select(
-      'id, thread_id, sender_id, sender_role, body, attachments, deleted_at, deleted_by_role, created_at'
+      'id, thread_id, sender_id, sender_role, body, attachments, created_at'
     )
     .single();
   if (error) throw new Error(error.message);
@@ -135,8 +114,6 @@ export async function insertMessage(
     sender_role: data.sender_role as SenderRole,
     body: data.body as string | null,
     attachments: (data.attachments as AttachmentMeta[]) ?? [],
-    deleted_at: data.deleted_at as string | null,
-    deleted_by_role: data.deleted_by_role as 'admin' | 'sender' | null,
     created_at: data.created_at as string,
   };
 }
