@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { MessageSquare } from 'lucide-react';
@@ -41,10 +42,12 @@ export default async function InterpreterMessagesPage() {
     );
   }
 
-  // thread lazy upsert
-  let thread = await getThreadForInterpreter(supabase, event.id, user.id);
+  // thread lazy upsert — service-role 클라이언트로 수행 (RLS post-insert SELECT 가시성 이슈 회피).
+  // 사용자는 이미 cookies 기반 인증 완료, 본인의 thread 만 upsert 함.
+  const admin = createAdminClient();
+  let thread = await getThreadForInterpreter(admin, event.id, user.id);
   if (!thread) {
-    thread = await getOrCreateThread(supabase, event.id, user.id);
+    thread = await getOrCreateThread(admin, event.id, user.id);
   }
 
   return (

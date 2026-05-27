@@ -70,6 +70,9 @@ export default function AttendancePage() {
 
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'eval'>('name');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | AttendanceStatus>('ALL');
+  const [evalFilter, setEvalFilter] = useState<'ALL' | NonNullable<EvalType>>('ALL');
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -95,10 +98,29 @@ export default function AttendancePage() {
   useEffect(() => { void load(); }, [load]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return rows;
-    const q = search.trim().toLowerCase();
-    return rows.filter(r => r.user.name?.toLowerCase().includes(q));
-  }, [rows, search]);
+    let list = rows;
+    if (statusFilter !== 'ALL') list = list.filter(r => r.status === statusFilter);
+    if (evalFilter !== 'ALL') list = list.filter(r => r.eval === evalFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(r => r.user.name?.toLowerCase().includes(q));
+    }
+    return [...list].sort((a, b) => {
+      if (sortBy === 'name') return a.user.name.localeCompare(b.user.name, 'ko');
+      if (sortBy === 'status') {
+        const idxA = STATUS_ORDER.indexOf(a.status);
+        const idxB = STATUS_ORDER.indexOf(b.status);
+        if (idxA !== idxB) return idxA - idxB;
+        return a.user.name.localeCompare(b.user.name, 'ko');
+      }
+      // eval: null 후순위, 그 다음 EVAL_LABEL 키 순서
+      const evalOrder = ['NORMAL', 'LATE', 'ABSENT', 'UNAUTHORIZED', 'OTHER'];
+      const idxA = a.eval ? evalOrder.indexOf(a.eval) : 99;
+      const idxB = b.eval ? evalOrder.indexOf(b.eval) : 99;
+      if (idxA !== idxB) return idxA - idxB;
+      return a.user.name.localeCompare(b.user.name, 'ko');
+    });
+  }, [rows, search, sortBy, statusFilter, evalFilter]);
 
   async function createAttendances() {
     setCreating(true);
@@ -178,6 +200,45 @@ export default function AttendancePage() {
             <Plus className="w-4 h-4 mr-1" />
             출석표 생성/추가
           </Button>
+        </CardContent>
+
+        <CardContent className="px-4 pb-4 pt-0 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+          <span className="text-slate-500">정렬</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'name' | 'status' | 'eval')}
+            className="h-8 px-2 border rounded-md bg-background text-xs"
+          >
+            <option value="name">이름순</option>
+            <option value="status">출석상태순</option>
+            <option value="eval">근태평가순</option>
+          </select>
+
+          <span className="text-slate-500 ml-2">출석상태</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as 'ALL' | AttendanceStatus)}
+            className="h-8 px-2 border rounded-md bg-background text-xs"
+          >
+            <option value="ALL">전체</option>
+            {STATUS_ORDER.map(s => (
+              <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+            ))}
+          </select>
+
+          <span className="text-slate-500 ml-2">근태평가</span>
+          <select
+            value={evalFilter}
+            onChange={(e) => setEvalFilter(e.target.value as 'ALL' | NonNullable<EvalType>)}
+            className="h-8 px-2 border rounded-md bg-background text-xs"
+          >
+            <option value="ALL">전체</option>
+            {(Object.keys(EVAL_LABEL) as Array<keyof typeof EVAL_LABEL>).map(k => (
+              <option key={k} value={k}>{EVAL_LABEL[k]}</option>
+            ))}
+          </select>
+
+          <span className="ml-auto text-slate-500">{filtered.length} 건</span>
         </CardContent>
       </Card>
 
