@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Calendar, Plus } from 'lucide-react';
@@ -71,7 +70,6 @@ export default function AttendancePage() {
 
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [search, setSearch] = useState('');
-  const [workFilter, setWorkFilter] = useState<'ALL' | WorkType>('ALL');
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -97,26 +95,10 @@ export default function AttendancePage() {
   useEffect(() => { void load(); }, [load]);
 
   const filtered = useMemo(() => {
-    let list = rows;
-    if (workFilter !== 'ALL') list = list.filter(r => r.work_type === workFilter);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(r =>
-        r.user.name?.toLowerCase().includes(q)
-        || (r.memo ?? '').toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [rows, workFilter, search]);
-
-  const counts = useMemo(() => {
-    const c: Record<AttendanceStatus, number> = {
-      NONE: 0, WAITING: 0, COMING: 0, ABSENT: 0,
-      IN_CONSULT: 0, DONE: 0, LEAVE_OK: 0, LEAVE: 0,
-    };
-    rows.forEach(r => { c[r.status] = (c[r.status] ?? 0) + 1; });
-    return c;
-  }, [rows]);
+    if (!search.trim()) return rows;
+    const q = search.trim().toLowerCase();
+    return rows.filter(r => r.user.name?.toLowerCase().includes(q));
+  }, [rows, search]);
 
   async function createAttendances() {
     setCreating(true);
@@ -137,7 +119,7 @@ export default function AttendancePage() {
     }
   }
 
-  async function updateRow(rowId: string, patch: Partial<{ status: AttendanceStatus; eval: EvalType; memo: string }>) {
+  async function updateRow(rowId: string, patch: Partial<{ status: AttendanceStatus; eval: EvalType }>) {
     // optimistic
     setRows(prev => prev.map(r => r.id === rowId ? { ...r, ...patch } : r));
     try {
@@ -169,18 +151,6 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {/* 상태별 카운트 배지 */}
-      <Card className="border-0 shadow-sm mb-4">
-        <CardContent className="p-4 flex flex-wrap gap-2">
-          {STATUS_ORDER.map(s => (
-            <Badge key={s} variant="outline" className={`${STATUS_COLOR[s]} border-0`}>
-              {STATUS_LABEL[s]} {counts[s]}
-            </Badge>
-          ))}
-          <Badge variant="outline" className="ml-auto">전체 {rows.length}</Badge>
-        </CardContent>
-      </Card>
-
       {/* 컨트롤 바 */}
       <Card className="border-0 shadow-sm mb-4">
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
@@ -194,20 +164,10 @@ export default function AttendancePage() {
             />
           </div>
 
-          <select
-            value={workFilter}
-            onChange={(e) => setWorkFilter(e.target.value as 'ALL' | WorkType)}
-            className="h-9 px-2 text-sm border rounded-md bg-background"
-          >
-            <option value="ALL">전체 근무</option>
-            <option value="REGULAR">정규</option>
-            <option value="RESERVE">예비</option>
-          </select>
-
           <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
-              placeholder="이름·메모 검색"
+              placeholder="이름 검색"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -227,34 +187,25 @@ export default function AttendancePage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-900/40">
               <tr className="text-left text-xs text-slate-500">
-                <th className="px-3 py-3 font-medium">근무형태</th>
                 <th className="px-3 py-3 font-medium">이름</th>
-                <th className="px-3 py-3 font-medium">언어</th>
-                <th className="px-3 py-3 font-medium">상태</th>
+                <th className="px-3 py-3 font-medium">출석 상태</th>
                 <th className="px-3 py-3 font-medium">근태평가</th>
-                <th className="px-3 py-3 font-medium">메모</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-500">불러오는 중...</td></tr>
+                <tr><td colSpan={3} className="px-3 py-6 text-center text-slate-500">불러오는 중...</td></tr>
               )}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-500">
+                <tr><td colSpan={3} className="px-3 py-6 text-center text-slate-500">
                   데이터가 없습니다. &quot;출석표 생성/추가&quot;를 눌러 일자별 출석 행을 만드세요.
                 </td></tr>
               )}
               {!loading && filtered.map((r) => (
                 <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50/60 dark:hover:bg-slate-900/30">
                   <td className="px-3 py-2">
-                    <Badge variant={r.work_type === 'REGULAR' ? 'default' : 'secondary'}>
-                      {r.work_type === 'REGULAR' ? '정규' : '예비'}
-                    </Badge>
-                  </td>
-                  <td className="px-3 py-2">
                     <div className="font-medium">{r.user.name}</div>
                   </td>
-                  <td className="px-3 py-2 text-slate-600">{r.user.language ?? '—'}</td>
                   <td className="px-3 py-2">
                     <select
                       value={r.status}
@@ -277,17 +228,6 @@ export default function AttendancePage() {
                         <option key={k} value={k}>{EVAL_LABEL[k]}</option>
                       ))}
                     </select>
-                  </td>
-                  <td className="px-3 py-2">
-                    <Input
-                      defaultValue={r.memo ?? ''}
-                      onBlur={(e) => {
-                        const v = e.target.value;
-                        if (v !== (r.memo ?? '')) void updateRow(r.id, { memo: v });
-                      }}
-                      placeholder="메모"
-                      className="h-8 text-xs"
-                    />
                   </td>
                 </tr>
               ))}
