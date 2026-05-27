@@ -43,7 +43,7 @@ export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneP
     threadId,
     currentUserRole
   );
-  const { messages, loading, appendLocal, updateLocal } = useMessageSync(
+  const { messages, loading, appendLocal, removeLocal } = useMessageSync(
     threadId,
     t.interpreter.messengerLoadError,
     { onThreadUpdate: applyThreadUpdate }
@@ -175,12 +175,8 @@ export function ChatPane({ threadId, currentUserId, currentUserRole }: ChatPaneP
       if (!res.ok) {
         throw new Error((json as { error?: string }).error || '삭제 실패');
       }
-      // realtime UPDATE 가 곧 도착하지만 즉시 반영을 위해 local update
-      updateLocal({
-        id: deleteTargetId,
-        deleted_at: new Date().toISOString(),
-        deleted_by_role: (json as { deleted_by_role: 'admin' | 'sender' }).deleted_by_role,
-      });
+      // hard delete — 즉시 local 에서도 제거. realtime DELETE 가 다른 클라이언트에도 전파.
+      removeLocal(deleteTargetId);
       setDeleteTargetId(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '삭제 실패');

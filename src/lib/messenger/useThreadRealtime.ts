@@ -14,6 +14,7 @@ import type { ThreadRow } from './threadRepository';
 export interface ThreadRealtimeHandlers {
   onMessageInsert?: (row: MessageRow) => void;
   onMessageUpdate?: (row: MessageRow) => void;
+  onMessageDelete?: (id: string) => void;
   onThreadUpdate?: (row: ThreadRow) => void;
 }
 
@@ -48,6 +49,19 @@ export function useThreadRealtime(
           filter: `thread_id=eq.${threadId}`,
         },
         (payload) => handlersRef.current.onMessageUpdate?.(payload.new as MessageRow)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `thread_id=eq.${threadId}`,
+        },
+        (payload) => {
+          const oldId = (payload.old as { id?: string } | undefined)?.id;
+          if (oldId) handlersRef.current.onMessageDelete?.(oldId);
+        }
       )
       .on(
         'postgres_changes',

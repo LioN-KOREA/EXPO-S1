@@ -19,6 +19,7 @@ export interface UseMessageSyncResult {
   loading: boolean;
   appendLocal: (m: MessageRow) => void;
   updateLocal: (patch: Partial<MessageRow> & { id: string }) => void;
+  removeLocal: (id: string) => void;
 }
 
 export interface UseMessageSyncOptions {
@@ -74,6 +75,10 @@ export function useMessageSync(
     setMessages((prev) => patchMessageById(prev, patch));
   }, []);
 
+  const removeLocal = useCallback((id: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+  }, []);
+
   const onRealtimeInsert = useCallback(async (row: MessageRow) => {
     let enriched = row;
     if (!row.sender_name && row.sender_id) {
@@ -90,8 +95,9 @@ export function useMessageSync(
   useThreadRealtime(threadId, {
     onMessageInsert: onRealtimeInsert,
     onMessageUpdate: onRealtimeUpdate,
+    onMessageDelete: removeLocal,
     onThreadUpdate: options.onThreadUpdate,
   });
 
-  return { messages, loading, appendLocal, updateLocal };
+  return { messages, loading, appendLocal, updateLocal, removeLocal };
 }
