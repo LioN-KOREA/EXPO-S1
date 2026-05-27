@@ -197,10 +197,11 @@ export default function AttendancePage() {
       {/* 컨트롤 바 */}
       <Card className="border-0 shadow-sm mb-4">
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
+          {/* 시연용 셀러 탭 일시 숨김. accountTab state 는 INTERPRETER 고정 유지 */}
           <Tabs value={accountTab} onValueChange={(v) => setAccountTab(v as AccountType)}>
             <TabsList>
               <TabsTrigger value="INTERPRETER">통역사</TabsTrigger>
-              <TabsTrigger value="SELLER">셀러</TabsTrigger>
+              {false && <TabsTrigger value="SELLER">셀러</TabsTrigger>}
             </TabsList>
           </Tabs>
 

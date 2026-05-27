@@ -55,7 +55,8 @@ const eventGroups: EventGroup[] = [
       { suffix: '/timetable', label: '타임테이블', icon: CalendarClock },
       { suffix: '/interpreters', label: '통역사 배정', icon: Languages },
       { suffix: '/template', label: '상담일지 양식', icon: FileText },
-      { suffix: '/settings', label: '옵션', icon: SlidersHorizontal },
+      // 시연용 일시 숨김 (옵션 페이지). 정책 정리 후 복원.
+      // { suffix: '/settings', label: '옵션', icon: SlidersHorizontal },
     ],
   },
   {
