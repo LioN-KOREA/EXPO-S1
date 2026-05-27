@@ -65,8 +65,7 @@ export default function VariantBPage() {
     if (error) { setError('Invalid email or password.'); setLoading(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase.from('profiles').select('role, must_change_password').eq('id', user.id).single();
-      if (profile?.must_change_password) { router.push('/change-password'); return; }
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
       const homes: Record<string, string> = { admin: '/admin', interpreter: '/interpreter', buyer: '/buyer', seller: '/seller' };
       router.push(homes[profile?.role || ''] || '/');
     }

@@ -67,8 +67,7 @@ export default function VariantAPage() {
     if (error) { setError('이메일 또는 비밀번호가 올바르지 않습니다.'); setLoading(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase.from('profiles').select('role, must_change_password').eq('id', user.id).single();
-      if (profile?.must_change_password) { router.push('/change-password'); return; }
+      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
       const homes: Record<string, string> = { admin: '/admin', interpreter: '/interpreter', buyer: '/buyer', seller: '/seller' };
       router.push(homes[profile?.role || ''] || '/');
     }

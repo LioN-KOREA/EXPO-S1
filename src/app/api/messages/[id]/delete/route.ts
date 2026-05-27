@@ -20,10 +20,10 @@ export async function PATCH(
   const { id: messageId } = await ctx.params;
   if (!messageId) return NextResponse.json({ error: 'message id 필수' }, { status: 400 });
 
-  // 대상 메시지 sender 확인 (auth 분기용).
+  // 대상 메시지 sender 확인 + 첨부 paths 추출.
   const { data: msg } = await supabase
     .from('messages')
-    .select('id, sender_id, thread_id')
+    .select('id, sender_id, thread_id, attachments')
     .eq('id', messageId)
     .maybeSingle();
   if (!msg) return NextResponse.json({ error: '메시지 없음' }, { status: 404 });
@@ -34,8 +34,20 @@ export async function PATCH(
     return NextResponse.json({ error: '본인 또는 관리자만 삭제 가능' }, { status: 403 });
   }
 
-  // service-role 로 hard delete. cascade 첨부 storage 정리는 별도 슬라이스.
   const admin = createAdminClient();
+
+  // 1) 첨부 storage 객체 cleanup (signed URL 발급 차단). messages row DELETE 전 수행 —
+  //    실패 시 row 는 유지 → 재시도 가능. 성공 후 row 삭제.
+  const attachments = (msg.attachments as Array<{ path?: string }> | null) ?? [];
+  const paths = attachments.map((a) => a.path).filter((p): p is string => typeof p === 'string' && p.length > 0);
+  if (paths.length > 0) {
+    const { error: storageErr } = await admin.storage.from('messages').remove(paths);
+    if (storageErr) {
+      return NextResponse.json({ error: `첨부 정리 실패: ${storageErr.message}` }, { status: 500 });
+    }
+  }
+
+  // 2) row hard delete.
   const { error } = await admin.from('messages').delete().eq('id', messageId);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
