@@ -198,12 +198,11 @@ export function UserEditDialog({ user, open, onOpenChange, onUpdated }: UserEdit
                 if (!user) return;
                 const newPw = prompt('새 비밀번호를 입력하세요 (최소 6자):');
                 if (!newPw || newPw.length < 6) { toast.error('비밀번호는 최소 6자 이상이어야 합니다'); return; }
-                const forceChange = confirm('첫 로그인 시 비밀번호 변경을 강제하시겠습니까?');
                 try {
                   const res = await fetch(`/api/users/${user.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: newPw, must_change_password: forceChange }),
+                    body: JSON.stringify({ password: newPw, must_change_password: false }),
                   });
                   if (!res.ok) { const d = await res.json(); toast.error(d.error || '비밀번호 변경 실패'); return; }
                   toast.success('비밀번호가 변경되었습니다');
@@ -222,12 +221,12 @@ export function UserEditDialog({ user, open, onOpenChange, onUpdated }: UserEdit
                 if (!user.phone) { toast.error('전화번호가 없어 초기화할 수 없습니다'); return; }
                 const pwd = getInitialPassword(user.phone);
                 if (pwd === 'excon00') { toast.error('전화번호 자릿수가 너무 짧아 초기화할 수 없습니다'); return; }
-                if (!confirm(`비밀번호를 ${pwd}로 초기화하시겠습니까?\n(전화번호 뒷자리 — 국가번호·지역번호 제외)\n첫 로그인 시 변경이 강제됩니다.`)) return;
+                if (!confirm(`비밀번호를 ${pwd}로 초기화하시겠습니까?\n(전화번호 뒷자리 — 국가번호·지역번호 제외)`)) return;
                 try {
                   const res = await fetch(`/api/users/${user.id}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: pwd, must_change_password: true }),
+                    body: JSON.stringify({ password: pwd, must_change_password: false }),
                   });
                   if (!res.ok) { const d = await res.json(); toast.error(d.error || '초기화 실패'); return; }
                   toast.success(`비밀번호가 ${pwd}로 초기화되었습니다`);

@@ -35,14 +35,9 @@ export default function LoginPage() {
     if (user) {
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role, must_change_password')
+        .select('role')
         .eq('id', user.id)
         .single();
-
-      if (profile?.must_change_password) {
-        router.push('/change-password');
-        return;
-      }
 
       const roleHome: Record<string, string> = {
         admin: '/admin',

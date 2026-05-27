@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         company_name: u.company_name || null,
         country: u.country || null,
         extra_info: Object.keys(u.extra_info).length > 0 ? u.extra_info : {},
-        must_change_password: true,
+        must_change_password: false,
       });
 
       if (profileErr) {

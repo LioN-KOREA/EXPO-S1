@@ -51,7 +51,7 @@ async function findOrCreateAccount(
     role,
     phone,
     [linkedField]: linkedId,
-    must_change_password: true,
+    must_change_password: false,
   });
 
   if (profileErr) {

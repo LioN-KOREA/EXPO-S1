@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
 
         const { error: profileErr } = await admin.from('profiles').insert({
           id: authData.user.id, email, name, role: 'interpreter', phone, language: language || null,
-          must_change_password: true,
+          must_change_password: false,
         });
         if (profileErr) {
           await admin.auth.admin.deleteUser(authData.user.id);

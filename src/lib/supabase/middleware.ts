@@ -46,14 +46,9 @@ export async function updateSession(request: NextRequest) {
       if (path === '/login' && user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('role, must_change_password')
+          .select('role')
           .eq('id', user.id)
           .single();
-
-        // 비밀번호 변경 필요 시
-        if (profile?.must_change_password) {
-          return NextResponse.redirect(new URL('/change-password', request.url));
-        }
 
         const home = ROLE_HOME[profile?.role || ''];
         if (home) return NextResponse.redirect(new URL(home, request.url));
@@ -69,16 +64,11 @@ export async function updateSession(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, must_change_password')
+      .select('role')
       .eq('id', user.id)
       .single();
 
     if (!profile) return NextResponse.redirect(new URL('/login', request.url));
-
-    // 비밀번호 변경 필요 시 강제 이동
-    if (profile.must_change_password) {
-      return NextResponse.redirect(new URL('/change-password', request.url));
-    }
 
     const role = profile.role;
     const rolePrefix = `/${role}`;
