@@ -8,10 +8,15 @@ import { Input } from '@/components/ui/input';
 import { Search, Calendar, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { QrIssueButton } from './QrIssueButton';
+import {
+  STATUS_ORDER,
+  compareAttendance,
+  type AttendanceStatus,
+  type AttendanceSortBy,
+  type EvalType,
+} from '@/lib/attendance/sort';
 
 type WorkType = 'REGULAR' | 'RESERVE';
-type AttendanceStatus = 'NONE' | 'WAITING' | 'COMING' | 'ABSENT' | 'IN_CONSULT' | 'DONE' | 'LEAVE_OK' | 'LEAVE';
-type EvalType = 'NORMAL' | 'ABSENT' | 'LATE' | 'UNAUTHORIZED' | 'OTHER' | null;
 
 interface AttendanceUser {
   id: string;
@@ -62,15 +67,13 @@ const EVAL_LABEL: Record<NonNullable<EvalType>, string> = {
   OTHER: '기타',
 };
 
-const STATUS_ORDER: AttendanceStatus[] = ['NONE', 'WAITING', 'COMING', 'ABSENT', 'IN_CONSULT', 'DONE', 'LEAVE_OK', 'LEAVE'];
-
 export default function AttendancePage() {
   const params = useParams();
   const eventId = params.id as string;
 
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'status' | 'eval'>('name');
+  const [sortBy, setSortBy] = useState<AttendanceSortBy>('name');
   const [statusFilter, setStatusFilter] = useState<'ALL' | AttendanceStatus>('ALL');
   const [evalFilter, setEvalFilter] = useState<'ALL' | NonNullable<EvalType>>('ALL');
   const [rows, setRows] = useState<AttendanceRow[]>([]);
@@ -105,21 +108,7 @@ export default function AttendancePage() {
       const q = search.trim().toLowerCase();
       list = list.filter(r => r.user.name?.toLowerCase().includes(q));
     }
-    return [...list].sort((a, b) => {
-      if (sortBy === 'name') return a.user.name.localeCompare(b.user.name, 'ko');
-      if (sortBy === 'status') {
-        const idxA = STATUS_ORDER.indexOf(a.status);
-        const idxB = STATUS_ORDER.indexOf(b.status);
-        if (idxA !== idxB) return idxA - idxB;
-        return a.user.name.localeCompare(b.user.name, 'ko');
-      }
-      // eval: null 후순위, 그 다음 EVAL_LABEL 키 순서
-      const evalOrder = ['NORMAL', 'LATE', 'ABSENT', 'UNAUTHORIZED', 'OTHER'];
-      const idxA = a.eval ? evalOrder.indexOf(a.eval) : 99;
-      const idxB = b.eval ? evalOrder.indexOf(b.eval) : 99;
-      if (idxA !== idxB) return idxA - idxB;
-      return a.user.name.localeCompare(b.user.name, 'ko');
-    });
+    return [...list].sort(compareAttendance(sortBy));
   }, [rows, search, sortBy, statusFilter, evalFilter]);
 
   async function createAttendances() {
@@ -206,7 +195,7 @@ export default function AttendancePage() {
           <span className="text-slate-500">정렬</span>
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as 'name' | 'status' | 'eval')}
+            onChange={(e) => setSortBy(e.target.value as AttendanceSortBy)}
             className="h-8 px-2 border rounded-md bg-background text-xs"
           >
             <option value="name">이름순</option>
