@@ -140,3 +140,48 @@ export const DEFAULT_TEMPLATE_FIELDS: TemplateField[] = [
     },
   },
 ];
+
+// 시스템 필드: key/type/options/condition 고정.
+// consultation_type ↔ absence_reason 분기는 MultiStepReportForm에서 하드코딩 키로 동작하므로
+// 사용자가 새 양식을 만들 때도 두 필드가 반드시 존재해야 한다.
+export const SYSTEM_FIELD_KEYS = ['consultation_type', 'absence_reason'] as const;
+export type SystemFieldKey = (typeof SYSTEM_FIELD_KEYS)[number];
+
+export function isSystemFieldKey(key: string): key is SystemFieldKey {
+  return (SYSTEM_FIELD_KEYS as readonly string[]).includes(key);
+}
+
+// 시스템 필드 캐논 정의 (DEFAULT_TEMPLATE_FIELDS에서 추출, 단일 출처)
+const SYSTEM_FIELD_CANON: Record<SystemFieldKey, TemplateField> = {
+  consultation_type: DEFAULT_TEMPLATE_FIELDS.find((f) => f.key === 'consultation_type')!,
+  absence_reason: DEFAULT_TEMPLATE_FIELDS.find((f) => f.key === 'absence_reason')!,
+};
+
+// 라벨 정규화 — 끝 '*' 제거 + trim. 엑셀 업로드 라벨이 시스템 필드와 같은지 비교용.
+function normalizeLabel(label: string): string {
+  return label.replace(/\s*\*+\s*$/, '').trim();
+}
+
+// 라벨이 시스템 필드와 동일하면 흡수 대상 (라벨 기반 키로 저장된 중복 방지).
+const SYSTEM_FIELD_LABELS = new Set(['상담 진행 유형', '불참 사유']);
+
+// 양식에 시스템 필드가 누락/변형됐다면 캐논 정의로 강제 보강.
+// 정책:
+// - consultation_type 은 항상 맨 앞 (위치 고정)
+// - absence_reason 은 항상 맨 뒤 (위치 고정, 다른 필드보다 우선순위 낮음)
+// - 시스템 키 중복 발생 시 첫 등장만 살리고 나머지 제거
+// - 시스템 필드 내용은 SYSTEM_FIELD_CANON 으로 완전 덮어쓰기 (label/options/condition/source 모두)
+// - 라벨 기반 키(엑셀 업로드의 '상담_진행_유형' 등)는 라벨 일치로 흡수하여 중복 노출 방지
+export function ensureSystemFields(fields: TemplateField[]): TemplateField[] {
+  const nonSystem = fields.filter((f) => {
+    if (isSystemFieldKey(f.key)) return false;
+    if (SYSTEM_FIELD_LABELS.has(normalizeLabel(f.label ?? ''))) return false;
+    return true;
+  });
+  const result: TemplateField[] = [
+    { ...SYSTEM_FIELD_CANON.consultation_type },
+    ...nonSystem,
+    { ...SYSTEM_FIELD_CANON.absence_reason },
+  ];
+  return result.map((f, i) => ({ ...f, order: i + 1 }));
+}

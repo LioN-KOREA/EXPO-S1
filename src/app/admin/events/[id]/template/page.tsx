@@ -9,6 +9,7 @@ import { FileText, Pencil, Eye } from 'lucide-react';
 import Link from 'next/link';
 import type { TemplateField, FieldType, FieldSource } from '@/types';
 import { TemplateEditor } from './TemplateEditor';
+import { ensureSystemFields } from '@/lib/template/defaults';
 
 const TYPE_LABEL: Record<FieldType, string> = {
   text: '텍스트',
@@ -42,7 +43,7 @@ export default function TemplatePage() {
       .single();
 
     if (data?.fields) {
-      setFields(data.fields as TemplateField[]);
+      setFields(ensureSystemFields(data.fields as TemplateField[]));
     }
     setAutoAnswerTemplate((data?.auto_answer_template ?? null) as string | null);
     setDataLoading(false);

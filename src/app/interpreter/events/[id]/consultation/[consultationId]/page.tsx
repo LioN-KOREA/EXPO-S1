@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import type { TemplateField, Consultation, ConsultationReport, ReportStatus } from '@/types';
 import { buildAutoValues } from '@/lib/template/auto-source';
+import { ensureSystemFields } from '@/lib/template/defaults';
 
 export default function ConsultationReportPage() {
   const params = useParams();
@@ -94,7 +95,9 @@ export default function ConsultationReportPage() {
           return;
         }
 
-        const templateFields = (template?.fields ?? []) as TemplateField[];
+        // 양식이 등록된 경우에만 시스템 필드 보강 (등록 자체가 없으면 빈 폼 유지)
+        const rawFields = (template?.fields ?? []) as TemplateField[];
+        const templateFields = rawFields.length > 0 ? ensureSystemFields(rawFields) : rawFields;
         if (templateFields.length > 0) {
           setFields(templateFields);
         }

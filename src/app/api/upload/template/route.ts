@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { parseTemplateExcel } from '@/lib/excel/template-parser';
 import { NextRequest, NextResponse } from 'next/server';
 import { ensureAdmin } from '@/lib/auth/guards';
+import { ensureSystemFields } from '@/lib/template/defaults';
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -33,19 +34,22 @@ export async function POST(request: NextRequest) {
     const buffer = await file.arrayBuffer();
     const result = await parseTemplateExcel(buffer);
 
+    // 시스템 필드 강제 보강 (consultation_type/absence_reason 잠금)
+    const enforcedFields = ensureSystemFields(result.fields);
+
     // 기존 템플릿 삭제 후 저장
     await admin.from('report_templates').delete().eq('event_id', eventId);
 
     const { error } = await admin.from('report_templates').insert({
       event_id: eventId,
-      fields: result.fields,
+      fields: enforcedFields,
     });
 
     if (error) throw error;
 
     return NextResponse.json({
       success: true,
-      fields: result.fields,
+      fields: enforcedFields,
       preview: result.preview,
     });
   } catch (err) {

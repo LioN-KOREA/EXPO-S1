@@ -26,7 +26,7 @@ import {
 import { MultiStepReportForm } from '@/components/interpreter/MultiStepReportForm';
 import type { TemplateField, FieldType, FieldSource, AutoSourceKey } from '@/types';
 import { AUTO_SOURCE_OPTIONS, inferAutoSourceFromLabel, isAdminLabel } from '@/lib/template/auto-source';
-import { DEFAULT_AUTO_ANSWER_TEMPLATE } from '@/lib/template/defaults';
+import { DEFAULT_AUTO_ANSWER_TEMPLATE, ensureSystemFields, isSystemFieldKey } from '@/lib/template/defaults';
 import { listAutoAnswerVariables, JOSA_PAIR_KEYS } from '@/lib/template/autoAnswer';
 
 const typeOptions: { value: FieldType; label: string }[] = [
@@ -50,7 +50,7 @@ interface Props {
 }
 
 export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTemplate }: Props) {
-  const [fields, setFields] = useState<TemplateField[]>(initialFields);
+  const [fields, setFields] = useState<TemplateField[]>(() => ensureSystemFields(initialFields));
   const [autoAnswerTemplate, setAutoAnswerTemplate] = useState<string>(
     initialAutoAnswerTemplate ?? ''
   );
@@ -71,7 +71,11 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
   }
 
   function update(index: number, patch: Partial<TemplateField>) {
-    setFields((prev) => prev.map((f, i) => i === index ? { ...f, ...patch } : f));
+    setFields((prev) => prev.map((f, i) => {
+      if (i !== index) return f;
+      if (isSystemFieldKey(f.key)) return f; // 시스템 필드는 변경 금지
+      return { ...f, ...patch };
+    }));
   }
 
   function move(index: number, dir: -1 | 1) {
@@ -79,17 +83,26 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
       const next = [...prev];
       const target = index + dir;
       if (target < 0 || target >= next.length) return prev;
+      if (isSystemFieldKey(next[index].key) || isSystemFieldKey(next[target].key)) return prev;
       [next[index], next[target]] = [next[target], next[index]];
       return next.map((f, i) => ({ ...f, order: i + 1 }));
     });
   }
 
   // 위치를 from 에서 to 로 이동(삽입 방식). 번호 입력·드래그 양쪽에서 사용.
+  // 시스템 필드(consultation_type=맨앞, absence_reason=맨뒤)는 ensureSystemFields가
+  // 위치를 강제하므로 비시스템 필드의 to를 [1, prev.length-2] 로 clamp 하여 시각적으로도 보호.
   function reorder(from: number, to: number) {
     setFields((prev) => {
       if (from === to) return prev;
       if (from < 0 || from >= prev.length) return prev;
-      const clamped = Math.max(0, Math.min(prev.length - 1, to));
+      if (isSystemFieldKey(prev[from].key)) return prev;
+      // 양 끝 시스템 필드 위치는 통과 금지
+      const hasFront = prev.length > 0 && isSystemFieldKey(prev[0].key);
+      const hasBack = prev.length > 0 && isSystemFieldKey(prev[prev.length - 1].key);
+      const minIdx = hasFront ? 1 : 0;
+      const maxIdx = hasBack ? prev.length - 2 : prev.length - 1;
+      const clamped = Math.max(minIdx, Math.min(maxIdx, to));
       const next = [...prev];
       const [moved] = next.splice(from, 1);
       next.splice(clamped, 0, moved);
@@ -98,20 +111,33 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
   }
 
   function remove(index: number) {
+    const target = fields[index];
+    if (target && isSystemFieldKey(target.key)) {
+      toast.error('이 필드는 시스템 필드로 삭제할 수 없습니다');
+      return;
+    }
     if (!confirm('이 필드를 삭제할까요?')) return;
     setFields((prev) => prev.filter((_, i) => i !== index).map((f, i) => ({ ...f, order: i + 1 })));
   }
 
   function addField() {
     const newKey = `field_${Date.now()}`;
-    setFields((prev) => [...prev, {
-      key: newKey,
-      label: '새 필드',
-      type: 'text',
-      required: false,
-      order: prev.length + 1,
-      source: 'interpreter',
-    }]);
+    setFields((prev) => {
+      const newField: TemplateField = {
+        key: newKey,
+        label: '새 필드',
+        type: 'text',
+        required: false,
+        order: 0,
+        source: 'interpreter',
+      };
+      // absence_reason 이 맨 뒤에 있으면 그 직전에 삽입 (시스템 필드 위치 유지)
+      const lastIdx = prev.length - 1;
+      const insertAt = lastIdx >= 0 && isSystemFieldKey(prev[lastIdx].key) ? lastIdx : prev.length;
+      const next = [...prev];
+      next.splice(insertAt, 0, newField);
+      return next.map((f, i) => ({ ...f, order: i + 1 }));
+    });
   }
 
   // 라벨 변경 시 source 자동 추론.
@@ -119,6 +145,7 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
   function updateLabel(index: number, label: string) {
     setFields((prev) => prev.map((f, i) => {
       if (i !== index) return f;
+      if (isSystemFieldKey(f.key)) return f; // 시스템 필드 label 잠금
       if (f.sourceLocked) {
         return { ...f, label };
       }
@@ -148,7 +175,9 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
 
     setSaving(true);
     const supabase = createClient();
-    const cleanFields = fields.map((f, i) => ({
+    // 저장 직전 시스템 필드 보강 (UI 우회 방지)
+    const enforced = ensureSystemFields(fields);
+    const cleanFields = enforced.map((f, i) => ({
       ...f,
       order: i + 1,
       source: f.source ?? 'interpreter',
@@ -302,11 +331,14 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
             필드가 없습니다. "필드 추가" 버튼으로 시작하세요.
           </div>
         )}
-        {fields.map((field, i) => (
+        {fields.map((field, i) => {
+          const locked = isSystemFieldKey(field.key);
+          return (
           <div
             key={field.key + i}
-            draggable
+            draggable={!locked}
             onDragStart={(e) => {
+              if (locked) { e.preventDefault(); return; }
               setDragFrom(i);
               e.dataTransfer.effectAllowed = 'move';
               e.dataTransfer.setData('text/plain', String(i));
@@ -332,11 +364,11 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
             }}
             className={`border rounded-lg p-3 space-y-2 bg-muted/30 transition-colors ${
               dragOver === i && dragFrom !== i ? 'ring-2 ring-blue-400 bg-blue-50/50' : ''
-            } ${dragFrom === i ? 'opacity-60' : ''}`}
+            } ${dragFrom === i ? 'opacity-60' : ''} ${locked ? 'border-amber-300 bg-amber-50/30' : ''}`}
           >
             <div className="flex flex-wrap items-center gap-2">
               <GripVertical
-                className="w-4 h-4 text-slate-400 cursor-grab active:cursor-grabbing shrink-0"
+                className={`w-4 h-4 shrink-0 ${locked ? 'text-amber-300 cursor-not-allowed' : 'text-slate-400 cursor-grab active:cursor-grabbing'}`}
                 aria-label="드래그하여 순서 변경"
               />
               <Input
@@ -345,21 +377,24 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
                 max={fields.length}
                 value={i + 1}
                 onChange={(e) => {
+                  if (locked) return;
                   const next = Number(e.target.value);
                   if (Number.isFinite(next) && next >= 1 && next <= fields.length) {
                     reorder(i, next - 1);
                   }
                 }}
+                disabled={locked}
                 className="w-14 h-8 text-xs text-center shrink-0 px-1"
-                title="번호를 입력하면 해당 위치로 이동합니다"
+                title={locked ? '시스템 필드 — 위치 고정' : '번호를 입력하면 해당 위치로 이동합니다'}
               />
               <Input
                 value={field.label}
                 onChange={(e) => updateLabel(i, e.target.value)}
                 placeholder="필드 라벨"
+                disabled={locked}
                 className="flex-1 min-w-[140px] h-8 text-sm font-medium"
               />
-              <Select value={field.type} onValueChange={(v) => { if (v) update(i, { type: v as FieldType }); }}>
+              <Select value={field.type} onValueChange={(v) => { if (v && !locked) update(i, { type: v as FieldType }); }} disabled={locked}>
                 <SelectTrigger className="w-[100px] h-8 text-xs">
                   <SelectValue>
                     {typeOptions.find((o) => o.value === field.type)?.label ?? field.type}
@@ -371,23 +406,29 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
                   ))}
                 </SelectContent>
               </Select>
-              <label className="flex items-center gap-1 text-xs text-slate-600 whitespace-nowrap">
+              <label className={`flex items-center gap-1 text-xs whitespace-nowrap ${locked ? 'text-slate-400' : 'text-slate-600'}`}>
                 <input
                   type="checkbox"
                   checked={field.required}
                   onChange={(e) => update(i, { required: e.target.checked })}
+                  disabled={locked}
                   className="w-3.5 h-3.5"
                 />
                 필수
               </label>
+              {locked && (
+                <Badge variant="outline" className="text-[10px] border-amber-300 bg-amber-50 text-amber-700">
+                  시스템 필드 (잠금)
+                </Badge>
+              )}
               <div className="flex items-center gap-1 ml-auto">
-                <Button size="icon" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0} className="h-9 w-9 sm:h-7 sm:w-7">
+                <Button size="icon" variant="ghost" onClick={() => move(i, -1)} disabled={i === 0 || locked} className="h-9 w-9 sm:h-7 sm:w-7">
                   <ArrowUp className="w-3.5 h-3.5" />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => move(i, 1)} disabled={i === fields.length - 1} className="h-9 w-9 sm:h-7 sm:w-7">
+                <Button size="icon" variant="ghost" onClick={() => move(i, 1)} disabled={i === fields.length - 1 || locked} className="h-9 w-9 sm:h-7 sm:w-7">
                   <ArrowDown className="w-3.5 h-3.5" />
                 </Button>
-                <Button size="icon" variant="ghost" onClick={() => remove(i)} className="h-9 w-9 sm:h-7 sm:w-7 text-red-500 hover:text-red-600">
+                <Button size="icon" variant="ghost" onClick={() => remove(i)} disabled={locked} className="h-9 w-9 sm:h-7 sm:w-7 text-red-500 hover:text-red-600 disabled:text-slate-300">
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </div>
@@ -414,6 +455,7 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
                         .filter(Boolean),
                     })
                   }
+                  disabled={locked}
                   placeholder={'한 줄에 하나씩 입력\n예:\n상\n중\n하'}
                   rows={Math.max(2, (field.options?.length ?? 0) + 1)}
                   className="text-xs min-h-[60px] resize-y"
@@ -426,8 +468,9 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
               <span className="text-xs text-slate-500 shrink-0">작성:</span>
               <Select
                 value={field.source ?? 'interpreter'}
+                disabled={locked}
                 onValueChange={(v) => {
-                  if (!v) return;
+                  if (!v || locked) return;
                   const next = v as FieldSource;
                   update(i, {
                     source: next,
@@ -452,8 +495,9 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
                   <span className="text-xs text-slate-500">매핑:</span>
                   <Select
                     value={field.autoSource ?? '_pick'}
+                    disabled={locked}
                     onValueChange={(v) => {
-                      if (!v || v === '_pick') return;
+                      if (!v || v === '_pick' || locked) return;
                       update(i, { autoSource: v as AutoSourceKey, sourceLocked: true });
                     }}
                   >
@@ -488,8 +532,9 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
               <span className="text-xs text-slate-500 shrink-0">조건:</span>
               <Select
                 value={field.condition?.field ?? '_none'}
+                disabled={locked}
                 onValueChange={(v) => {
-                  if (!v) return;
+                  if (!v || locked) return;
                   if (v === '_none') update(i, { condition: undefined });
                   else update(i, { condition: { field: v, equals: field.condition?.equals } });
                 }}
@@ -521,6 +566,7 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
                         : String(field.condition.equals ?? '')
                     }
                     onChange={(e) => {
+                      if (locked) return;
                       const lines = e.target.value.split('\n');
                       if (lines.length > 1) {
                         update(i, { condition: { field: field.condition!.field, in: lines } });
@@ -529,6 +575,7 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
                       }
                     }}
                     onBlur={(e) => {
+                      if (locked) return;
                       const lines = e.target.value.split('\n').map((s) => s.trim()).filter(Boolean);
                       if (lines.length > 1) {
                         update(i, { condition: { field: field.condition!.field, in: lines } });
@@ -536,6 +583,7 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
                         update(i, { condition: { field: field.condition!.field, equals: lines[0] } });
                       }
                     }}
+                    disabled={locked}
                     placeholder={'값 1개 = 일치 비교\n여러 줄 = 그 중 하나라도 일치'}
                     rows={Math.max(2, Array.isArray(field.condition.in) ? field.condition.in.length + 1 : 2)}
                     className="text-xs flex-1 min-w-[160px] min-h-[44px] resize-y"
@@ -547,7 +595,8 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
 
