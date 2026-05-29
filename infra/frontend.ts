@@ -107,7 +107,7 @@ const lambdaEnv = {
 // ─── SSR Lambda (server components + API routes + middleware) ─────────────────
 const ssrFn = new aws.lambda.Function("ssr", {
   role: lambdaRole.arn,
-  runtime: aws.lambda.Runtime.NodeJS20dX,
+  runtime: aws.lambda.Runtime.NodeJS22dX,
   handler: "index.handler",
   code: new pulumi.asset.FileArchive(SERVER_FN_DIR),
   timeout: 30,
@@ -127,7 +127,7 @@ const ssrUrl = new aws.lambda.FunctionUrl("ssr-url", {
 // ─── Image-optimization Lambda ────────────────────────────────────────────────
 const imageFn = new aws.lambda.Function("image", {
   role: lambdaRole.arn,
-  runtime: aws.lambda.Runtime.NodeJS20dX,
+  runtime: aws.lambda.Runtime.NodeJS22dX,
   handler: "index.handler",
   code: new pulumi.asset.FileArchive(IMAGE_FN_DIR),
   timeout: 25,
