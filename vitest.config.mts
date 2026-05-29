@@ -19,6 +19,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     // src/ 하위만 검색 (infra/.next/.open-next 제외)
+    // 통합 테스트(*.integration.test.ts) 는 docs/testing.md §5.3 정책에 따라
+    // 기본 단위 트랙에서 제외 — 로컬 supabase 인스턴스를 띄운 환경에서만 실행한다.
+    // 실행: `npx vitest run src/**/*.integration.test.ts`
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: [
       'node_modules/**',
@@ -26,6 +29,7 @@ export default defineConfig({
       '.open-next/**',
       'infra/**',
       'supabase/**',
+      'src/**/*.integration.test.{ts,tsx}',
     ],
     css: false,
     // Next.js App Router 의 async Server Component 는 Vitest 미지원 — E2E 로 분리
