@@ -1,14 +1,4 @@
-encryptionsalt: v1:uHvNX2RDbLU=:v1:h1SDG4veR1gvEmuL:EwiiHcsHie3EiKoDxh+3Ck03WVGZ6g==
 config:
-  expo-s1-infra:supabaseOrganizationId: xlfbeicnjjuiouljiors
-  expo-s1-infra:supabaseAccessToken:
-    secure: v1:+9FnFNlJy8hmHPQS:6SDqvvGpzpx1M6o4NMdkazDH8DBpr+msZu/ElGSRfXIOn/27Ch5Avjfi3giVYgONNe8YyWFShnPLZ7XI
-  expo-s1-infra:dbPassword:
-    secure: v1:QwsK4L8KXk6LdHbR:lxX0muSvftNjJxhK5FUG/4RSgL5AcXCef7xh
-  expo-s1-infra:supabaseAnonKey:
-    secure: v1:laiE1X8jhbSyDAOA:A3+HkEMAwnCaSF3bfd8LX6R2qL0cfqwgZJEr2tKz9lNm17ncAo1BCLRu5IjRFmMMX7QfZlrbXBbdT70SeVVqky2qLzJKVmnjlMVX59kMR/sINqidprlE51npcejFCKl8siS9D9iTZE3fqGaYYik6qV7EVS9GzJTVjOf747cWA/6Qg7oEa+cXk0c9yJ8MSXSwH0nXA0dRrIMyOkhJHQnIF8nIwutTXCEnrWAhdPssAf1DslW3aAydDuwGve4gFLkVWQa873bkFUt/tyA+Yyg4fS0LNzokwh2vELOJnu+ueGU=
-  expo-s1-infra:supabaseServiceRoleKey:
-    secure: v1:cPHIUPG0Y4Hkh5qM:iObr2cV7p6JabZUxO4aAIf/cVX5VgX3qkFBWx+UBEI6oHZopEkeZljqc0M1Lq0nFkLerVPmqe7tzJjKvsEllRvz7jTw4WX77sE2+hJ10fsJ4T2+EA6wgMjtqwutweKXOSCkgF4+OE7qw/qkOaZ9bL01q5b0tI7B5T2+tVkaNypWjNJrUSJqxgwcBU2A7NtXt07zyHcnbp3s+ZJvohg/mlm4eBeRt/i+nXXuWzp0CtPDLoeBF8SrTSqKYO2uk6BVvkVfU6thAKkIyVMUHPK90AGViT6eH1LnoTBnKnHQmc4ZsyWos2RSJ2lyaAQ==
   aws:region: ap-northeast-2
   expo-s1-infra:supabaseRegion: ap-northeast-2
   expo-s1-infra:bucketName: lk-expo-s1
