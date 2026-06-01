@@ -10,7 +10,7 @@ import { supabaseUrl, anonKey, serviceRoleKey } from "./supabase";
 const cfg = new pulumi.Config();
 const bucketName = cfg.get("bucketName") ?? "lk-expo-s1";
 
-// Paths to OpenNext build output (run `npx open-next@latest build` in repo root first)
+// Paths to OpenNext build output (run `npx @opennextjs/aws@^3 build` in repo root first)
 const OPEN_NEXT_DIR = path.resolve(__dirname, "..", ".open-next");
 const ASSETS_DIR = path.join(OPEN_NEXT_DIR, "assets");
 const SERVER_FN_DIR = path.join(OPEN_NEXT_DIR, "server-functions", "default");
@@ -119,8 +119,8 @@ const ssrUrl = new aws.lambda.FunctionUrl("ssr-url", {
   functionName: ssrFn.name,
   authorizationType: "NONE",
   // BUFFERED: Function URL unwraps OpenNext's API-Gateway-style envelope into
-  // a real HTTP response. Switch to RESPONSE_STREAM only if you also enable
-  // `streaming: true` in open-next.config.ts.
+  // a real HTTP response. Switch to RESPONSE_STREAM only if you also set
+  // `wrapper: "aws-lambda-streaming"` in open-next.config.ts (OpenNext v3+).
   invokeMode: "BUFFERED",
 });
 

@@ -4,7 +4,7 @@
   "private": true,
   "main": "index.ts",
   "scripts": {
-    "build:app": "cd .. && npm run build && npx open-next@latest build",
+    "build:app": "cd .. && npm run build && npx @opennextjs/aws@^3 build",
     "preview": "pulumi preview",
     "up": "pulumi up",
     "destroy": "pulumi destroy"

@@ -44,7 +44,7 @@ npm install
 
 # Build the project and the OpenNext adapter
 npm run build
-npx open-next@latest build
+npx @opennextjs/aws@^3 build
 
 # Deploy the infrastructure
 cd infra
@@ -55,7 +55,7 @@ eval "$(aws configure export-credentials --format env)" # If your SSO session ha
 pulumi up
 ```
 
-Subsequent deploys are just `npm run build && npx open-next@latest build && cd infra && pulumi up` inside the same container.
+Subsequent deploys are just `npm run build && npx @opennextjs/aws@^3 build && cd infra && pulumi up` inside the same container.
 
 ## First-time only (after Supabase project is created)
 

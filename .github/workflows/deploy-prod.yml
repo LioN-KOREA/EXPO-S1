@@ -60,7 +60,7 @@ jobs:
         run: npm run build
 
       - name: Build OpenNext adapter
-        run: npx --yes open-next@latest build
+        run: npx --yes @opennextjs/aws@^3 build
 
       - name: Install infra deps
         working-directory: infra
