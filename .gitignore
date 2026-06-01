@@ -49,3 +49,6 @@ TEST_ACCOUNTS.md
 # claude code
 .claude/
 lambda-out.json
+
+# infra backups (secrets)
+/infra/backup-*

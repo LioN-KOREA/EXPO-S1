@@ -1,0 +1,89 @@
+{
+  "resources": [
+    {
+      "type": "aws:cloudfront/originAccessControl:OriginAccessControl",
+      "name": "assets-oac",
+      "id": "E2M4KCGYCFR6XA"
+    },
+    {
+      "type": "aws:iam/role:Role",
+      "name": "ssr-role",
+      "id": "ssr-role-2bb743b"
+    },
+    {
+      "type": "aws:s3/bucketV2:BucketV2",
+      "name": "assets",
+      "id": "lk-expo-s1"
+    },
+    {
+      "type": "aws:dynamodb/table:Table",
+      "name": "opennext-tag-cache",
+      "id": "opennext-tag-cache-dfb6065"
+    },
+    {
+      "type": "supabase:index/project:Project",
+      "name": "expo-s1",
+      "id": "zyqmtehupckkweafzyuc"
+    },
+    {
+      "type": "aws:iam/rolePolicyAttachment:RolePolicyAttachment",
+      "name": "ssr-logs",
+      "id": "ssr-role-2bb743b/arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+    },
+    {
+      "type": "aws:iam/rolePolicy:RolePolicy",
+      "name": "ssr-cache-rw",
+      "id": "ssr-role-2bb743b:ssr-cache-rw-bd8b42e"
+    },
+    {
+      "type": "aws:s3/bucketPublicAccessBlock:BucketPublicAccessBlock",
+      "name": "assets-pab",
+      "id": "lk-expo-s1"
+    },
+    {
+      "type": "aws:s3/bucketServerSideEncryptionConfigurationV2:BucketServerSideEncryptionConfigurationV2",
+      "name": "assets-sse",
+      "id": "lk-expo-s1"
+    },
+    {
+      "type": "aws:iam/rolePolicy:RolePolicy",
+      "name": "image-s3-read",
+      "id": "ssr-role-2bb743b:image-s3-read-6d3686d"
+    },
+    {
+      "type": "aws:iam/rolePolicy:RolePolicy",
+      "name": "ssr-tag-cache-rw",
+      "id": "ssr-role-2bb743b:ssr-tag-cache-rw-182bfb9"
+    },
+    {
+      "type": "aws:lambda/function:Function",
+      "name": "image",
+      "id": "image-99ec848"
+    },
+    {
+      "type": "aws:lambda/function:Function",
+      "name": "ssr",
+      "id": "ssr-0c8cf0f"
+    },
+    {
+      "type": "aws:lambda/functionUrl:FunctionUrl",
+      "name": "image-url",
+      "id": "image-99ec848"
+    },
+    {
+      "type": "aws:lambda/functionUrl:FunctionUrl",
+      "name": "ssr-url",
+      "id": "ssr-0c8cf0f"
+    },
+    {
+      "type": "aws:cloudfront/distribution:Distribution",
+      "name": "cdn",
+      "id": "EJH2VIP1BJC2"
+    },
+    {
+      "type": "aws:s3/bucketPolicy:BucketPolicy",
+      "name": "assets-policy",
+      "id": "lk-expo-s1"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+encryptionsalt: v1:JYCnC91y8hk=:v1:689RlCYoWG4NqxIO:5/9MF7zJ2JQecNLwcrsOFdEKfQdsLA==
 config:
   aws:region: ap-northeast-2
   expo-s1-infra:supabaseRegion: ap-northeast-2

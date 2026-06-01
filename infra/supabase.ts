@@ -23,15 +23,24 @@ function requireEnv(name: string): string {
   return v;
 }
 
-const provider = new supabase.Provider("supabase", {
-  accessToken: requireEnv("SUPABASE_ACCESS_TOKEN"),
-});
+// Provider is intentionally NOT instantiated here. The default supabase provider
+// reads SUPABASE_ACCESS_TOKEN from env automatically, which keeps the resource's
+// provider URN stable across `pulumi import` (which skips program eval) and
+// subsequent `pulumi up` runs. Asserting the env var is present preserves the
+// fast-fail behavior of the previous explicit Provider.
+requireEnv("SUPABASE_ACCESS_TOKEN");
+
 export const project = new supabase.Project("expo-s1", {
   name: `expo-s1-${stack}`,
   organizationId: requireEnv("SUPABASE_ORGANIZATION_ID"),
   databasePassword: requireEnv("SUPABASE_DB_PASSWORD"),
   region: cfg.get("supabaseRegion") ?? "ap-northeast-2",
-}, { provider });
+}, {
+  // Supabase API never returns the DB password; importing then re-applying would
+  // attempt to reset it. Keep the source value as the canonical secret but never
+  // diff against state. organizationId is also immutable post-create.
+  ignoreChanges: ["databasePassword", "organizationId"],
+});
 
 export const projectRef = project.id;
 export const supabaseUrl = pulumi.interpolate`https://${project.id}.supabase.co`;

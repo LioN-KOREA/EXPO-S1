@@ -1,8 +1,10 @@
 name: Deploy (prod)
 
 on:
-  push:
-    branches: [EXPO-S1]
+  # TEMPORARILY DISABLED while recovery-import-stack.yml repopulates the empty
+  # Pulumi stack. Restore the push trigger after import + diff verification.
+  # push:
+  #   branches: [EXPO-S1]
   workflow_dispatch:
 
 concurrency:
