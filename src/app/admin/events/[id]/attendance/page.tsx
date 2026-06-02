@@ -249,7 +249,6 @@ export default function AttendancePage() {
           onClose={() => setScheduledDialogOpen(false)}
           eventId={eventId}
           recipientUserIds={filtered.map((r) => r.user_id)}
-          mode="create"
         />
       )}
 
