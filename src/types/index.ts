@@ -35,6 +35,51 @@ export interface Profile {
   created_at: string;
 }
 
+// PRD #16 — 한글 enum 고정
+export type InterpreterGrade = '특급' | '우수' | '보통' | '주의';
+export type InterpreterRehireStatus = '가능' | '불가' | '보류';
+
+// PRD #16 — 통역사 글로벌 운영 메타 (admin only, 별도 테이블).
+// profiles 와 1:1 (interpreter_id PK). RLS 로 admin 만 row 노출.
+export interface InterpreterGlobalMeta {
+  interpreter_id: string;
+  grade: InterpreterGrade | null;
+  base_rate: number | null;
+  rehire_status: InterpreterRehireStatus | null;
+  global_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// PRD #16 — 통역사 이벤트별 평가
+export interface InterpreterEvaluation {
+  id: string;
+  interpreter_id: string;
+  event_id: string;
+  comment: string | null;
+  notes: string | null;
+  paid_rate: number | null;
+  evaluated_by: string;
+  evaluated_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// PRD #16 — 통역사 상세 = 글로벌 필드 + 참여 이벤트 + 이벤트별 평가
+export interface InterpreterEventParticipation {
+  event_id: string;
+  event_name: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface InterpreterWithHistory {
+  profile: Profile;
+  meta: InterpreterGlobalMeta | null;
+  events: InterpreterEventParticipation[];
+  evaluations: InterpreterEvaluation[];
+}
+
 // --- 수출상담회 ---
 export interface Event {
   id: string;
