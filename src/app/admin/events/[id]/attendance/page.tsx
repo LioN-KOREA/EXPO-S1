@@ -5,9 +5,10 @@ import { useParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Calendar, Plus } from 'lucide-react';
+import { Search, Calendar, Plus, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { QrIssueButton } from './QrIssueButton';
+import { ScheduledNoticeDialog } from '@/components/admin/ScheduledNoticeDialog';
 import {
   STATUS_ORDER,
   compareAttendance,
@@ -79,6 +80,7 @@ export default function AttendancePage() {
   const [rows, setRows] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [scheduledDialogOpen, setScheduledDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -158,6 +160,16 @@ export default function AttendancePage() {
           <p className="text-slate-500 text-sm mt-1">통역사 출석 상태 관리</p>
         </div>
         <div className="flex gap-2 flex-wrap w-full sm:w-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setScheduledDialogOpen(true)}
+            disabled={filtered.length === 0}
+            title={filtered.length === 0 ? '대상자가 없습니다' : undefined}
+          >
+            <Send className="w-4 h-4 mr-1" />
+            메시지 전송 예약
+          </Button>
           <QrIssueButton eventId={eventId} />
         </div>
       </div>
@@ -230,6 +242,16 @@ export default function AttendancePage() {
           <span className="ml-auto text-slate-500">{filtered.length} 건</span>
         </CardContent>
       </Card>
+
+      {scheduledDialogOpen && (
+        <ScheduledNoticeDialog
+          open
+          onClose={() => setScheduledDialogOpen(false)}
+          eventId={eventId}
+          recipientUserIds={filtered.map((r) => r.user_id)}
+          mode="create"
+        />
+      )}
 
       {/* 테이블 */}
       <Card className="border-0 shadow-sm">
