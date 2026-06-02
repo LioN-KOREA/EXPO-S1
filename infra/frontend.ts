@@ -215,7 +215,9 @@ const distribution = new aws.cloudfront.Distribution("cdn", {
   enabled: true,
   isIpv6Enabled: true,
   httpVersion: "http2and3",
-  priceClass: "PriceClass_200",
+  // priceClass omitted — distribution is on CloudFront's "Free" pricing plan,
+  // which rejects an explicit priceClass at the API. Leaving this unset keeps
+  // the distribution on PriceClass_All (the plan's default).
   comment: "expo-s1 frontend",
   aliases: [PRIMARY_DOMAIN],
   webAclId: WAF_WEB_ACL_ARN,
@@ -290,6 +292,16 @@ const distribution = new aws.cloudfront.Distribution("cdn", {
     sslSupportMethod: "sni-only",
     minimumProtocolVersion: "TLSv1.2_2021",
   },
+}, {
+  // `origins`: state was imported in a different array order than the code
+  //   declares; AWS CloudFront keys origins by `originId`, not array index,
+  //   so the reorder is state-only and safe to ignore.
+  // `priceClass`: this distribution is on CloudFront's "Free" pricing plan,
+  //   which rejects any explicit price-class value in UpdateDistribution.
+  //   The AWS provider always sends the default (`PriceClass_All`) even when
+  //   the field is omitted, so any update call would fail. Ignoring keeps
+  //   Pulumi from issuing UpdateDistribution unless a real change exists.
+  ignoreChanges: ["origins", "priceClass"],
 });
 
 // Grant CloudFront (via OAC) read on the S3 bucket
