@@ -201,12 +201,24 @@ const CACHE_DISABLED = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad";
 const CACHE_OPTIMIZED = "658327ea-f89d-4fab-a63d-7e88639e58f6";
 const ORIGIN_REQ_ALL_VIEWER_EXCEPT_HOST = "b689b0a8-53d0-40ab-baf2-68738e2966ac";
 
+// Custom domain (wordcat.it.kr) + ACM cert (us-east-1 wildcard) + WAF (CloudFront-managed
+// standard rule set: IpReputation + CommonRuleSet + KnownBadInputs).
+// These resources are externally managed (DNS provider, ACM, WAF console); we reference
+// them by ARN/string so CloudFront stays in IaC without owning their lifecycle.
+const PRIMARY_DOMAIN = "excon.wordcat.it.kr";
+const ACM_CERT_ARN =
+  "arn:aws:acm:us-east-1:254689256810:certificate/32b907c9-8f0d-4327-bb5c-302a036051fd";
+const WAF_WEB_ACL_ARN =
+  "arn:aws:wafv2:us-east-1:254689256810:global/webacl/CreatedByCloudFront-acd334e2/8de4f0aa-5b98-4f2b-93f0-45088e5619e1";
+
 const distribution = new aws.cloudfront.Distribution("cdn", {
   enabled: true,
   isIpv6Enabled: true,
   httpVersion: "http2and3",
   priceClass: "PriceClass_200",
   comment: "expo-s1 frontend",
+  aliases: [PRIMARY_DOMAIN],
+  webAclId: WAF_WEB_ACL_ARN,
 
   origins: [
     {
@@ -274,11 +286,9 @@ const distribution = new aws.cloudfront.Distribution("cdn", {
   restrictions: { geoRestriction: { restrictionType: "none" } },
 
   viewerCertificate: {
-    cloudfrontDefaultCertificate: true,
-    // For a custom domain:
-    //   acmCertificateArn: <us-east-1 ACM cert ARN>,
-    //   sslSupportMethod: "sni-only",
-    //   minimumProtocolVersion: "TLSv1.2_2021",
+    acmCertificateArn: ACM_CERT_ARN,
+    sslSupportMethod: "sni-only",
+    minimumProtocolVersion: "TLSv1.2_2021",
   },
 });
 
