@@ -31,14 +31,21 @@ export default function EventsPage() {
 
   async function loadEvents() {
     const supabase = createClient();
-    // 활성 이벤트 (RLS가 deleted_at IS NULL만 반환)
-    const { data } = await supabase
-      .from('events')
-      .select('*')
-      .is('deleted_at', null) // Explicitly filter out deleted events to ensure that deleted events do not show up, even though RLS should already enforce this
-      .order('created_at', { ascending: false });
-    setEvents(data || []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setEvents(data || []);
+    } catch (err) {
+      console.error('[admin/events] loadEvents failed', err);
+      // 재조회 실패 시 기존 목록은 유지 (목록 증발 방지). 초기 로드 실패는 빈 placeholder 가 노출됨.
+      toast.error('상담회 목록을 불러오지 못했습니다. 새로고침해 주세요.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadDeletedEvents() {
@@ -47,14 +54,19 @@ export default function EventsPage() {
       return;
     }
     const supabase = createClient();
-    // RLS에서 admin은 deleted_at IS NOT NULL도 볼 수 있음
-    const { data } = await supabase
-      .from('events')
-      .select('*')
-      .not('deleted_at', 'is', null)
-      .order('deleted_at', { ascending: false });
-    setDeletedEvents(data || []);
-    setShowDeleted(true);
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', { ascending: false });
+      if (error) throw error;
+      setDeletedEvents(data || []);
+      setShowDeleted(true);
+    } catch (err) {
+      console.error('[admin/events] loadDeletedEvents failed', err);
+      toast.error('삭제된 상담회 목록을 불러오지 못했습니다.');
+    }
   }
 
   async function handleRestore(eventId: string) {

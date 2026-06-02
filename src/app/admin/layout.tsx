@@ -9,17 +9,36 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect('/login');
+  // redirect() 는 NEXT_REDIRECT 를 throw 하므로 try/catch 밖에서 호출.
+  let userId: string | null = null;
+  let authFailed = false;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    userId = user?.id ?? null;
+  } catch (err) {
+    console.error('[admin/layout] auth.getUser failed', err);
+    authFailed = true;
+  }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  if (authFailed || !userId) redirect('/login');
 
-  if (!profile || profile.role !== 'admin') redirect('/login');
+  let profile: { name: string; email: string; role: string } | null = null;
+  let profileFailed = false;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('name, email, role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    profile = data;
+  } catch (err) {
+    console.error('[admin/layout] profile fetch failed', err);
+    profileFailed = true;
+  }
+
+  if (profileFailed || !profile || profile.role !== 'admin') redirect('/login');
 
   return (
     <div className="flex min-h-screen bg-background">
