@@ -54,6 +54,17 @@ export interface UpdateGlobalFieldsInput {
 
 // ---- 1. listInterpreters -------------------------------------------------
 
+// PostgREST `.or()` value 는 콤마/점/괄호/따옴표가 reserved.
+// 안전 escape = (1) 사용자 입력의 LIKE wildcard 무력화 + (2) PostgREST double-quote 안에서 `\`/`"` escape.
+// `*` 와 `?` 는 PostgREST ilike wildcard 이므로 입력에서 제거.
+function escapeSearchTerm(raw: string): string {
+  // 1. PostgREST ilike wildcard (* ?) 와 LIKE wildcard (% _) 둘 다 literal 화: 특수 문자 제거.
+  // 2. PostgREST `.or()` 구분자(`.,()`)도 안전하게 처리하려고 double-quote 감싸기 전제.
+  const stripped = raw.replace(/[*?%_]/g, '');
+  // 3. double-quote 안에서 `\`, `"` escape.
+  return stripped.replace(/[\\"]/g, '\\$&');
+}
+
 export async function listInterpreters(
   supabase: SupabaseClient,
   filter: ListInterpretersFilter = {},
@@ -64,9 +75,15 @@ export async function listInterpreters(
     .select('id, email, name, role, phone, language, company_name, country, extra_info, linked_buyer_id, linked_seller_id, must_change_password, created_at')
     .eq('role', 'interpreter');
 
-  if (filter.search) {
-    const term = `%${filter.search}%`;
-    profileQuery = profileQuery.or(`name.ilike.${term},email.ilike.${term},phone.ilike.${term}`);
+  const trimmedSearch = filter.search?.trim() ?? '';
+  if (trimmedSearch) {
+    const term = escapeSearchTerm(trimmedSearch);
+    if (term) {
+      // double-quote 로 감싸 콤마/점 등 PostgREST reserved char 노출 방어.
+      profileQuery = profileQuery.or(
+        `name.ilike."*${term}*",email.ilike."*${term}*",phone.ilike."*${term}*"`,
+      );
+    }
   }
 
   const { data: profiles, error: profileErr } = await profileQuery.order('name', { ascending: true });

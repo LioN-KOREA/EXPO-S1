@@ -32,6 +32,7 @@ const navItems = [
   { href: '/admin', label: '대시보드', icon: LayoutDashboard },
   { href: '/admin/events', label: '상담회 관리', icon: CalendarDays },
   { href: '/admin/users', label: '사용자 관리', icon: Users },
+  { href: '/admin/interpreters', label: '통역사 관리', icon: Languages },
 ];
 
 // 이벤트 상세 진입 시 노출되는 메뉴 — 카테고리 그룹
