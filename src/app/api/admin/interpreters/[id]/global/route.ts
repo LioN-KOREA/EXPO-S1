@@ -38,8 +38,8 @@ function validateRate(v: unknown): ValidateResult<number> {
 
 function validateNotes(v: unknown): ValidateResult<string> {
   if (v === null || v === undefined || v === '') return { ok: true, value: null };
-  if (typeof v !== 'string') return { ok: false, reason: '글로벌 노트는 텍스트여야 합니다.' };
-  if (v.length > 8000) return { ok: false, reason: '글로벌 노트가 너무 깁니다 (최대 8000자).' };
+  if (typeof v !== 'string') return { ok: false, reason: '비고는 텍스트여야 합니다.' };
+  if (v.length > 8000) return { ok: false, reason: '비고가 너무 깁니다 (최대 8000자).' };
   return { ok: true, value: v };
 }
 

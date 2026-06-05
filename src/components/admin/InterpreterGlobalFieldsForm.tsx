@@ -144,7 +144,7 @@ export function InterpreterGlobalFieldsForm({ interpreterId, initialMeta }: Prop
         </div>
 
         <div className="space-y-2 sm:col-span-2">
-          <Label>글로벌 노트</Label>
+          <Label>비고</Label>
           <Textarea
             rows={4}
             placeholder="예: 오전 일찍 도착, 통역 명확. 다국적 행사 선호."
