@@ -550,6 +550,7 @@ export default function ConsultationReportPage() {
                 submitLabel={reportStatus === 'revision_requested' ? t.interpreter.resubmit : t.interpreter.submit}
                 autoAnswerTemplate={autoAnswerTemplate}
                 consultation={consultation}
+                consultationId={consultation?.id ?? undefined}
               />
 
               {isEditable && (

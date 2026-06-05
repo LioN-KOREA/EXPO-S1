@@ -17,10 +17,6 @@ import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
 import type { TemplateField } from '@/types';
 import { ABSENT_CONSULTATION_TYPES } from '@/lib/template/defaults';
-import {
-  buildAutoAnswerContext,
-  renderAutoAnswer,
-} from '@/lib/template/autoAnswer';
 
 const CONSULTATION_TYPE_KEY = 'consultation_type';
 const ABSENCE_REASON_KEY = 'absence_reason';
@@ -44,6 +40,7 @@ interface Props {
   submitLabel?: string;
   autoAnswerTemplate?: string | null;
   consultation?: AutoAnswerConsultation | null;
+  consultationId?: string;
 }
 
 function isVisible(field: TemplateField, values: Record<string, unknown>): boolean {
@@ -74,10 +71,13 @@ export function MultiStepReportForm({
   submitLabel,
   autoAnswerTemplate,
   consultation,
+  consultationId,
 }: Props) {
   const { t } = useI18n();
   const resolvedSubmitLabel = submitLabel ?? t.interpreter.submit;
   const [step, setStep] = useState(0);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiVariantIndex, setAiVariantIndex] = useState(0);
 
   // 순서 정렬 + 통역사가 작성하는 필드만 (auto/admin 제외) + 조건 분기 필터
   const sorted = useMemo(
@@ -261,24 +261,46 @@ export function MultiStepReportForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    if (!autoAnswerTemplate || !autoAnswerTemplate.trim()) {
-                      toast.info(t.interpreter.aiGeneratePreparing);
+                  disabled={aiLoading}
+                  onClick={async () => {
+                    if (!consultationId) {
+                      toast.error('consultationId 누락');
                       return;
                     }
                     const existing = String(values[current.key] ?? '');
-                    if (existing.trim() && !confirm(t.interpreter.aiGenerateOverwrite)) {
+                    if (existing.trim() && !confirm('기존 내용을 덮어쓸까요?')) {
                       return;
                     }
-                    const ctx = buildAutoAnswerContext(fields, values, consultation ?? null);
-                    const rendered = renderAutoAnswer(autoAnswerTemplate, ctx);
-                    onChange(current.key, rendered);
-                    toast.success(t.interpreter.aiGenerateDone);
+                    setAiLoading(true);
+                    const fieldKey = current.key;
+                    try {
+                      const res = await fetch('/api/ai/test', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          consultation_id: consultationId,
+                          variant_index: aiVariantIndex,
+                          form_values: values,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        toast.error(`AI 호출 실패: ${data.error ?? res.status}`);
+                        return;
+                      }
+                      onChange(fieldKey, data.content);
+                      setAiVariantIndex((i) => (i + 1) % 5);
+                      toast.success(`AI 답변 생성 완료 (시안 ${aiVariantIndex + 1}/5)`);
+                    } catch (e) {
+                      toast.error(`AI 호출 오류: ${e instanceof Error ? e.message : String(e)}`);
+                    } finally {
+                      setAiLoading(false);
+                    }
                   }}
                   className="gap-1.5 mb-2 border-rose-200 text-rose-600 hover:bg-rose-50"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  {t.interpreter.aiGenerate}
+                  {aiLoading ? '생성 중...' : `AI 답변 생성 (시안 ${aiVariantIndex + 1}/5)`}
                 </Button>
               )}
               <Textarea

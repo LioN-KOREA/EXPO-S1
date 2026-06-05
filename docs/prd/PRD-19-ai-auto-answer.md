@@ -356,3 +356,117 @@ S0(마이그+env+시스템필드) → S1(M2+M3+M4 lib) → S2(M5+M6+M7 API) → 
 - tsc clean 필수 ✓
 - 로컬 dev (시드 데이터) 자가 검증 후 보고 ✓
 - 마이그는 항상 수동 db push + 검증 ✓
+
+---
+
+## 결정사항 보강 (2026-06-05 설계 세션)
+
+마이그 046 운영 적용 후 양식 실데이터 검토로 추가 결정 7건. 본문 Implementation Decisions 보강.
+
+### D1 — 시스템 프롬프트 수정 (10규칙 → 12규칙)
+
+원안 10규칙 + 다음 2 규칙 추가, 규칙 2/5 미세 수정:
+
+- 규칙 2 수정: "문체는 공공기관 제출용 문체, **한국어로** 작성한다"
+- 규칙 5 수정: "분량은 3~6문장, **한 문단으로** 작성한다"
+- **규칙 11 신규**: "입력값이 `(미입력)` 인 항목은 답변에서 언급하지 않는다"
+- **규칙 12 신규**: "제공된 [입력 정보] 외의 사실·수치·일정·고유명사를 추측·창작하지 않는다"
+
+이유:
+- 11 = 통역사가 양식 일부만 채울 때 AI 가 가짜 수치/일정 창작 위험 차단
+- 12 = 할루시네이션 차단 (정부 제출 보고서 신뢰성)
+
+### D2 — user message 포맷 = label:value 줄별
+
+```
+국내기업명: 라이온코리아
+국내기업 업종 또는 주요품목: 화장품 OEM
+해외바이어명: ACME Corp
+국가: 미국
+상담내용: 스킨케어 라인 공급 협의
+주요 논의사항: MOQ 5000개, FOB 부산
+예상 계약금액: USD 120,000
+바이어 반응: 긍정적, 샘플 요청
+후속 계획: 6월 중 샘플 발송
+기타 특이사항: 동남아 확장 관심
+```
+
+빈 값은 `(미입력)`. JSON/자유형 대비 한국어 reasoning 안정.
+
+### D3 — industry 데이터 출처: 양식 기존 필드 활용 (시스템 필드 폐기)
+
+운영 양식 2개 검토 결과:
+
+| 046 시스템 필드 | 양식 A 기존 키 | 양식 B 기존 키 | 결정 |
+|---|---|---|---|
+| `industry` | `상담품목` | `consultation_item` (required) | **폐기**, 양식 기존 키 사용 |
+| `consultation_content` | `상담세부내용` | `consultation_detail` (required) | **폐기**, 양식 기존 키 사용 |
+| `expected_amount` | `수출상담액_USD`, `계약추진액_USD` | `export_amount_usd`, `contract_planned_usd` | **폐기**, 양식 기존 키 사용 |
+| `key_discussion` | (없음) | (없음) | **유지** (시스템 잠금) |
+| `buyer_reaction` | (없음, `매칭만족도` 다른 의미) | `buyer_satisfaction` 다른 의미 | **유지** (시스템 잠금) |
+| `follow_up` | (없음) | (없음) | **유지** (시스템 잠금) |
+| `notes` | (없음) | (없음) | **유지** (시스템 잠금) |
+
+→ 마이그 046 의 3종 시스템 주입 = **운영 양식에 row 그대로 둠**. 마이그 048 미작성. prompt builder fallback 으로 빈 값 해결.
+
+근거: 048 작성 비용/리스크 > 양식 빈 칸 3개 UI 부담. 추후 양식 정리 시 한꺼번에.
+
+### D4 — prompt builder 양식 키 후보 fallback
+
+각 입력 항목별 양식 키 후보 리스트 순회, 첫 비어있지 않은 값 사용:
+
+| prompt 입력 항목 | fallback 순서 |
+|---|---|
+| 국내기업명 | `sellers.company_name_kr` → `sellers.company_name` |
+| 국내기업 업종/주요품목 | `consultation_item` → `상담품목` → `industry` → `sellers.extra_info->>'업종'` → `sellers.extra_info->>'품목'` |
+| 해외바이어명 | `buyers.company_name` |
+| 국가 | `buyers.country` |
+| 상담내용 | `consultation_detail` → `상담세부내용` → `consultation_content` |
+| 주요 논의사항 | `key_discussion` (시스템 잠금 유지) |
+| 예상 계약금액 | `contract_planned_usd` → `계약추진액_USD` → `expected_amount` |
+| 바이어 반응 | `buyer_reaction` (시스템 잠금 유지) |
+| 후속 계획 | `follow_up` (시스템 잠금 유지) |
+| 기타 특이사항 | `notes` (시스템 잠금 유지) |
+
+신규 양식 추가 시 매핑 갱신 비용 = 새 키 1~2개 추가. 운영 부담 적음.
+
+### D5 — sellers `업종` prefill (B 변형)
+
+엑셀 업로드 EXTRA_LABELS 에 "업종" 키워드 추가 (`src/lib/excel/users-parser.ts:55-58`). 셀러 상세에서 `sellers.extra_info->>'업종'` 으로 양식 prefill (구현 시 결정).
+
+이미 "품목", "상담회 품목" 은 EXTRA_LABELS 포함됨.
+
+### D6 — 캐시 키 = K1 (consultation_id 만)
+
+PRD 본문 §4 의 `(consultation_id, sha256(buyer_id+seller_id+consultation_item+consultation_purpose)[:16])` 원안 **폐기**.
+
+| 옵션 | 풀 키 | 새 풀 생성 시점 | 비용 |
+|---|---|---|---|
+| K1 (채택) | `consultation_id` 만 | 절대 안 바뀜 | 최저 (LLM 호출 ≤ 5회/상담) |
+| K2 | `(buyer_id, seller_id)` | 다른 조합 | 낮음 |
+| K3 (원안) | 추가 양식 해시 | textarea 1글자 수정 시 신규 | 높음 |
+
+이유:
+- 한 상담 = 한 풀 = 단순/안정/저비용
+- textarea 1글자 변경마다 풀 깨지면 비용 폭증
+- "핵심 필드 변경 시 새 풀" 원안 UX 의도는 통역사 측 "다른 시안 보기" 인데, 5-variant 풀 자체로 해결
+
+마이그 046 의 `ai_answer_pool.context_hash` 컬럼은 그대로 두고, K1 에서는 상수값 (`'v1'` 등) 으로 채움.
+
+### D7 — 불참 가드 UI 레벨 1줄
+
+`MultiStepReportForm.tsx:89-100` 이미 `isAbsentFlow` 분기 → 불참 시 양식 필드 자동 숨김. AI 버튼도 동일 위치라면 자동 숨김.
+
+추가 안전망: AI 버튼 위치에 따라 `disabled={isAbsentFlow}` 1줄 가드.
+
+→ 시스템 프롬프트에 불참 처리 규칙 추가 **불필요**. 양식 자체가 가려져서 user msg 에 빈 값만 들어가고, D1 규칙 11 이 무시 처리.
+
+---
+
+### 다음 슬라이스 영향
+
+- **S0 (마이그 046)** = 운영 적용 끝. 추가 마이그 048 미작성.
+- **S1 (M2 prompt builder + M3 OpenAI client + M4 폴백)** = D1/D2/D4 반영. fallback 매핑 상수 + label:value 포맷 + 12규칙 시스템 프롬프트.
+- **S2 (M5 5-pool + M6 rate limit + M7 API)** = D6 (K1 캐시) 반영. context_hash 상수.
+- **S3 (M8 통역사 UI)** = D7 (isAbsentFlow disable) + D5 (industry prefill UI) 반영.
+- **S5 (매뉴얼+처리방침)** = 변경 없음.
