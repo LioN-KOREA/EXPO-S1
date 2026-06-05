@@ -218,15 +218,20 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
 
   return (
     <>
-    <Card className="border-0 shadow-sm mb-4">
+    <details className="mb-4 rounded-lg border bg-card shadow-sm">
+      <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-slate-600 hover:bg-muted/40">
+        고급 — LLM 실패 시 폴백 답변 템플릿 (평소 숨김)
+      </summary>
+    <Card className="border-0 shadow-none rounded-none">
       <CardHeader>
-        <CardTitle className="text-lg">자동 답변 템플릿</CardTitle>
+        <CardTitle className="text-lg">LLM 실패 시 폴백 답변 템플릿</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-slate-500">
-          통역사가 장문(textarea) 필드의 &quot;자동 답변 생성&quot; 버튼을 누르면 아래 템플릿에
-          현재 양식 답안과 바이어/셀러 카드 정보를 채워 textarea에 주입합니다. 비워두면
-          버튼이 비활성화 안내를 띄웁니다.
+          평소에는 AI(LLM) 가 상담일지를 자동 생성합니다. 본 템플릿은 LLM 호출이
+          실패(타임아웃·5xx·rate limit·kill switch off 등)할 때만 사용되는 폴백입니다.
+          현재 양식 답안과 바이어/셀러 카드 정보를 변수로 치환하여 textarea에 주입합니다.
+          비워두면 폴백 호출 시 비활성화 안내를 띄웁니다.
         </p>
         <Textarea
           value={autoAnswerTemplate}
@@ -297,6 +302,7 @@ export function TemplateEditor({ eventId, initialFields, initialAutoAnswerTempla
         </details>
       </CardContent>
     </Card>
+    </details>
 
     <Card className="border-0 shadow-sm">
       <CardHeader>
