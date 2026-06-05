@@ -78,6 +78,7 @@ export function MultiStepReportForm({
   const [step, setStep] = useState(0);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiVariantIndex, setAiVariantIndex] = useState(0);
+  const [aiClickCount, setAiClickCount] = useState(0);
 
   // 순서 정렬 + 통역사가 작성하는 필드만 (auto/admin 제외) + 조건 분기 필터
   const sorted = useMemo(
@@ -261,10 +262,14 @@ export function MultiStepReportForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={aiLoading}
+                  disabled={aiLoading || aiClickCount >= 5}
                   onClick={async () => {
                     if (!consultationId) {
                       toast.error('consultationId 누락');
+                      return;
+                    }
+                    if (aiClickCount >= 5) {
+                      toast.info('5개 시안을 모두 생성했습니다.');
                       return;
                     }
                     const existing = String(values[current.key] ?? '');
@@ -290,7 +295,13 @@ export function MultiStepReportForm({
                       }
                       onChange(fieldKey, data.content);
                       setAiVariantIndex((i) => (i + 1) % 5);
-                      toast.success(`AI 답변 생성 완료 (시안 ${aiVariantIndex + 1}/5)`);
+                      setAiClickCount((c) => c + 1);
+                      const nextCount = aiClickCount + 1;
+                      if (nextCount >= 5) {
+                        toast.success(`AI 답변 생성 완료 (시안 5/5). 모든 시안을 생성했습니다.`);
+                      } else {
+                        toast.success(`AI 답변 생성 완료 (시안 ${nextCount}/5)`);
+                      }
                     } catch (e) {
                       toast.error(`AI 호출 오류: ${e instanceof Error ? e.message : String(e)}`);
                     } finally {
@@ -300,7 +311,11 @@ export function MultiStepReportForm({
                   className="gap-1.5 mb-2 border-rose-200 text-rose-600 hover:bg-rose-50"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  {aiLoading ? '생성 중...' : `AI 답변 생성 (시안 ${aiVariantIndex + 1}/5)`}
+                  {aiLoading
+                    ? '생성 중...'
+                    : aiClickCount >= 5
+                      ? '5개 시안 모두 생성됨'
+                      : `AI 답변 생성 (${aiClickCount + 1}/5)`}
                 </Button>
               )}
               <Textarea
