@@ -27,7 +27,8 @@ jobs:
       SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       CICD_S3_BUCKET_URL: ${{ secrets.CICD_S3_BUCKET_URL }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # secret 이름은 `OPENAI` 로 등록되어 있음 → 코드는 표준 OPENAI_API_KEY 로 노출.
+      OPENAI_API_KEY: ${{ secrets.OPENAI }}
       AI_AUTO_ANSWER_ENABLED: ${{ secrets.AI_AUTO_ANSWER_ENABLED }}
 
     steps:
