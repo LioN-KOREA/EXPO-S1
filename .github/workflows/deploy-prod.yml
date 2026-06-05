@@ -27,6 +27,8 @@ jobs:
       SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       CICD_S3_BUCKET_URL: ${{ secrets.CICD_S3_BUCKET_URL }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      AI_AUTO_ANSWER_ENABLED: ${{ secrets.AI_AUTO_ANSWER_ENABLED }}
 
     steps:
       - uses: actions/checkout@v6

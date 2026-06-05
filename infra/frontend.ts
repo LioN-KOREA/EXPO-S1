@@ -95,6 +95,10 @@ const lambdaEnv = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: anonKey,
     SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
     NODE_ENV: "production",
+    // PRD #19 AI 자동 답변 — kill switch + API 키. secret 미등록 시 빈 문자열.
+    // 라우트(/api/ai/test)는 AI_AUTO_ANSWER_ENABLED === 'true' 일 때만 동작.
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? "",
+    AI_AUTO_ANSWER_ENABLED: process.env.AI_AUTO_ANSWER_ENABLED ?? "",
     // OpenNext incremental cache — reuses the assets bucket with a key prefix
     // to keep cache objects separate from public assets.
     CACHE_BUCKET_NAME: bucket.bucket,
