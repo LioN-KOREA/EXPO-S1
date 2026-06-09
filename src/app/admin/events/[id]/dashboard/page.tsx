@@ -4,6 +4,7 @@ import { ArrowLeft, Download } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { EventDashboardClient } from '@/components/admin/dashboard/EventDashboardClient';
+import { AiUsageCard } from '@/components/admin/dashboard/AiUsageCard';
 import type { TemplateField, ReportStatus } from '@/types';
 import { batchIn } from '@/lib/supabase/batch-query';
 
@@ -216,6 +217,10 @@ export default async function EventDashboardPage({
         sellerRanking={sellerRanking.slice(0, 10)}
         countryMetrics={countryMetrics}
       />
+
+      <div className="mt-6">
+        <AiUsageCard eventId={eventId} />
+      </div>
     </div>
   );
 }

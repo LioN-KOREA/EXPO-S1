@@ -64,7 +64,9 @@ CREATE TABLE IF NOT EXISTS ai_call_logs (
   event_id uuid REFERENCES events(id) ON DELETE CASCADE,
   user_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
   model text NOT NULL,
-  -- status: success | timeout | http_5xx | rate_limit | kill_switch | daily_cap | invalid_response | template_fallback
+  -- status (S2 확정 11종, CHECK 미적용 — 향후 enum 확장 호환):
+  --   success | cache_hit | timeout | http_5xx | rate_limit | kill_switch
+  --   daily_cap | invalid_response | template_fallback | auth_error | unknown_error
   status text NOT NULL,
   prompt_text text,
   completion_text text,

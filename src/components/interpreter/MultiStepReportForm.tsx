@@ -279,7 +279,7 @@ export function MultiStepReportForm({
                     setAiLoading(true);
                     const fieldKey = current.key;
                     try {
-                      const res = await fetch('/api/ai/test', {
+                      const res = await fetch('/api/ai/auto-answer', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
