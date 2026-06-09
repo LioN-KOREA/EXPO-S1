@@ -118,7 +118,11 @@ function valueOrMissing(s: string): string {
 
 export function buildPrompt(input: PromptInput): PromptOutput {
   const { consultation, formValues, variantIndex } = input;
-  const variant = VARIANT_TABLE[Math.max(0, Math.min(4, variantIndex))];
+  // NaN / 분수 / 음수 / 5+ 모두 0~4 정수로 강제. VARIANT_TABLE[undefined] 런타임 오류 방지.
+  const safeIndex = Number.isFinite(variantIndex)
+    ? Math.max(0, Math.min(4, Math.floor(variantIndex)))
+    : 0;
+  const variant = VARIANT_TABLE[safeIndex];
 
   const sellerName = valueOrMissing(
     (consultation.seller?.company_name_kr?.trim() ||

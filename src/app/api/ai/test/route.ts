@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ensureRole } from '@/lib/auth/guards';
 import { buildPrompt } from '@/lib/ai/prompt-builder';
 import { callOpenAI, OpenAIError } from '@/lib/ai/openai-client';
+import { buildTemplateFallback } from '@/lib/ai/fallback-adapter';
 
 interface RequestBody {
   consultation_id?: unknown;
@@ -23,11 +24,6 @@ interface RequestBody {
 }
 
 export async function POST(request: NextRequest) {
-  // Kill switch — 기본 false (운영 안전). 사용 시 env 에 명시적으로 'true' 설정.
-  if (process.env.AI_AUTO_ANSWER_ENABLED !== 'true') {
-    return NextResponse.json({ error: 'AI 자동 답변 기능이 비활성화 상태입니다.' }, { status: 503 });
-  }
-
   const supabase = await createClient();
   const guard = await ensureRole(supabase, ['interpreter']);
   if ('error' in guard) {
@@ -59,7 +55,7 @@ export async function POST(request: NextRequest) {
   const { data: consultation, error: consultErr } = await supabase
     .from('consultations')
     .select(
-      'id, interpreter_id, buyer:buyers(company_name, country), seller:sellers(company_name, company_name_kr, extra_info)',
+      'id, event_id, interpreter_id, buyer:buyers(company_name, country), seller:sellers(company_name, company_name_kr, contact_name, extra_info)',
     )
     .eq('id', consultationId)
     .eq('interpreter_id', guard.user.id)
@@ -89,11 +85,39 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // 폴백 어댑터용 양식 템플릿 로드 (LLM 실패·kill switch 시 renderAutoAnswer 호출).
+  // 조회 실패해도 본 요청은 계속 진행 — 폴백 미보장 상태로만 강등.
+  const { data: templateRow } = await supabase
+    .from('report_templates')
+    .select('fields, auto_answer_template')
+    .eq('event_id', consultation.event_id)
+    .maybeSingle();
+
+  const buyer = Array.isArray(consultation.buyer) ? consultation.buyer[0] : consultation.buyer;
+  const seller = Array.isArray(consultation.seller) ? consultation.seller[0] : consultation.seller;
+
+  const tryFallback = (): string | null =>
+    buildTemplateFallback({
+      templateRow,
+      formValues,
+      consultation: { buyer, seller },
+    });
+
+  // PRD §Solution: kill switch off 도 폴백 동봉 대상. 폴백 사실은 통역사에 노출 X (admin 만 인지).
+  if (process.env.AI_AUTO_ANSWER_ENABLED !== 'true') {
+    const content = tryFallback();
+    if (content !== null) {
+      return NextResponse.json({
+        variant_index: variantIndex,
+        content,
+        source: 'template_fallback',
+      });
+    }
+    return NextResponse.json({ error: 'AI 자동 답변 기능이 비활성화 상태입니다.' }, { status: 503 });
+  }
+
   const prompt = buildPrompt({
-    consultation: {
-      buyer: Array.isArray(consultation.buyer) ? consultation.buyer[0] : consultation.buyer,
-      seller: Array.isArray(consultation.seller) ? consultation.seller[0] : consultation.seller,
-    },
+    consultation: { buyer, seller },
     formValues,
     variantIndex,
   });
@@ -109,8 +133,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       variant_index: variantIndex,
       content: result.content,
+      source: 'llm',
     });
   } catch (err) {
+    // M4 폴백 어댑터: 양식의 auto_answer_template 가 있으면 renderAutoAnswer 로 대체 답변.
+    // 내부 LLM 오류 메시지는 응답에 노출 X (provider/config 정보 누출 방지).
+    const content = tryFallback();
+    if (content !== null) {
+      return NextResponse.json({
+        variant_index: variantIndex,
+        content,
+        source: 'template_fallback',
+      });
+    }
+
     if (err instanceof OpenAIError) {
       const status =
         err.kind === 'timeout' ? 504 :
