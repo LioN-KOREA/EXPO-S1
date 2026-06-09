@@ -25,7 +25,7 @@ export function QrIssueButton({ eventId }: Props) {
   }, [open, eventId]);
 
   async function generate() {
-    const payload = `EXCON:${eventId}`;
+    const payload = `CONTEXT:${eventId}`;
     const url = await QRCode.toDataURL(payload, {
       width: 600,
       margin: 2,
@@ -62,7 +62,7 @@ export function QrIssueButton({ eventId }: Props) {
       <h1>${eventName}</h1>
       <div class="meta">현장 통역사 출석 QR</div>
       <img src="${dataUrl}" alt="QR" />
-      <div class="footer">EXCON · 통역사 앱에서 스캔하여 출석</div>
+      <div class="footer">contEXT · 통역사 앱에서 스캔하여 출석</div>
       <script>window.onload = () => setTimeout(() => window.print(), 200);<\/script>
     </body></html>`);
     w.document.close();

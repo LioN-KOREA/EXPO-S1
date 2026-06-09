@@ -63,9 +63,9 @@ async function buildUsersExcel() {
     const company = SELLER_COMPANIES[i];
     const idx = String(i + 1).padStart(2, '0');
     ws.addRow([
-      'SELLER', name, `seller${idx}@excon-test.kr`, `seller${idx}@excon-test.kr`,
+      'SELLER', name, `seller${idx}@context-test.kr`, `seller${idx}@context-test.kr`,
       `8210${20000000 + i * 1111111}`, company, 'KR', '', '', `${company} - 테스트 셀러`,
-      'https://excon-test.kr', '', INTEREST_ITEMS[i], INTEREST_ITEMS[i],
+      'https://context-test.kr', '', INTEREST_ITEMS[i], INTEREST_ITEMS[i],
       '', '', '', '', '', '10억 ~ 100억 미만',
     ]);
   }
@@ -77,9 +77,9 @@ async function buildUsersExcel() {
     const country = BUYER_COUNTRIES[i];
     const idx = String(i + 1).padStart(2, '0');
     ws.addRow([
-      'BUYER', name, `buyer${idx}@excon-test.kr`, `buyer${idx}@excon-test.kr`,
+      'BUYER', name, `buyer${idx}@context-test.kr`, `buyer${idx}@context-test.kr`,
       `8210${30000000 + i * 1234567}`, company, country, '', '', `${company} - 테스트 바이어`,
-      'https://excon-test.kr', '', INTEREST_ITEMS[i % 10], INTEREST_ITEMS[i % 10],
+      'https://context-test.kr', '', INTEREST_ITEMS[i % 10], INTEREST_ITEMS[i % 10],
       '', '', '', '', '', '',
     ]);
   }
@@ -100,7 +100,7 @@ async function buildUsersExcel() {
   guide.addRow(['테스트 상담회 — 사용자 일괄 등록']);
   guide.addRow([]);
   guide.addRow(['- 셀러 10명, 바이어 20명']);
-  guide.addRow(['- 모든 계정 이메일: seller01@excon-test.kr ~ seller10, buyer01 ~ buyer20']);
+  guide.addRow(['- 모든 계정 이메일: seller01@context-test.kr ~ seller10, buyer01 ~ buyer20']);
   guide.addRow(['- 초기 비밀번호: 전화번호 뒷자리 (국가번호·지역번호 제외)']);
   guide.addRow(['- 통역사는 사용자가 직접 추가']);
   guide.getColumn(1).width = 60;
@@ -152,14 +152,14 @@ async function buildTimetableExcel() {
     const company = SELLER_COMPANIES[i];
     const idx = String(i + 1).padStart(2, '0');
     const phone = `010-${1000 + i * 111}-${2000 + i * 111}`.padStart(13, '0').slice(0, 13);
-    return `${company}\n${company}\n${name} (${name})\n010-${String(1000 + i * 111).padStart(4,'0').slice(0,4)}-${String(2000 + i * 111).padStart(4,'0').slice(0,4)}\n02-${String(100 + i * 11).padStart(3,'0')}-${String(2000 + i * 111).padStart(4,'0').slice(0,4)}\nseller${idx}@excon-test.kr`;
+    return `${company}\n${company}\n${name} (${name})\n010-${String(1000 + i * 111).padStart(4,'0').slice(0,4)}-${String(2000 + i * 111).padStart(4,'0').slice(0,4)}\n02-${String(100 + i * 11).padStart(3,'0')}-${String(2000 + i * 111).padStart(4,'0').slice(0,4)}\nseller${idx}@context-test.kr`;
   };
 
   const buyerCell = (i) => {
     const name = BUYER_NAMES[i];
     const company = BUYER_COMPANIES[i];
     const idx = String(i + 1).padStart(2, '0');
-    return `${company}\n${name}\nbuyer${idx}@excon-test.kr`;
+    return `${company}\n${name}\nbuyer${idx}@context-test.kr`;
   };
 
   // 바이어 1-10: 6슬롯 모두 채움 (Latin square로 셀러 충돌 회피)
@@ -233,16 +233,16 @@ async function buildInterpretersExcel() {
 
   // 10명. 언어 분포: 영어 3, 중국어 2, 일본어 2, 베트남어 1, 태국어 1, 인도네시아어 1
   const interpreters = [
-    ['김영어', 'interpreter01@excon-test.kr', '010-4001-1111', '영어'],
-    ['이영어', 'interpreter02@excon-test.kr', '010-4002-2222', '영어'],
-    ['박영어', 'interpreter03@excon-test.kr', '010-4003-3333', '영어'],
-    ['최중국', 'interpreter04@excon-test.kr', '010-4004-4444', '중국어'],
-    ['정중국', 'interpreter05@excon-test.kr', '010-4005-5555', '중국어'],
-    ['강일본', 'interpreter06@excon-test.kr', '010-4006-6666', '일본어'],
-    ['조일본', 'interpreter07@excon-test.kr', '010-4007-7777', '일본어'],
-    ['윤월남', 'interpreter08@excon-test.kr', '010-4008-8888', '베트남어'],
-    ['장태국', 'interpreter09@excon-test.kr', '010-4009-9999', '태국어'],
-    ['임인니', 'interpreter10@excon-test.kr', '010-4010-1010', '인도네시아어'],
+    ['김영어', 'interpreter01@context-test.kr', '010-4001-1111', '영어'],
+    ['이영어', 'interpreter02@context-test.kr', '010-4002-2222', '영어'],
+    ['박영어', 'interpreter03@context-test.kr', '010-4003-3333', '영어'],
+    ['최중국', 'interpreter04@context-test.kr', '010-4004-4444', '중국어'],
+    ['정중국', 'interpreter05@context-test.kr', '010-4005-5555', '중국어'],
+    ['강일본', 'interpreter06@context-test.kr', '010-4006-6666', '일본어'],
+    ['조일본', 'interpreter07@context-test.kr', '010-4007-7777', '일본어'],
+    ['윤월남', 'interpreter08@context-test.kr', '010-4008-8888', '베트남어'],
+    ['장태국', 'interpreter09@context-test.kr', '010-4009-9999', '태국어'],
+    ['임인니', 'interpreter10@context-test.kr', '010-4010-1010', '인도네시아어'],
   ];
 
   interpreters.forEach(r => ws.addRow(r));
@@ -255,7 +255,7 @@ async function buildInterpretersExcel() {
   guide.addRow([]);
   guide.addRow(['- 통역사 10명']);
   guide.addRow(['- 영어 3 / 중국어 2 / 일본어 2 / 베트남어 1 / 태국어 1 / 인도네시아어 1']);
-  guide.addRow(['- 이메일: interpreter01~10@excon-test.kr']);
+  guide.addRow(['- 이메일: interpreter01~10@context-test.kr']);
   guide.addRow(['- 초기 비밀번호: 전화번호 뒷자리 (예: 010-4001-1111 → 40011111)']);
   guide.addRow(['- 업로드: 통역사 배정 페이지 > 엑셀 업로드 (교체/추가 모드 선택)']);
   guide.getColumn(1).width = 60;

@@ -56,7 +56,7 @@ export function Logo({ size = 34, showText = true, textSize = '17px' }: LogoProp
             WebkitTextFillColor: 'transparent',
           }}
         >
-          EXCON
+          contEXT
         </span>
       )}
     </div>

@@ -17,7 +17,7 @@ const admin = createClient('http://127.0.0.1:54321', 'eyJhbGciOiJIUzI1NiIsInR5cC
   console.log('Accounts OK');
 
   // 상담회
-  const { data: event } = await admin.from('events').insert({ name: '2026 EXCON 수출상담회', description: '서울 코엑스 수출 상담회', start_date: '2026-06-15', end_date: '2026-06-17', status: 'active' }).select('id').single();
+  const { data: event } = await admin.from('events').insert({ name: '2026 contEXT 수출상담회', description: '서울 코엑스 수출 상담회', start_date: '2026-06-15', end_date: '2026-06-17', status: 'active' }).select('id').single();
   const eventId = event.id;
 
   // 통역사 10명

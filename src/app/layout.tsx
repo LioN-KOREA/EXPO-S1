@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EXCON - 수출상담회 관리 시스템",
+  title: "contEXT - 수출상담회 관리 시스템",
   description: "수출상담회 통역사 상담일지 관리 플랫폼",
 };
 

@@ -44,7 +44,7 @@ if (!alive) {
 }
 
 function uniqueEmail(prefix: string): string {
-  return `${prefix}-${crypto.randomUUID()}@excon.test`;
+  return `${prefix}-${crypto.randomUUID()}@context.test`;
 }
 
 async function createAuthUser(

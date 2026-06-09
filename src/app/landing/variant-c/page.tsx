@@ -103,7 +103,7 @@ export default function VariantCPage() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <Globe2 className="w-4 h-4 text-white" />
               </div>
-              <span className="font-bold text-white tracking-tight">EXCON</span>
+              <span className="font-bold text-white tracking-tight">contEXT</span>
             </div>
             <a href="#login" className="px-4 sm:px-5 py-2 bg-white text-black text-sm font-semibold rounded-lg hover:bg-slate-100 transition">
               로그인
@@ -288,7 +288,7 @@ export default function VariantCPage() {
             <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
               <Globe2 className="w-3 h-3 text-white" />
             </div>
-            <span className="text-sm text-slate-500 font-medium">EXCON</span>
+            <span className="text-sm text-slate-500 font-medium">contEXT</span>
           </div>
           <p className="text-xs text-slate-700">Export Consultation Management System</p>
         </div>

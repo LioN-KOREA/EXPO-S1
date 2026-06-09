@@ -164,7 +164,7 @@ export async function parseUsersExcel(buffer: ArrayBuffer): Promise<UserParseRes
       if (val) extra_info[col.label] = val;
     }
 
-    // 비밀번호 (전화번호 숫자 전체; 없으면 excon00 fallback)
+    // 비밀번호 (전화번호 숫자 전체; 없으면 context0 fallback)
     const password = getInitialPassword(phone);
 
     users.push({

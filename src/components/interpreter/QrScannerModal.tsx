@@ -111,7 +111,9 @@ export function QrScannerModal({ open, onClose, eventId, onSuccess }: Props) {
 
       try {
         let scannedEventId = decoded.trim();
-        if (scannedEventId.startsWith('EXCON:')) scannedEventId = scannedEventId.slice(6);
+        // 백워드 호환: 신규 QR = CONTEXT:, 옛 QR = EXCON: (운영 발급분 유효).
+        if (scannedEventId.startsWith('CONTEXT:')) scannedEventId = scannedEventId.slice(8);
+        else if (scannedEventId.startsWith('EXCON:')) scannedEventId = scannedEventId.slice(6);
         const uuidMatch = scannedEventId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
         if (uuidMatch) scannedEventId = uuidMatch[0];
 

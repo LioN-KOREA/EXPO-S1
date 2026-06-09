@@ -13,10 +13,10 @@ describe('test infrastructure', () => {
       return <h1>안녕하세요, {name}님</h1>;
     }
 
-    render(<Greeting name="EXCON" />);
+    render(<Greeting name="contEXT" />);
 
     expect(
-      screen.getByRole('heading', { level: 1, name: '안녕하세요, EXCON님' })
+      screen.getByRole('heading', { level: 1, name: '안녕하세요, contEXT님' })
     ).toBeInTheDocument();
   });
 
@@ -33,7 +33,7 @@ describe('test infrastructure', () => {
   it('intercepts fetch through MSW handlers', async () => {
     server.use(
       http.get('https://example.test/api/ping', () =>
-        HttpResponse.json({ ok: true, who: 'EXCON' }),
+        HttpResponse.json({ ok: true, who: 'contEXT' }),
       ),
     );
 
@@ -41,6 +41,6 @@ describe('test infrastructure', () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ ok: true, who: 'EXCON' });
+    expect(body).toEqual({ ok: true, who: 'contEXT' });
   });
 });

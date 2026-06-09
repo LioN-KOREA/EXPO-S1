@@ -12,11 +12,11 @@
  *  - '+81 90-1234-5678'    → '12345678'    (일본 8자)
  *  - '01012345678' (구분자 없음) → '12345678' (마지막 8자 폴백)
  *
- * 결과가 6자 미만이거나 전화가 없으면 'excon00'(8자) fallback.
+ * 결과가 6자 미만이거나 전화가 없으면 'context0'(8자) fallback.
  * Supabase Auth 최소 6자 충족.
  */
 export function getInitialPassword(phone: string | null | undefined): string {
-  if (!phone) return 'excon00';
+  if (!phone) return 'context0';
 
   // 구분자(공백·하이픈·점·괄호·슬래시 등)로 split
   const groups = phone.split(/[^\d]+/).filter(g => g.length > 0);
@@ -33,7 +33,7 @@ export function getInitialPassword(phone: string | null | undefined): string {
   if (digits.length >= 6) return digits;
 
   // 폴백 2: 전화번호가 너무 짧음
-  return 'excon00';
+  return 'context0';
 }
 
 /**

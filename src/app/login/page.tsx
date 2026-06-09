@@ -82,7 +82,7 @@ export default function LoginPage() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[10px] h-[10px] rounded-full" style={{ background: 'linear-gradient(135deg, #60a5fa, #c084fc)', boxShadow: '0 0 14px rgba(96,165,250,0.6)' }} />
           </div>
           <h1 className="text-[22px] font-bold tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif", background: 'linear-gradient(135deg, #e2e8f0, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            EXCON
+            contEXT
           </h1>
           <p className="text-[13px] text-slate-600 mt-1 font-light">
             {locale === 'ko' ? '수출상담회 관리 시스템' : 'Export Consultation Management'}

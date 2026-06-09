@@ -220,7 +220,8 @@ export function UserEditDialog({ user, open, onOpenChange, onUpdated }: UserEdit
                 if (!user) return;
                 if (!user.phone) { toast.error('전화번호가 없어 초기화할 수 없습니다'); return; }
                 const pwd = getInitialPassword(user.phone);
-                if (pwd === 'excon00') { toast.error('전화번호 자릿수가 너무 짧아 초기화할 수 없습니다'); return; }
+                // 옛 fallback 'excon00' 도 인식 (운영 데이터 호환).
+                if (pwd === 'context0' || pwd === 'excon00') { toast.error('전화번호 자릿수가 너무 짧아 초기화할 수 없습니다'); return; }
                 if (!confirm(`비밀번호를 ${pwd}로 초기화하시겠습니까?\n(전화번호 뒷자리 — 국가번호·지역번호 제외)`)) return;
                 try {
                   const res = await fetch(`/api/users/${user.id}`, {

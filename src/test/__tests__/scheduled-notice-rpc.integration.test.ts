@@ -46,7 +46,7 @@ if (!alive) {
 // ==== 헬퍼 ====
 function uniqueEmail(prefix: string): string {
   // crypto.randomUUID 는 node 18+ 에서 global
-  return `${prefix}-${crypto.randomUUID()}@excon.test`;
+  return `${prefix}-${crypto.randomUUID()}@context.test`;
 }
 
 async function createAuthUser(
