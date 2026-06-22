@@ -52,7 +52,8 @@ export default async function EventDashboardPage({
     const report = reportsMap.get(c.id);
     if (!report) { statusCounts.not_started++; return; }
     const rs = (report.report_status ?? (report.submitted ? 'submitted' : 'draft')) as ReportStatus;
-    if (rs === 'approved') statusCounts.approved++;
+    // 우수상담(excellent)은 승인된 일지에 플래그를 단 것 → 승인으로 집계 (ponytail: 별도 카테고리 불필요)
+    if (rs === 'approved' || rs === 'excellent') statusCounts.approved++;
     else if (rs === 'submitted' || rs === 'under_review') statusCounts.submitted++;
     else if (rs === 'revision_requested') statusCounts.revision_requested++;
     else if (rs === 'rejected') statusCounts.rejected++;
