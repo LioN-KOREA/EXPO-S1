@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound, redirect } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, CalendarDays, Plus } from 'lucide-react';
+import { ArrowLeft, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
 import type { ReportStatus } from '@/types';
 import { batchIn } from '@/lib/supabase/batch-query';
@@ -30,6 +29,15 @@ export default async function InterpreterSchedulePage({
   const { data: event } = await supabase.from('events').select('*').eq('id', eventId).single();
   if (!event) notFound();
 
+  // 이 상담회에 배정된 통역사만 접근 (미배정자가 URL로 타 이벤트 바이어/셀러 목록 열람 방지)
+  const { data: assignment } = await supabase
+    .from('event_interpreters')
+    .select('interpreter_id')
+    .eq('event_id', eventId)
+    .eq('interpreter_id', user.id)
+    .maybeSingle();
+  if (!assignment) notFound();
+
   // 내 상담 목록
   const { data: consultations } = await supabase
     .from('consultations')
@@ -41,6 +49,13 @@ export default async function InterpreterSchedulePage({
     `)
     .eq('event_id', eventId)
     .eq('interpreter_id', user.id);
+
+  // 자가 추가용 선택 목록 (인증 사용자 조회 허용 — RLS select)
+  const [{ data: addSlots }, { data: addBuyers }, { data: addSellers }] = await Promise.all([
+    supabase.from('time_slots').select('id, date, start_time, end_time').eq('event_id', eventId).order('slot_order'),
+    supabase.from('buyers').select('id, company_name, country, booth_number').eq('event_id', eventId).order('company_name'),
+    supabase.from('sellers').select('id, company_name, company_name_kr, contact_name').eq('event_id', eventId).order('company_name'),
+  ]);
 
   consultations?.sort((a, b) => {
     const dA = a.time_slot?.date || '';
@@ -90,7 +105,12 @@ export default async function InterpreterSchedulePage({
           </h2>
           <p className="text-sm text-slate-500 mt-1">{event.name}</p>
         </div>
-        <ScheduleAddButton />
+        <ScheduleAddButton
+          eventId={eventId}
+          slots={addSlots ?? []}
+          buyers={addBuyers ?? []}
+          sellers={addSellers ?? []}
+        />
       </div>
 
       {/* 통계 */}
@@ -147,6 +167,8 @@ export default async function InterpreterSchedulePage({
                 buyerCountry={c.buyer?.country ?? ''}
                 sellerName={c.seller?.company_name_kr || c.seller?.company_name || ''}
                 reportStatus={reportStatus}
+                addedByInterpreter={c.added_by_interpreter ?? false}
+                canDelete={(c.added_by_interpreter ?? false) && !r}
               />
             );
           })

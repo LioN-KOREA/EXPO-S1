@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, User, Building2, Play, CheckCircle2, FileText, Award } from 'lucide-react';
+import { Clock, User, Building2, Play, CheckCircle2, FileText, Award, Plus, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useI18n } from '@/lib/i18n/context';
@@ -23,6 +23,8 @@ interface ScheduleCardProps {
   buyerCountry: string;
   sellerName: string;
   reportStatus: ReportStatus | null;
+  addedByInterpreter?: boolean;
+  canDelete?: boolean;
 }
 
 export function ConsultationScheduleCard({
@@ -36,10 +38,26 @@ export function ConsultationScheduleCard({
   buyerCountry,
   sellerName,
   reportStatus,
+  addedByInterpreter = false,
+  canDelete = false,
 }: ScheduleCardProps) {
   const { t } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!confirm(t.interpreter.deleteAddedConfirm)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/interpreter/consultations/${consultationId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error || t.interpreter.deleteAddedFailed); return; }
+      toast.success(t.interpreter.deleteAddedSuccess);
+      router.refresh();
+    } catch { toast.error(t.interpreter.deleteAddedFailed); }
+    finally { setDeleting(false); }
+  }
 
   const isInProgress = status === 'in_progress';
   const isCompleted = status === 'completed';
@@ -78,7 +96,15 @@ export function ConsultationScheduleCard({
       <CardContent className="p-4">
         {/* 상태 + 시간 */}
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          {statusBadge}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {statusBadge}
+            {addedByInterpreter && (
+              <Badge variant="outline" className="border-rose-200 text-rose-600 bg-rose-50 gap-1">
+                <Plus className="w-3 h-3" />
+                {t.interpreter.addedByInterpreterBadge}
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-2 text-sm">
             <span className="flex items-center gap-1 font-medium text-foreground">
               <Clock className="w-3.5 h-3.5 text-rose-500" />
@@ -139,6 +165,18 @@ export function ConsultationScheduleCard({
             <FileText className="w-3.5 h-3.5" />
             {isApproved ? t.interpreter.viewReport : t.interpreter.writeReport}
           </Link>
+          {canDelete && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {t.interpreter.deleteAddedConsult}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
