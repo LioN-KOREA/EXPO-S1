@@ -22,7 +22,7 @@ interface ConsultationEditDialogProps {
 }
 
 // 검색 가능한 선택 컴포넌트
-function SearchableSelect<T extends { id: string }>({
+export function SearchableSelect<T extends { id: string }>({
   label,
   items,
   value,

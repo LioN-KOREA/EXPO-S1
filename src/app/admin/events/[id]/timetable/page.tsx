@@ -11,7 +11,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExcelUploader } from '@/components/admin/ExcelUploader';
 import { PaginationSelector } from '@/components/ui/pagination-selector';
 import { ConsultationEditDialog } from '@/components/admin/timetable/ConsultationEditDialog';
-import { ArrowLeft, Upload, RefreshCw, UserPlus, Search, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { CreateConsultationDialog } from '@/components/admin/timetable/CreateConsultationDialog';
+import { ArrowLeft, Upload, RefreshCw, UserPlus, Plus, Search, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -134,6 +135,9 @@ export default function TimetablePage() {
   const [viewMode, setViewMode] = useState<ViewMode>('buyer');
   const [pageSize, setPageSize] = useState<number | 'all'>('all');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // 상담 추가 팝업
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // 셀 편집 팝업
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -373,6 +377,10 @@ export default function TimetablePage() {
     setConsultations(prev => prev.map(c => c.id === updated.id ? { ...c, ...updated } : c));
   }
 
+  function handleConsultationCreated(created: ConsultationData) {
+    setConsultations(prev => [...prev, created]);
+  }
+
   // 날짜 목록 (고유값, 정렬)
   const dates = useMemo(() => {
     const set = new Set(timeSlots.map(s => s.date));
@@ -525,6 +533,10 @@ export default function TimetablePage() {
         <div className="flex flex-wrap gap-2">
           {hasData && (
             <>
+              <Button variant="outline" size="sm" onClick={() => setCreateDialogOpen(true)} className="flex-1 sm:flex-initial">
+                <Plus className="w-4 h-4 mr-1" />
+                상담 추가
+              </Button>
               <Button variant={assignMode ? 'default' : 'outline'} size="sm" onClick={() => setAssignMode(!assignMode)} className="flex-1 sm:flex-initial">
                 <UserPlus className="w-4 h-4 mr-1" />
                 {assignMode ? '배정모드 종료' : '통역사 배정'}
@@ -857,6 +869,18 @@ export default function TimetablePage() {
         sellers={sellers}
         interpreters={interpreters}
         onSaved={handleConsultationSaved}
+      />
+
+      {/* 상담 추가 팝업 (무손실 단건) */}
+      <CreateConsultationDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        eventId={eventId}
+        slots={timeSlots}
+        buyers={buyers}
+        sellers={sellers}
+        interpreters={interpreters}
+        onCreated={handleConsultationCreated}
       />
     </div>
   );
