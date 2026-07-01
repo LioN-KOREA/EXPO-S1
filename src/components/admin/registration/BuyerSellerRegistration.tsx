@@ -13,8 +13,8 @@ import { toast } from 'sonner';
 
 interface BuyerForm { company_name: string; buyer_name: string; country: string; booth_number: string; phone: string; email: string; }
 interface SellerForm { company_name: string; company_name_kr: string; contact_name: string; contact_phone: string; email: string; }
-interface BuyerRow { id: string; company_name: string; buyer_name: string; country: string; booth_number: string; email: string; }
-interface SellerRow { id: string; company_name: string; company_name_kr: string; contact_name: string; email: string; }
+interface BuyerRow { id: string; company_name: string; buyer_name: string; country: string; booth_number: string; email: string; added_by_interpreter?: boolean; }
+interface SellerRow { id: string; company_name: string; company_name_kr: string; contact_name: string; email: string; added_by_interpreter?: boolean; }
 
 const emptyBuyer: BuyerForm = { company_name: '', buyer_name: '', country: '', booth_number: '', phone: '', email: '' };
 const emptySeller: SellerForm = { company_name: '', company_name_kr: '', contact_name: '', contact_phone: '', email: '' };
@@ -31,8 +31,8 @@ export function BuyerSellerRegistration({ eventId }: { eventId: string }) {
     setLoadingData(true);
     const supabase = createClient();
     const [buyersRes, sellersRes] = await Promise.all([
-      supabase.from('buyers').select('id, company_name, buyer_name, country, booth_number, email').eq('event_id', eventId).order('company_name'),
-      supabase.from('sellers').select('id, company_name, company_name_kr, contact_name, email').eq('event_id', eventId).order('company_name'),
+      supabase.from('buyers').select('id, company_name, buyer_name, country, booth_number, email, added_by_interpreter').eq('event_id', eventId).order('company_name'),
+      supabase.from('sellers').select('id, company_name, company_name_kr, contact_name, email, added_by_interpreter').eq('event_id', eventId).order('company_name'),
     ]);
     setBuyers(buyersRes.data || []);
     setSellers(sellersRes.data || []);
@@ -169,7 +169,10 @@ export function BuyerSellerRegistration({ eventId }: { eventId: string }) {
                     <tbody className="divide-y">
                       {buyers.map((b, i) => (
                         <tr key={b.id} className={i % 2 === 0 ? 'bg-card' : 'bg-muted'}>
-                          <td className="px-3 py-2 font-medium text-foreground">{b.company_name}</td>
+                          <td className="px-3 py-2 font-medium text-foreground">
+                            {b.company_name}
+                            {b.added_by_interpreter && <Badge variant="outline" className="ml-1.5 text-[10px] border-rose-200 text-rose-600 bg-rose-50">통역사 등록</Badge>}
+                          </td>
                           <td className="px-3 py-2 text-slate-500">{b.buyer_name}</td>
                           <td className="px-3 py-2 text-slate-500">{b.country}</td>
                           <td className="px-3 py-2">{b.booth_number && <Badge variant="secondary" className="text-xs">{b.booth_number}</Badge>}</td>
@@ -246,7 +249,10 @@ export function BuyerSellerRegistration({ eventId }: { eventId: string }) {
                     <tbody className="divide-y">
                       {sellers.map((s, i) => (
                         <tr key={s.id} className={i % 2 === 0 ? 'bg-card' : 'bg-muted'}>
-                          <td className="px-3 py-2 font-medium text-foreground">{s.company_name_kr || '-'}</td>
+                          <td className="px-3 py-2 font-medium text-foreground">
+                            {s.company_name_kr || '-'}
+                            {s.added_by_interpreter && <Badge variant="outline" className="ml-1.5 text-[10px] border-rose-200 text-rose-600 bg-rose-50">통역사 등록</Badge>}
+                          </td>
                           <td className="px-3 py-2 text-slate-500">{s.company_name}</td>
                           <td className="px-3 py-2 text-slate-500">{s.contact_name}</td>
                           <td className="px-3 py-2 text-slate-500">{s.email}</td>
