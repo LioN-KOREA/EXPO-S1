@@ -81,10 +81,10 @@ export default function LoginPage() {
             {/* Center dot */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[14px] h-[14px] rounded-full" style={{ background: 'linear-gradient(135deg, #60a5fa, #c084fc)', boxShadow: '0 0 14px rgba(96,165,250,0.6)' }} />
           </div>
-          <h1 className="text-[30px] font-bold tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif", background: 'linear-gradient(135deg, #e2e8f0, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h1 className="text-[30px] font-bold tracking-wider text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             contEXT
           </h1>
-          <p className="text-[15px] text-slate-500 mt-1.5 font-light">
+          <p className="text-[15px] text-slate-300 mt-1.5">
             {locale === 'ko' ? '수출상담회 관리 시스템' : 'Export Consultation Management'}
           </p>
         </div>
@@ -97,7 +97,7 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="relative">
             {/* Email */}
             <div className="mb-5">
-              <label className="block text-[13px] text-slate-400 mb-2 font-medium tracking-wider uppercase">
+              <label className="block text-[13px] text-slate-300 mb-2 font-medium tracking-wider uppercase">
                 {t.login.email}
               </label>
               <div className="relative">
@@ -115,7 +115,7 @@ export default function LoginPage() {
 
             {/* Password */}
             <div className="mb-5">
-              <label className="block text-[13px] text-slate-400 mb-2 font-medium tracking-wider uppercase">
+              <label className="block text-[13px] text-slate-300 mb-2 font-medium tracking-wider uppercase">
                 {t.login.password}
               </label>
               <div className="relative">
@@ -162,7 +162,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-[13px] text-slate-600 mt-6">
+        <p className="text-center text-[13px] text-slate-400 mt-6">
           {t.login.noAccount}
         </p>
       </div>
