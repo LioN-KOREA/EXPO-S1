@@ -41,6 +41,8 @@ export async function GET(
     .from('ai_call_logs')
     .select('status, cost_usd')
     .eq('event_id', eventId)
+    // 'reserved' = 마이그 052 예약 마커(분당 cap 전용). 통계 호출수/실패율 왜곡 방지 위해 제외.
+    .neq('status', 'reserved')
     .gte('created_at', startIso)
     .lt('created_at', endIso);
 

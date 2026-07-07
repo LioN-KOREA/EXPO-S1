@@ -29,7 +29,7 @@ import {
   insertPoolEntry,
   lookupPoolEntry,
 } from '@/lib/ai/pool-manager';
-import { checkLimits } from '@/lib/ai/rate-limiter';
+import { reserveCall } from '@/lib/ai/rate-limiter';
 
 interface RequestBody {
   consultation_id?: unknown;
@@ -221,8 +221,8 @@ export async function POST(request: NextRequest) {
 
   const currentPoolSize = !('error' in cached) ? cached.poolSize : 0;
 
-  // rate limit (분당 10) + 일일 cap ($10).
-  const limit = await checkLimits(admin, { userId: guard.user.id, eventId });
+  // rate limit (분당 10, hard) + 일일 cap ($10). 예약 마커 INSERT 로 동시성 방어(마이그 052).
+  const limit = await reserveCall(admin, { userId: guard.user.id, eventId });
   if (!limit.allowed) {
     const content = serveFallback();
     const reasonMsg =

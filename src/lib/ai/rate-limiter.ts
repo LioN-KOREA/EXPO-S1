@@ -26,7 +26,35 @@ export interface LimitBlocked {
 }
 export type LimitResult = LimitOk | LimitBlocked;
 
-/** 분당 호출 + 일일 비용 동시 체크. 둘 중 하나라도 막히면 차단. */
+/**
+ * 원자 예약(마이그 052). advisory lock 으로 직렬화 + status='reserved' 마커 INSERT →
+ * 분당 cap 을 hard cap 으로 강제. 통과 시 예약 row 가 남아 동시 요청 카운트에 즉시 반영.
+ * DB 오류 시엔 통역사 현장 흐름 보호 위해 allow (checkLimits 와 동일 fail-open 정책).
+ */
+export async function reserveCall(
+  supabase: SupabaseClient,
+  params: { userId: string; eventId: string },
+): Promise<LimitResult> {
+  const { data, error } = await supabase.rpc('ai_reserve_call', {
+    p_user_id: params.userId,
+    p_event_id: params.eventId,
+  });
+
+  if (error) {
+    return { allowed: true };
+  }
+
+  const row = (data ?? {}) as { result?: string; minute_count?: number; daily_usd?: number };
+  if (row.result === 'minute_cap') {
+    return { allowed: false, reason: 'minute_cap', currentCount: row.minute_count };
+  }
+  if (row.result === 'daily_cap') {
+    return { allowed: false, reason: 'daily_cap', currentCostUsd: row.daily_usd };
+  }
+  return { allowed: true };
+}
+
+/** 분당 호출 + 일일 비용 동시 체크. 둘 중 하나라도 막히면 차단. (읽기 전용 — 예약 없음) */
 export async function checkLimits(
   supabase: SupabaseClient,
   params: { userId: string; eventId: string },

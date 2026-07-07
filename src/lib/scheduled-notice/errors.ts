@@ -12,6 +12,7 @@ export const SCHEDULED_NOTICE_ERROR_CODES = [
   'event_ended',
   'recipient_not_interpreter',
   'not_scheduled',
+  'duplicate_schedule',
   'unknown',
 ] as const;
 
@@ -52,6 +53,7 @@ const KO_MAP: Record<ScheduledNoticeErrorCode, string> = {
   event_ended: '행사 종료일 이후로는 예약할 수 없습니다',
   recipient_not_interpreter: '대상자 중 해당 행사 통역사가 아닌 사용자가 있습니다',
   not_scheduled: '이미 발송되었거나 취소된 예약입니다',
+  duplicate_schedule: '동일한 예약이 이미 있습니다',
   unknown: '오류가 발생했습니다',
 };
 
@@ -66,6 +68,7 @@ const EN_MAP: Record<ScheduledNoticeErrorCode, string> = {
   event_ended: 'Cannot schedule after event end date',
   recipient_not_interpreter: 'One or more recipients are not interpreters of this event',
   not_scheduled: 'This schedule has already been sent or cancelled',
+  duplicate_schedule: 'An identical schedule already exists',
   unknown: 'An error occurred',
 };
 
