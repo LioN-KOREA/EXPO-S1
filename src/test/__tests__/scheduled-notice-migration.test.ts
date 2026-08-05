@@ -46,6 +46,10 @@ describe('마이그 040 정적 검증', () => {
     });
   }
 
+  // ⚠️ 주의: 아래 단언은 "GRANT 라인이 없다" 만 보장할 뿐 실제 권한이 없음을 뜻하지 않는다.
+  // Supabase 는 default privileges 로 anon/authenticated 에 명시적 GRANT 를 자동 부여하므로
+  // FROM PUBLIC 리보크만으로는 회수되지 않는다. 실제 회수는 마이그 053 이 담당한다.
+  // (rpc-exposure-migration.test.ts 참고)
   it('dispatch_due_scheduled_notices 는 service_role 에만 GRANT (authenticated 노출 X)', () => {
     expect(sql).toMatch(
       /GRANT EXECUTE ON FUNCTION public\.dispatch_due_scheduled_notices\(\) TO service_role/,

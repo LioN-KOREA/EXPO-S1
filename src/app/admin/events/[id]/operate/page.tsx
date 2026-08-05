@@ -65,11 +65,27 @@ export default function OperatePage() {
 
   const load = useCallback(async () => {
     try {
-      // 통역사 (event_interpreters 기반)
-      const { data: ei } = await supabase
-        .from('event_interpreters')
-        .select('interpreter:profiles!event_interpreters_interpreter_id_fkey(id, name, email, language)')
-        .eq('event_id', eventId);
+      // 3개 쿼리는 서로 의존하지 않으므로 병렬 실행 (10초마다 도는 폴링이라 왕복이 곧 부하)
+      const [{ data: ei }, { data: ts }, { data: cons }] = await Promise.all([
+        // 통역사 (event_interpreters 기반)
+        supabase
+          .from('event_interpreters')
+          .select('interpreter:profiles!event_interpreters_interpreter_id_fkey(id, name, email, language)')
+          .eq('event_id', eventId),
+        // 타임슬롯
+        supabase
+          .from('time_slots')
+          .select('*')
+          .eq('event_id', eventId)
+          .order('date')
+          .order('slot_order'),
+        // 상담
+        supabase
+          .from('consultations')
+          .select('id, time_slot_id, interpreter_id, status, buyer_status, buyer:buyers(company_name, booth_number, country), seller:sellers(company_name, company_name_kr, contact_name)')
+          .eq('event_id', eventId),
+      ]);
+
       // Supabase nested select는 배열/객체 어느 쪽도 올 수 있어 unknown으로 받아 안전 변환
       const rawList = (ei ?? []) as Array<{ interpreter: unknown }>;
       const ints: InterpreterInfo[] = [];
@@ -81,21 +97,8 @@ export default function OperatePage() {
       }
       setInterpreters(ints);
 
-      // 타임슬롯
-      const { data: ts } = await supabase
-        .from('time_slots')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('date')
-        .order('slot_order');
       const slotList = ts ?? [];
       setSlots(slotList);
-
-      // 상담
-      const { data: cons } = await supabase
-        .from('consultations')
-        .select('id, time_slot_id, interpreter_id, status, buyer_status, buyer:buyers(company_name, booth_number, country), seller:sellers(company_name, company_name_kr, contact_name)')
-        .eq('event_id', eventId);
       setConsultations((cons ?? []) as unknown as ConsultationRow[]);
 
       // 첫 로드 시 오늘 날짜 또는 첫 슬롯 날짜로 세팅
