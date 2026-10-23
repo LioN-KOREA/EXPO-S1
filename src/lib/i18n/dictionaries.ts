@@ -52,6 +52,16 @@ export const dictionaries = {
       submitting: '로그인 중...',
       error: '이메일 또는 비밀번호가 올바르지 않습니다.',
       noAccount: '계정이 없으시면 관리자에게 문의하세요',
+      or: '또는',
+      employeeLogin: '임직원 로그인',
+      oidcErrors: {
+        forbidden: '임직원 로그인 권한이 없는 계정입니다. 관리자에게 권한을 요청해 주세요.',
+        account_conflict: '같은 이메일로 다른 유형의 계정이 이미 등록되어 있습니다. 관리자에게 문의해 주세요.',
+        not_admin: '관리자 계정이 아닙니다. 관리자에게 문의해 주세요.',
+        oidc_required: '이 계정은 [임직원 로그인]으로만 로그인할 수 있습니다.',
+        session_ended: '로그인 세션이 만료되었거나 권한이 회수되었습니다. 다시 로그인해 주세요.',
+        failed: '임직원 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+      },
     },
 
     // 비밀번호 변경
@@ -378,6 +388,16 @@ export const dictionaries = {
       submitting: 'Logging in...',
       error: 'Invalid email or password.',
       noAccount: 'Please contact the administrator if you don\'t have an account',
+      or: 'or',
+      employeeLogin: 'Employee Login',
+      oidcErrors: {
+        forbidden: 'Your account is not authorized for employee login. Please ask an administrator for access.',
+        account_conflict: 'A different type of account is already registered with this email. Please contact an administrator.',
+        not_admin: 'This is not an administrator account. Please contact an administrator.',
+        oidc_required: 'This account can only sign in with Employee Login.',
+        session_ended: 'Your session has expired or your access was revoked. Please sign in again.',
+        failed: 'Employee login failed. Please try again shortly.',
+      },
     },
 
     changePassword: {

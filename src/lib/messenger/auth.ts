@@ -8,7 +8,7 @@ export type AuthedUser = BaseAuthedUser & { role: 'admin' | 'interpreter' };
 
 export async function authMessenger(
   supabase: Awaited<ReturnType<typeof createClient>>
-): Promise<{ user: AuthedUser } | { error: string; status: 401 | 403 | 500 }> {
+): Promise<{ user: AuthedUser } | { error: string; status: 401 | 403 | 500 | 503 }> {
   const guard = await ensureRole(supabase, ['admin', 'interpreter']);
   if ('error' in guard) return guard;
   return { user: guard.user as AuthedUser };

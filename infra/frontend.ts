@@ -99,6 +99,13 @@ const lambdaEnv = {
     // 라우트(/api/ai/test)는 AI_AUTO_ANSWER_ENABLED === 'true' 일 때만 동작.
     OPENAI_API_KEY: process.env.OPENAI_API_KEY ?? "",
     AI_AUTO_ANSWER_ENABLED: process.env.AI_AUTO_ANSWER_ENABLED ?? "",
+    // 임직원 로그인 (라이온코리아 계정관리 시스템 OIDC). 빈 값이면 src/lib/auth/lpx.ts 의 운영 기본값 사용.
+    // 로컬/스테이징처럼 redirect URI 가 다른 환경에서만 지정 (콘솔에 해당 URI 등록 필요).
+    LPX_DISCOVERY_URL: process.env.LPX_DISCOVERY_URL ?? "",
+    LPX_CLIENT_ID: process.env.LPX_CLIENT_ID ?? "",
+    LPX_REDIRECT_URI: process.env.LPX_REDIRECT_URI ?? "",
+    LPX_POST_LOGOUT_REDIRECT_URI: process.env.LPX_POST_LOGOUT_REDIRECT_URI ?? "",
+    LPX_ADMIN_AUTHORITY: process.env.LPX_ADMIN_AUTHORITY ?? "",
     // OpenNext incremental cache — reuses the assets bucket with a key prefix
     // to keep cache objects separate from public assets.
     CACHE_BUCKET_NAME: bucket.bucket,

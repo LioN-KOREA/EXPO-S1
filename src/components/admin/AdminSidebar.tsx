@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -92,7 +91,6 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const eventId = extractEventId(pathname);
@@ -109,12 +107,6 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
     const base = baseTitleRef.current;
     document.title = unreadMessages > 0 ? `(${unreadMessages > 99 ? '99+' : unreadMessages}) ${base}` : base;
   }, [unreadMessages]);
-
-  async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/login');
-  }
 
   const sidebarContent = (
     <>
@@ -198,14 +190,17 @@ export function AdminSidebar({ userName, userEmail }: AdminSidebarProps) {
           </div>
           <ThemeToggle />
         </div>
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 text-slate-400 hover:text-foreground/80 hover:bg-card"
-          onClick={handleLogout}
-        >
-          <LogOut className="w-4 h-4" />
-          로그아웃
-        </Button>
+        {/* 서버에서 세션 정리 — 임직원 로그인 세션이면 SSO 로그아웃까지 이동 */}
+        <form action="/auth/signout" method="post">
+          <Button
+            type="submit"
+            variant="ghost"
+            className="w-full justify-start gap-3 text-slate-400 hover:text-foreground/80 hover:bg-card"
+          >
+            <LogOut className="w-4 h-4" />
+            로그아웃
+          </Button>
+        </form>
       </div>
     </>
   );

@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { use, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { dictionaries, type Locale } from '@/lib/i18n/dictionaries';
 import { Globe } from 'lucide-react';
 
-export default function LoginPage() {
+export default function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  // /auth/callback · proxy 가 임직원 로그인 실패 사유를 ?error= 로 전달
+  const { error: oidcErrorCode } = use(searchParams);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,6 +18,8 @@ export default function LoginPage() {
   const router = useRouter();
 
   const t = dictionaries[locale];
+  const oidcErrors: Record<string, string> = t.login.oidcErrors;
+  const oidcError = oidcErrorCode ? oidcErrors[oidcErrorCode] ?? oidcErrors.failed : '';
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -143,9 +147,9 @@ export default function LoginPage() {
             </div>
 
             {/* Error */}
-            {error && (
+            {(error || oidcError) && (
               <div className="mb-4 text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                {error}
+                {error || oidcError}
               </div>
             )}
 
@@ -159,6 +163,19 @@ export default function LoginPage() {
               {loading ? t.login.submitting : t.login.submit}
             </button>
           </form>
+
+          {/* 임직원 로그인 (라이온코리아 계정관리 시스템 OIDC) — 라우트 핸들러로 최상위 이동해야 하므로 Link 가 아닌 a */}
+          <div className="relative flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-white/[0.08]" />
+            <span className="text-xs text-slate-500">{t.login.or}</span>
+            <div className="flex-1 h-px bg-white/[0.08]" />
+          </div>
+          <a
+            href="/auth/login"
+            className="relative block w-full py-4 rounded-[14px] text-center text-white font-semibold text-[16px] border border-white/[0.12] bg-white/[0.04] transition-all hover:-translate-y-0.5 hover:border-white/[0.2] hover:bg-white/[0.07]"
+          >
+            {t.login.employeeLogin}
+          </a>
         </div>
 
         {/* Footer */}
